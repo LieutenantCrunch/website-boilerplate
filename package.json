@@ -1,0 +1,22 @@
+{
+  "name": "website-boilerplate",
+  "version": "1.0.0",
+  "description": "Boilerplate Website app running TypeScript and React against a MySQL database",
+  "main": "./runtime/index.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LieutenantCrunch/website-boilerplate.git"
+  },
+  "author": "Lieutenant Crunch",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/LieutenantCrunch/website-boilerplate/issues"
+  },
+  "homepage": "https://github.com/LieutenantCrunch/website-boilerplate#readme",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
