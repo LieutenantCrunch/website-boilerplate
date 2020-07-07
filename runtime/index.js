@@ -9,6 +9,9 @@ const port = 3000;
 app.get('/', (req, res) => {
     res.send('Hello World!');
 });
+app.get('/:test', (req, res) => {
+    res.send(`Hello ${req.param('test', 'World.')}!`);
+});
 app.listen(port, () => {
     console.log(`Listening on http://localhost:${port}`);
 });
