@@ -2,11 +2,11 @@
   "name": "website-boilerplate",
   "version": "1.0.0",
   "description": "Boilerplate Website app running TypeScript and React against a MySQL database",
-  "main": "./runtime/index.mjs",
+  "main": "./runtime/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:dev": "tsc",
-    "start:dev": "node runtime/index.js"
+    "start:dev": "node runtime/app.js"
   },
   "repository": {
     "type": "git",
