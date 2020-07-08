@@ -5,7 +5,8 @@
   "main": "./src/index.jsx",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:dev": "npx webpack",
+    "build:dev": "run-s compile:dev copy:dev",
+    "compile:dev": "npx webpack",
     "copy:dev": "cpy ./public/index.html ../server/dist/"
   },
   "author": "Lieutenant Crunch",

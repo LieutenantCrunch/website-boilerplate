@@ -5,8 +5,9 @@
   "main": "./runtime/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build:dev": "run-s clean:dev compile:dev",
     "clean:dev": "rimraf runtime",
-    "build:dev": "tsc",
+    "compile:dev": "tsc",
     "start:dev": "node runtime/app.js"
   },
   "author": "Lieutenant Crunch",
