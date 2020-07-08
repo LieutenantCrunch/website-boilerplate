@@ -15,14 +15,14 @@ const port = 3000;
 var dbConnection;
 const fileHandler = new filehandler_1.default();
 app.get(/^\/(index)?$/, (req, res) => {
-    fileHandler.sendFileResponse(res, '../client/public/index.html', 'text/html');
+    fileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
 });
 app.get(/.css$/, (req, res) => {
-    const cssFileName = path_1.default.resolve('../client', req.path.substr(1));
+    const cssFileName = path_1.default.resolve('./dist', req.path.substr(1));
     fileHandler.sendFileResponse(res, cssFileName, 'text/css');
 });
 app.get(/\.js$/, (req, res) => {
-    const jsFileName = path_1.default.resolve('../client', req.path.substr(1));
+    const jsFileName = path_1.default.resolve('./dist', req.path.substr(1));
     fileHandler.sendFileResponse(res, jsFileName, 'text/javascript');
 });
 app.get('/api/:methodName', async (req, res) => {

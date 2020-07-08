@@ -14,17 +14,17 @@ var dbConnection: Connection;
 const fileHandler: FileHandler = new FileHandler();
 
 app.get(/^\/(index)?$/, (req: Request, res: Response) => {
-    fileHandler.sendFileResponse(res, '../client/public/index.html', 'text/html');
+    fileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
 });
 
 app.get(/.css$/, (req: Request, res: Response) => {
-    const cssFileName: string = path.resolve('../client', req.path.substr(1));
+    const cssFileName: string = path.resolve('./dist', req.path.substr(1));
 
     fileHandler.sendFileResponse(res, cssFileName, 'text/css');
 });
 
 app.get(/\.js$/, (req: Request, res: Response) => {
-    const jsFileName: string = path.resolve('../client', req.path.substr(1));
+    const jsFileName: string = path.resolve('./dist', req.path.substr(1));
 
     fileHandler.sendFileResponse(res, jsFileName, 'text/javascript');
 });

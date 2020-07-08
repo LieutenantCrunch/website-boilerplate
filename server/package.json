@@ -1,19 +1,20 @@
 {
-  "name": "website-boilerplate",
+  "name": "website-boilerplate-server",
   "version": "1.0.0",
-  "description": "Boilerplate Website app running TypeScript and React against a MySQL database",
+  "description": "Server portion of Website Boilerplate",
   "main": "./runtime/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "clean:dev": "rimraf runtime",
     "build:dev": "tsc",
     "start:dev": "node runtime/app.js"
   },
+  "author": "Lieutenant Crunch",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LieutenantCrunch/website-boilerplate.git"
   },
-  "author": "Lieutenant Crunch",
-  "license": "MIT",
   "bugs": {
     "url": "https://github.com/LieutenantCrunch/website-boilerplate/issues"
   },
