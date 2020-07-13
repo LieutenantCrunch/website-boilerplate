@@ -1,26 +1,26 @@
-// https://medium.com/technoetics/create-basic-login-forms-using-react-js-hooks-and-bootstrap-2ae36c15e551
 import React, {useState} from 'react';
 import * as Constants from '../../constants/constants';
 import Axios from 'axios';
 import { withRouter } from 'react-router-dom';
 
-function RegistrationForm(props) {
+function LoginForm (props) {
     const [state, setState] = useState({
         email: '',
         password: '',
-        confirmPassword: ''
+        successMessage: null
     });
 
     const handleChange = (e) => {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
         const {id, value} = e.target;
+        
 
         /* Use an arrow function that returns an object literal populated with the prevState (using the spread operator) and with the value set on the property specified by the target's id, pass that into setState */
         setState(prevState => ({
             ...prevState,
             [id] : value
         }));
-    };
+    }
 
     const handleSubmitClick = (e) => {
         e.preventDefault();
@@ -28,45 +28,51 @@ function RegistrationForm(props) {
         if (!state.email.length) {
             alert ('You must enter an email');
         }
-        else if (state.password === state.confirmPassword) {
-            if (!state.password.length) {
-                alert('You must enter a password');
-            }
-            else {
-                sendRegistrationToServer();
-            }
+        else if (!state.password.length) {
+            alert('You must enter a password');
         }
         else {
-            alert('Passwords do not match');
+            sendCredentialsToServer();
         }
     };
 
-    const sendRegistrationToServer = () => {
+    const sendCredentialsToServer = () => {
         const payload = {
             "email": state.email,
             "password": state.password
         };
 
-        Axios.post(Constants.BASE_API_URL + 'user-register', payload).then((response) => {
+        Axios.post(Constants.BASE_API_URL + 'user-login', payload).then((response) => {
             if (response.data.code === 200) {
                 setState(prevState => ({
                     ...prevState,
-                    'successMessage': 'Registration successful, redirecting to application'
+                    'successMessage': 'Login successful, redirecting to application'
                 }));
+
+                redirectToProfile();
+            }
+            else if (response.data.code === 204) {
+                alert('Username and password do not match');
             }
             else {
-                alert('Failed to register');
+                alert('Failed to log in');
             }
         }).catch(error => {
             alert('An error has occurred');
         });
     };
 
+    const redirectToProfile = () => {
+        props.updateTitle('My Profile');
+        props.history.push('/profile');
+    };
+
+    const redirectToRegistration = () => {
+        props.updateTitle('Register');
+        props.history.push('/register')
+    };
+
     return (
-        /* https://getbootstrap.com/docs/4.0/components/forms/#form-groups
-            text-muted: https://www.w3schools.com/Bootstrap/bootstrap_ref_css_helpers.asp
-            card-body adds the padding
-         */
         <div className="card col-4 mt-2 align-middle text-center">
             <div className="card-body">
                 <form>
@@ -94,28 +100,20 @@ function RegistrationForm(props) {
                             onChange={handleChange}
                         />
                     </div>
-                    <div className="mb-3 text-left">
-                        <label htmlFor="confirmPassword">Confirm Password</label>
-                        <input id="confirmPassword"
-                            type="password"
-                            required
-                            className="form-control"
-                            placeholder="Confirm Password"
-                            value={state.confirmPassword}
-                            onChange={handleChange}
-                        />
-                    </div>
                     <button type="submit"
                         className="btn btn-primary"
                         onClick={handleSubmitClick}
                     >
-                        Register
+                        Login
                     </button>
                 </form>
+            </div>
+            <div className="card-footer text-muted">
+                <span>Don't have an account? </span><span onClick={redirectToRegistration}>Register</span>
             </div>
         </div>
     );
 };
 
 // Wrap in withRouter so it can get access to props.history
-export default withRouter(RegistrationForm);
+export default withRouter(LoginForm);

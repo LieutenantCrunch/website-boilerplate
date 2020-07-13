@@ -7,23 +7,17 @@ require("reflect-metadata");
 const express_1 = __importDefault(require("express"));
 const typeorm_1 = require("typeorm");
 const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
 const User_1 = require("./entity/User");
 const filehandler_1 = __importDefault(require("./utilities/filehandler"));
 const app = express_1.default();
 const port = 3000;
 var dbConnection;
 const fileHandler = new filehandler_1.default();
+// Serve static files out of the dist directory using the static middleware function
+app.use(express_1.default.static('dist'));
+// It may be necessary to direct everything other than api calls to index due to the single page app
 app.get(/^\/(index)?$/, (req, res) => {
     fileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
-});
-app.get(/.css$/, (req, res) => {
-    const cssFileName = path_1.default.resolve('./dist', req.path.substr(1));
-    fileHandler.sendFileResponse(res, cssFileName, 'text/css');
-});
-app.get(/\.js$/, (req, res) => {
-    const jsFileName = path_1.default.resolve('./dist', req.path.substr(1));
-    fileHandler.sendFileResponse(res, jsFileName, 'text/javascript');
 });
 app.get('/api/:methodName', async (req, res) => {
     switch (req.params.methodName) {
@@ -65,6 +59,30 @@ app.get('/api/:methodName', async (req, res) => {
                 res.write(user.displayName);
             });
             res.end();
+            break;
+        case 'user-login':
+            res.json({
+                success: true
+            });
+            break;
+        case 'user-register':
+            res.json({
+                success: true
+            });
+            break;
+        default:
+            res.writeHead(404, { 'Content-Type': 'text/html' });
+            res.write('Not Found');
+            res.end();
+            break;
+    }
+});
+app.post('/api/:methodName', async (req, res) => {
+    switch (req.params.methodName) {
+        case 'user-register':
+            res.json({
+                success: true
+            });
             break;
         default:
             res.writeHead(404, { 'Content-Type': 'text/html' });

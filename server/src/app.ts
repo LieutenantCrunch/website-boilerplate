@@ -13,20 +13,12 @@ const port: number = 3000;
 var dbConnection: Connection;
 const fileHandler: FileHandler = new FileHandler();
 
+// Serve static files out of the dist directory using the static middleware function
+app.use(express.static('dist'));
+
+// It may be necessary to direct everything other than api calls to index due to the single page app
 app.get(/^\/(index)?$/, (req: Request, res: Response) => {
     fileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
-});
-
-app.get(/.css$/, (req: Request, res: Response) => {
-    const cssFileName: string = path.resolve('./dist', req.path.substr(1));
-
-    fileHandler.sendFileResponse(res, cssFileName, 'text/css');
-});
-
-app.get(/\.js$/, (req: Request, res: Response) => {
-    const jsFileName: string = path.resolve('./dist', req.path.substr(1));
-
-    fileHandler.sendFileResponse(res, jsFileName, 'text/javascript');
 });
 
 app.get('/api/:methodName', async (req: Request, res: Response) => {
@@ -75,6 +67,32 @@ app.get('/api/:methodName', async (req: Request, res: Response) => {
         });
     
         res.end();
+        break;
+    case 'user-login':
+        res.json({
+            success: true
+        });
+        break;
+    case 'user-register':
+        res.json({
+            success: true
+        });
+        break;
+    default:
+        res.writeHead(404, {'Content-Type': 'text/html'});
+        res.write('Not Found');
+        res.end();
+        break;
+    }
+});
+
+app.post('/api/:methodName', async (req: Request, res: Response) => {
+    switch (req.params.methodName)
+    {
+    case 'user-register':
+        res.json({
+            success: true
+        });
         break;
     default:
         res.writeHead(404, {'Content-Type': 'text/html'});
