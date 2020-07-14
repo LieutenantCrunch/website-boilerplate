@@ -47,19 +47,24 @@ function RegistrationForm(props) {
             "password": state.password
         };
 
-        Axios.post(Constants.BASE_API_URL + 'user-register', payload).then((response) => {
-            if (response.data.code === 200) {
+        Axios.post(Constants.BASE_API_URL + Constants.API_PATH_USERS + 'register', payload).then((response) => {
+            if (response.status === 200) {
                 setState(prevState => ({
                     ...prevState,
                     'successMessage': 'Registration successful, redirecting to application'
                 }));
             }
             else {
-                alert('Failed to register');
+                alert('Failed to register' + response.status);
             }
         }).catch(error => {
-            alert('An error has occurred');
+            alert(error);
         });
+    };
+
+    const redirectToLogin = () => {
+        props.updateTitle('Login');
+        props.history.push('/login')
     };
 
     return (
@@ -67,7 +72,7 @@ function RegistrationForm(props) {
             text-muted: https://www.w3schools.com/Bootstrap/bootstrap_ref_css_helpers.asp
             card-body adds the padding
          */
-        <div className="card col-4 mt-2 align-middle text-center">
+        <div className="card col-8 col-md-4 mt-2 align-middle text-center">
             <div className="card-body">
                 <form>
                     <div className="mb-3 text-left">
@@ -112,6 +117,10 @@ function RegistrationForm(props) {
                         Register
                     </button>
                 </form>
+            </div>
+            <div className="card-footer text-muted">
+                <span>Already have an account? </span><br />
+                <span className="btn btn-link" onClick={redirectToLogin}>Log In</span>
             </div>
         </div>
     );

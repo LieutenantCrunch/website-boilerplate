@@ -5,8 +5,10 @@ import {BrowserRouter as Router,
 } from 'react-router-dom';
 
 import Header from './Header';
-import RegistrationForm from './RegistrationForm/RegistrationForm';
 import LoginForm from './RegistrationForm/LoginForm';
+import Profile from './Profile';
+import RegistrationForm from './RegistrationForm/RegistrationForm';
+
 
 export default function App() {
     const [title, updateTitle] = useState(null);
@@ -21,10 +23,13 @@ export default function App() {
                             <LoginForm updateTitle={updateTitle} />
                         </Route>
                         <Route path="/register" exact={true}>
-                            <RegistrationForm />
+                            <RegistrationForm updateTitle={updateTitle} />
                         </Route>
                         <Route path="/login">
                             <LoginForm updateTitle={updateTitle} />
+                        </Route>
+                        <Route path="/profile">
+                            <Profile updateTitle={updateTitle} />
                         </Route>
                     </Switch>
                 </div>

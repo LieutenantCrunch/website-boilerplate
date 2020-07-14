@@ -13,12 +13,36 @@ const port: number = 3000;
 var dbConnection: Connection;
 const fileHandler: FileHandler = new FileHandler();
 
+function send404Response (res: Response, message = 'Not Found'): any {
+    res.status(404).send(message);
+};
+
 // Serve static files out of the dist directory using the static middleware function
 app.use(express.static('dist'));
 
-// It may be necessary to direct everything other than api calls to index due to the single page app
-app.get(/^\/(index)?$/, (req: Request, res: Response) => {
-    fileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+app.get('/api/users/:methodName', async (req: Request, res: Response) => {
+    switch (req.params.methodName)
+    {
+    case 'list':
+        if (dbConnection === undefined || dbConnection === null) {
+            res.send('No database connection found');
+        }
+    
+        let userRepository: Repository<User> = dbConnection.getRepository(User);
+        let allUsers: User[] = await userRepository.find();
+    
+        res.writeHead(200, {'Content-Type': 'text/html'});
+    
+        allUsers.forEach((user: User) => {
+            res.write(user.displayName);
+        });
+    
+        res.end();
+        break;
+    default:
+        send404Response(res, req.params.methodName + ' is not a valid users method');
+        break;
+    }
 });
 
 app.get('/api/:methodName', async (req: Request, res: Response) => {
@@ -52,36 +76,36 @@ app.get('/api/:methodName', async (req: Request, res: Response) => {
             });
         })
         break;
-    case 'list-users':
-        if (dbConnection === undefined || dbConnection === null) {
-            res.send('No database connection found');
-        }
-    
-        let userRepository: Repository<User> = dbConnection.getRepository(User);
-        let allUsers: User[] = await userRepository.find();
-    
-        res.writeHead(200, {'Content-Type': 'text/html'});
-    
-        allUsers.forEach((user: User) => {
-            res.write(user.displayName);
-        });
-    
-        res.end();
+    default:
+        send404Response(res, req.params.methodName + ' is not a valid method');
         break;
-    case 'user-login':
-        res.json({
+    }
+});
+
+app.get(/^\/(index)?$/, (req: Request, res: Response) => {
+    fileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+});
+
+// It may be necessary to direct everything other than api calls to index due to the single page app
+app.get('*', (req: Request, res: Response) => {
+    fileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+});
+
+app.post('/api/users/:methodName', async (req: Request, res: Response) => {
+    switch (req.params.methodName)
+    {
+    case 'register':
+        res.status(200).json({
             success: true
         });
         break;
-    case 'user-register':
-        res.json({
+    case 'login':
+        res.status(200).json({
             success: true
-        });
+        })
         break;
     default:
-        res.writeHead(404, {'Content-Type': 'text/html'});
-        res.write('Not Found');
-        res.end();
+        send404Response(res, req.params.methodName + ' is not a valid users method');
         break;
     }
 });
@@ -89,23 +113,14 @@ app.get('/api/:methodName', async (req: Request, res: Response) => {
 app.post('/api/:methodName', async (req: Request, res: Response) => {
     switch (req.params.methodName)
     {
-    case 'user-register':
-        res.json({
-            success: true
-        });
-        break;
     default:
-        res.writeHead(404, {'Content-Type': 'text/html'});
-        res.write('Not Found');
-        res.end();
+        send404Response(res, req.params.methodName + ' is not a valid method');
         break;
     }
 });
 
 app.use((req: Request, res: Response) => {
-    res.writeHead(404, {'Content-Type': 'text/html'});
-    res.write('Not Found');
-    res.end();
+    send404Response(res);
 });
 
 app.listen(port, () => {

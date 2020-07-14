@@ -42,8 +42,8 @@ function LoginForm (props) {
             "password": state.password
         };
 
-        Axios.post(Constants.BASE_API_URL + 'user-login', payload).then((response) => {
-            if (response.data.code === 200) {
+        Axios.post(Constants.BASE_API_URL + Constants.API_PATH_USERS + 'login', payload).then((response) => {
+            if (response.status === 200) {
                 setState(prevState => ({
                     ...prevState,
                     'successMessage': 'Login successful, redirecting to application'
@@ -51,14 +51,14 @@ function LoginForm (props) {
 
                 redirectToProfile();
             }
-            else if (response.data.code === 204) {
+            else if (response.status === 204) {
                 alert('Username and password do not match');
             }
             else {
-                alert('Failed to log in');
+                alert('Failed to log in, response code: ' + response.status);
             }
         }).catch(error => {
-            alert('An error has occurred');
+            alert(error);
         });
     };
 
@@ -73,7 +73,7 @@ function LoginForm (props) {
     };
 
     return (
-        <div className="card col-4 mt-2 align-middle text-center">
+        <div className="card col-8 col-md-4 mt-2 align-middle text-center">
             <div className="card-body">
                 <form>
                     <div className="mb-3 text-left">
@@ -109,7 +109,8 @@ function LoginForm (props) {
                 </form>
             </div>
             <div className="card-footer text-muted">
-                <span>Don't have an account? </span><span onClick={redirectToRegistration}>Register</span>
+                <span>Don't have an account? </span><br />
+                <span className="btn btn-link" onClick={redirectToRegistration}>Register</span>
             </div>
         </div>
     );
