@@ -1,15 +1,14 @@
 // https://medium.com/technoetics/create-basic-login-forms-using-react-js-hooks-and-bootstrap-2ae36c15e551
 import React, {useState} from 'react';
-import * as Constants from '../../constants/constants';
 import Axios from 'axios';
 import { withRouter } from 'react-router-dom';
 
+import * as Constants from '../../constants/constants';
+import * as Hooks from '../../hooks/hooks';
+
 function RegistrationForm(props) {
-    const [state, setState] = useState({
-        email: '',
-        password: '',
-        confirmPassword: ''
-    });
+    const [state, setState] = Hooks.useStateWithSessionStorage('state', {email: '', password: '', confirmPassword: ''});
+    const [successMessage, setSuccessMessage] = useState(null);
 
     const handleChange = (e) => {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
@@ -49,10 +48,7 @@ function RegistrationForm(props) {
 
         Axios.post(Constants.BASE_API_URL + Constants.API_PATH_USERS + 'register', payload).then((response) => {
             if (response.status === 200) {
-                setState(prevState => ({
-                    ...prevState,
-                    'successMessage': 'Registration successful, redirecting to application'
-                }));
+                setSuccessMessage('Registration successful, redirecting to application');
             }
             else {
                 alert('Failed to register' + response.status);
