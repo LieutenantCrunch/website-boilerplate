@@ -5,28 +5,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
 const express_1 = __importDefault(require("express"));
-const typeorm_1 = require("typeorm");
-const fs_1 = __importDefault(require("fs"));
-const User_1 = require("./entity/User");
 const filehandler_1 = __importDefault(require("./utilities/filehandler"));
+const databaseHelper_1 = __importDefault(require("./utilities/databaseHelper"));
 const app = express_1.default();
 const port = 3000;
-var dbConnection;
 const fileHandler = new filehandler_1.default();
+var databaseHelper = new databaseHelper_1.default();
 function send404Response(res, message = 'Not Found') {
     res.status(404).send(message);
 }
 ;
 // Serve static files out of the dist directory using the static middleware function
 app.use(express_1.default.static('dist'));
+// Parse request bodies as JSON
+app.use(express_1.default.json());
 app.get('/api/users/:methodName', async (req, res) => {
     switch (req.params.methodName) {
         case 'list':
-            if (dbConnection === undefined || dbConnection === null) {
+            if (databaseHelper === undefined || databaseHelper === null) {
                 res.send('No database connection found');
             }
-            let userRepository = dbConnection.getRepository(User_1.User);
-            let allUsers = await userRepository.find();
+            let allUsers = await databaseHelper.getAllUsers();
             res.writeHead(200, { 'Content-Type': 'text/html' });
             allUsers.forEach((user) => {
                 res.write(user.displayName);
@@ -40,33 +39,6 @@ app.get('/api/users/:methodName', async (req, res) => {
 });
 app.get('/api/:methodName', async (req, res) => {
     switch (req.params.methodName) {
-        case 'check-db':
-            fs_1.default.readFile('./private/dbpass.txt', 'utf8', (readFileError, data) => {
-                if (readFileError) {
-                    console.error(readFileError);
-                    res.send('Couldn\'t find the password');
-                }
-                typeorm_1.createConnection({
-                    type: 'mysql',
-                    host: 'localhost',
-                    port: 3306,
-                    username: 'nodejs',
-                    password: data.trim(),
-                    database: 'scrapbook_dev',
-                    synchronize: true,
-                    logging: false,
-                    entities: [
-                        __dirname + '/entity/*.js'
-                    ]
-                }).then((connection) => {
-                    dbConnection = connection;
-                    res.send('Successfully connected to database');
-                }).catch((error) => {
-                    console.error(error);
-                    res.send('Couldn\'t connect to the database');
-                });
-            });
-            break;
         default:
             send404Response(res, req.params.methodName + ' is not a valid method');
             break;
@@ -82,9 +54,22 @@ app.get('*', (req, res) => {
 app.post('/api/users/:methodName', async (req, res) => {
     switch (req.params.methodName) {
         case 'register':
-            res.status(200).json({
-                success: true
-            });
+            if (!req.body) {
+                res.status(202).json({ success: false, message: 'You must provide registration info' });
+            }
+            else if (req.body.email) {
+                let email = req.body.email;
+                let userExists = await databaseHelper.userExistsForEmail(email);
+                if (userExists) {
+                    res.status(202).json({ success: false, message: 'That email address is already in use' });
+                }
+                else {
+                    res.status(200).json({ success: true, message: 'That email address is available' });
+                }
+            }
+            else {
+                res.status(202).json({ success: false, message: 'You must provide an email address' });
+            }
             break;
         case 'login':
             res.status(200).json({

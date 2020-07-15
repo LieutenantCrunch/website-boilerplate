@@ -70,6 +70,9 @@ function LoginForm (props) {
 
     return (
         <div className="card col-8 col-md-4 mt-2 align-middle text-center">
+            <div className="card-header">
+                {props.statusMessage}
+            </div>
             <div className="card-body">
                 <form>
                     <div className="mb-3 text-left">

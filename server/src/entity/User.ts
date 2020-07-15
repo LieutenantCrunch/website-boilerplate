@@ -11,14 +11,15 @@ export class User {
     @Column({
         length: 100,
         type: 'varchar',
+        name: 'email'
+    })
+    email: string;
+
+    @Column({
+        length: 100,
+        type: 'varchar',
         name: 'display_name'
     })
     displayName: string;
 
-    @Column({
-        length: 50,
-        type: 'varchar',
-        name: 'username'
-    })
-    username: string;
 }

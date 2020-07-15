@@ -1,17 +1,15 @@
 import 'reflect-metadata';
 import express, {Request, Response} from 'express';
-import {createConnection, Any, Connection, Repository} from 'typeorm';
-
-import fs from 'fs';
-import path from 'path';
 
 import {User} from './entity/User';
-import FileHandler from './utilities/filehandler'
+import FileHandler from './utilities/filehandler';
+import DatabaseHelper from './utilities/databaseHelper';
 
 const app: express.Application = express();
 const port: number = 3000;
-var dbConnection: Connection;
 const fileHandler: FileHandler = new FileHandler();
+
+var databaseHelper: DatabaseHelper = new DatabaseHelper();
 
 function send404Response (res: Response, message = 'Not Found'): any {
     res.status(404).send(message);
@@ -19,17 +17,18 @@ function send404Response (res: Response, message = 'Not Found'): any {
 
 // Serve static files out of the dist directory using the static middleware function
 app.use(express.static('dist'));
+// Parse request bodies as JSON
+app.use(express.json());
 
 app.get('/api/users/:methodName', async (req: Request, res: Response) => {
     switch (req.params.methodName)
     {
     case 'list':
-        if (dbConnection === undefined || dbConnection === null) {
+        if (databaseHelper === undefined || databaseHelper === null) {
             res.send('No database connection found');
         }
     
-        let userRepository: Repository<User> = dbConnection.getRepository(User);
-        let allUsers: User[] = await userRepository.find();
+        let allUsers: User[] = await databaseHelper.getAllUsers();
     
         res.writeHead(200, {'Content-Type': 'text/html'});
     
@@ -48,34 +47,6 @@ app.get('/api/users/:methodName', async (req: Request, res: Response) => {
 app.get('/api/:methodName', async (req: Request, res: Response) => {
     switch (req.params.methodName)
     {
-    case 'check-db':
-        fs.readFile('./private/dbpass.txt', 'utf8', (readFileError: NodeJS.ErrnoException | null, data: string) => {
-            if (readFileError) {
-                console.error(readFileError);
-                res.send('Couldn\'t find the password');
-            }
-    
-            createConnection({
-                type: 'mysql',
-                host: 'localhost',
-                port: 3306,
-                username: 'nodejs',
-                password: data.trim(),
-                database: 'scrapbook_dev',
-                synchronize: true,
-                logging: false,
-                entities: [
-                    __dirname + '/entity/*.js'
-                ]
-            }).then((connection: Connection) => {
-                dbConnection = connection;
-                res.send('Successfully connected to database');
-            }).catch((error: any) => {
-                console.error(error);
-                res.send('Couldn\'t connect to the database');
-            });
-        })
-        break;
     default:
         send404Response(res, req.params.methodName + ' is not a valid method');
         break;
@@ -95,9 +66,23 @@ app.post('/api/users/:methodName', async (req: Request, res: Response) => {
     switch (req.params.methodName)
     {
     case 'register':
-        res.status(200).json({
-            success: true
-        });
+        if (!req.body) {
+            res.status(202).json({success: false, message: 'You must provide registration info'});
+        }
+        else if (req.body.email) {
+            let email: string = req.body.email;
+            let userExists: Boolean = await databaseHelper.userExistsForEmail(email);
+
+            if (userExists) {
+                res.status(202).json({success: false, message: 'That email address is already in use'});
+            }
+            else {
+                res.status(200).json({success: true, message: 'That email address is available'});
+            }
+        }
+        else {
+            res.status(202).json({success: false, message: 'You must provide an email address'});
+        }
         break;
     case 'login':
         res.status(200).json({

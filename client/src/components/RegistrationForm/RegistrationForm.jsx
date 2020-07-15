@@ -48,10 +48,14 @@ function RegistrationForm(props) {
 
         Axios.post(Constants.BASE_API_URL + Constants.API_PATH_USERS + 'register', payload).then((response) => {
             if (response.status === 200) {
+                alert((response.data.success ? 'Success' : 'Failure') + ': ' + (response.data.message ? response.data.message : 'No Message'));
                 setSuccessMessage('Registration successful, redirecting to application');
             }
+            else if (response.status === 202) {
+                alert((response.data.success ? 'Success' : 'Failure') + ': ' + (response.data.message ? response.data.message : 'No Message'));
+            }
             else {
-                alert('Failed to register' + response.status);
+                alert('Failed to register, response code: ' + response.status);
             }
         }).catch(error => {
             alert(error);
@@ -69,6 +73,9 @@ function RegistrationForm(props) {
             card-body adds the padding
          */
         <div className="card col-8 col-md-4 mt-2 align-middle text-center">
+            <div className="card-header">
+                {props.statusMessage}
+            </div>
             <div className="card-body">
                 <form>
                     <div className="mb-3 text-left">

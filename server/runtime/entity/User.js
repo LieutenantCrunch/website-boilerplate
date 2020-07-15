@@ -23,18 +23,18 @@ __decorate([
     typeorm_1.Column({
         length: 100,
         type: 'varchar',
+        name: 'email'
+    }),
+    __metadata("design:type", String)
+], User.prototype, "email", void 0);
+__decorate([
+    typeorm_1.Column({
+        length: 100,
+        type: 'varchar',
         name: 'display_name'
     }),
     __metadata("design:type", String)
 ], User.prototype, "displayName", void 0);
-__decorate([
-    typeorm_1.Column({
-        length: 50,
-        type: 'varchar',
-        name: 'username'
-    }),
-    __metadata("design:type", String)
-], User.prototype, "username", void 0);
 User = __decorate([
     typeorm_1.Entity('registered_user')
 ], User);
