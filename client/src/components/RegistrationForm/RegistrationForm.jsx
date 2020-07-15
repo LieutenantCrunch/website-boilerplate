@@ -2,6 +2,7 @@
 import React, {useState} from 'react';
 import Axios from 'axios';
 import { withRouter } from 'react-router-dom';
+import classNames from 'classnames';
 
 import * as Constants from '../../constants/constants';
 import * as Hooks from '../../hooks/hooks';
@@ -9,12 +10,13 @@ import * as Hooks from '../../hooks/hooks';
 function RegistrationForm(props) {
     const [state, setState] = Hooks.useStateWithSessionStorage('state', {email: '', password: '', confirmPassword: ''});
     const [successMessage, setSuccessMessage] = useState(null);
+    const updateStatusMessage = props.updateStatusMessage;
 
     const handleChange = (e) => {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
         const {id, value} = e.target;
 
-        /* Use an arrow function that returns an object literal populated with the prevState (using the spread operator) and with the value set on the property specified by the target's id, pass that into setState */
+        /* Use an arrow function that returns an object literal populated with the prevState (using the spread operator) and with the value set on the computed key using the target's id, pass that into setState */
         setState(prevState => ({
             ...prevState,
             [id] : value
@@ -25,18 +27,18 @@ function RegistrationForm(props) {
         e.preventDefault();
         // This needs to be converted to leverage some better type of Form validation, whether HTML 5 or something else
         if (!state.email.length) {
-            alert ('You must enter an email');
+            updateStatusMessage({type: 'danger', message: 'You must enter an email'});
         }
         else if (state.password === state.confirmPassword) {
             if (!state.password.length) {
-                alert('You must enter a password');
+                updateStatusMessage({type: 'danger', message: 'You must enter a password'});
             }
             else {
                 sendRegistrationToServer();
             }
         }
         else {
-            alert('Passwords do not match');
+            updateStatusMessage({type: 'danger', message: 'Passwords do not match'});
         }
     };
 
@@ -48,17 +50,16 @@ function RegistrationForm(props) {
 
         Axios.post(Constants.BASE_API_URL + Constants.API_PATH_USERS + 'register', payload).then((response) => {
             if (response.status === 200) {
-                alert((response.data.success ? 'Success' : 'Failure') + ': ' + (response.data.message ? response.data.message : 'No Message'));
-                setSuccessMessage('Registration successful, redirecting to application');
+                updateStatusMessage({type: (response.data.success ? 'success' : 'danger'), message: (response.data.success ? 'Success' : 'Failure') + ': ' + (response.data.message ? response.data.message : 'No Message')});
             }
             else if (response.status === 202) {
-                alert((response.data.success ? 'Success' : 'Failure') + ': ' + (response.data.message ? response.data.message : 'No Message'));
+                updateStatusMessage({type: (response.data.success ? 'success' : 'danger'), message: (response.data.success ? 'Success' : 'Failure') + ': ' + (response.data.message ? response.data.message : 'No Message')});
             }
             else {
-                alert('Failed to register, response code: ' + response.status);
+                updateStatusMessage({type: 'danger', message: 'Failed to register, response code: ' + response.status});
             }
         }).catch(error => {
-            alert(error);
+            updateStatusMessage({type: 'danger', message: error});
         });
     };
 
@@ -67,14 +68,21 @@ function RegistrationForm(props) {
         props.history.push('/login')
     };
 
+    const statusMessageType = props.statusMessage.type;
+
     return (
         /* https://getbootstrap.com/docs/4.0/components/forms/#form-groups
             text-muted: https://www.w3schools.com/Bootstrap/bootstrap_ref_css_helpers.asp
             card-body adds the padding
          */
         <div className="card col-8 col-md-4 mt-2 align-middle text-center">
-            <div className="card-header">
-                {props.statusMessage}
+            <div className={classNames('card-header', {
+                'd-none': !props.statusMessage.message,
+                [`bg-${statusMessageType}`]: true,
+                'text-light': statusMessageType !== 'warning',
+                'text-dark': statusMessageType === 'warning'
+            })}>
+                {props.statusMessage.message}
             </div>
             <div className="card-body">
                 <form>

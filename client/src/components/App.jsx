@@ -12,6 +12,7 @@ import RegistrationForm from './RegistrationForm/RegistrationForm';
 
 export default function App() {
     const [title, updateTitle] = useState(null);
+    const [statusMessage, updateStatusMessage] = useState({type: 'info', message: null});
 
     return(
         <div className="App">
@@ -20,13 +21,25 @@ export default function App() {
                 <div className="container-fluid d-flex align-items-center flex-column">
                     <Switch>
                         <Route path="/" exact={true}>
-                            <LoginForm updateTitle={updateTitle} />
+                            <LoginForm 
+                                statusMessage={statusMessage} 
+                                updateTitle={updateTitle} 
+                                updateStatusMessage={updateStatusMessage}
+                            />
                         </Route>
                         <Route path="/register" exact={true}>
-                            <RegistrationForm updateTitle={updateTitle} />
+                            <RegistrationForm 
+                                statusMessage={statusMessage}
+                                updateTitle={updateTitle} 
+                                updateStatusMessage={updateStatusMessage} 
+                            />
                         </Route>
                         <Route path="/login">
-                            <LoginForm updateTitle={updateTitle} />
+                            <LoginForm 
+                                statusMessage={statusMessage} 
+                                updateTitle={updateTitle} 
+                                updateStatusMessage={updateStatusMessage}
+                            />
                         </Route>
                         <Route path="/profile">
                             <Profile updateTitle={updateTitle} />

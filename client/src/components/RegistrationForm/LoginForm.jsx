@@ -2,6 +2,7 @@
 import React, {useState} from 'react';
 import Axios from 'axios';
 import { withRouter } from 'react-router-dom';
+import classNames from 'classnames';
 
 import * as Constants from '../../constants/constants';
 import * as Hooks from '../../hooks/hooks';
@@ -9,6 +10,7 @@ import * as Hooks from '../../hooks/hooks';
 function LoginForm (props) {
     const [state, setState] = Hooks.useStateWithSessionStorage('state', {email: '', password: ''});
     const [successMessage, setSuccessMessage] = useState(null);
+    const updateStatusMessage = props.updateStatusMessage;
 
     const handleChange = (e) => {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
@@ -26,10 +28,10 @@ function LoginForm (props) {
         e.preventDefault();
         // This needs to be converted to leverage some better type of Form validation, whether HTML 5 or something else
         if (!state.email.length) {
-            alert ('You must enter an email');
+            updateStatusMessage({type: 'danger', message: 'You must enter an email'});
         }
         else if (!state.password.length) {
-            alert('You must enter a password');
+            updateStatusMessage({type: 'danger', message: 'You must enter a password'});
         }
         else {
             sendCredentialsToServer();
@@ -44,17 +46,17 @@ function LoginForm (props) {
 
         Axios.post(Constants.BASE_API_URL + Constants.API_PATH_USERS + 'login', payload).then((response) => {
             if (response.status === 200) {
-                setSuccessMessage('Login successful, redirecting to application');
+                updateStatusMessage({type: 'success', message: 'Login successful, redirecting to application'});
                 redirectToProfile();
             }
             else if (response.status === 204) {
-                alert('Username and password do not match');
+                updateStatusMessage({type: 'danger', message: 'Username and password do not match'});
             }
             else {
-                alert('Failed to log in, response code: ' + response.status);
+                updateStatusMessage({type: 'danger', message: 'Failed to log in, response code: ' + response.status});
             }
         }).catch(error => {
-            alert(error);
+            updateStatusMessage({type: 'danger', message: error.message});
         });
     };
 
@@ -68,10 +70,17 @@ function LoginForm (props) {
         props.history.push('/register')
     };
 
+    const statusMessageType = props.statusMessage.type;
+
     return (
         <div className="card col-8 col-md-4 mt-2 align-middle text-center">
-            <div className="card-header">
-                {props.statusMessage}
+            <div className={classNames('card-header', {
+                'd-none': !props.statusMessage.message,
+                [`bg-${statusMessageType}`]: true,
+                'text-light': statusMessageType !== 'warning',
+                'text-dark': statusMessageType === 'warning'
+            })}>
+                {props.statusMessage.message}
             </div>
             <div className="card-body">
                 <form>
