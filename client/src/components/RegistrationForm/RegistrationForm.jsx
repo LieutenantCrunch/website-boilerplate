@@ -8,11 +8,22 @@ import * as Constants from '../../constants/constants';
 import * as Hooks from '../../hooks/hooks';
 
 function RegistrationForm(props) {
-    const [state, setState] = Hooks.useStateWithSessionStorage('state', {email: '', password: '', confirmPassword: ''});
-    const [successMessage, setSuccessMessage] = useState(null);
+    const [state, setState] = useState({password: '', confirmPassword: ''});
+    const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {email: ''});
     const updateStatusMessage = props.updateStatusMessage;
 
-    const handleChange = (e) => {
+    const handleSessionStateChange = (e) => {
+        /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
+        const {id, value} = e.target;
+
+        /* Use an arrow function that returns an object literal populated with the prevSessionState (using the spread operator) and with the value set on the computed key using the target's id, pass that into setSessionState */
+        setSessionState(prevSessionState => ({
+            ...prevSessionState,
+            [id] : value
+        }));
+    };
+
+    const handleStateChange = (e) => {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
         const {id, value} = e.target;
 
@@ -26,7 +37,7 @@ function RegistrationForm(props) {
     const handleSubmitClick = (e) => {
         e.preventDefault();
         // This needs to be converted to leverage some better type of Form validation, whether HTML 5 or something else
-        if (!state.email.length) {
+        if (!sessionState.email.length) {
             updateStatusMessage({type: 'danger', message: 'You must enter an email'});
         }
         else if (state.password === state.confirmPassword) {
@@ -44,7 +55,7 @@ function RegistrationForm(props) {
 
     const sendRegistrationToServer = () => {
         const payload = {
-            "email": state.email,
+            "email": sessionState.email,
             "password": state.password
         };
 
@@ -94,8 +105,8 @@ function RegistrationForm(props) {
                             className="form-control"
                             placeholder="Enter email"
                             aria-describedby="emailHelp"
-                            value={state.email}
-                            onChange={handleChange}
+                            value={sessionState.email}
+                            onChange={handleSessionStateChange}
                         />
                         <small id="emailHelp" className="form-text text-muted">Your email will not be shared with anyone else.</small>
                     </div>
@@ -107,7 +118,7 @@ function RegistrationForm(props) {
                             className="form-control"
                             placeholder="Password"
                             value={state.password}
-                            onChange={handleChange}
+                            onChange={handleStateChange}
                         />
                     </div>
                     <div className="mb-3 text-left">
@@ -118,7 +129,7 @@ function RegistrationForm(props) {
                             className="form-control"
                             placeholder="Confirm Password"
                             value={state.confirmPassword}
-                            onChange={handleChange}
+                            onChange={handleStateChange}
                         />
                     </div>
                     <button type="submit"
