@@ -21,5 +21,6 @@ module.exports = {
     output: {
         path: path.resolve(__dirname, '../server/dist/js'),
         filename: 'bundle.js'
-    }
+    },
+    devtool: 'source-map'
 }

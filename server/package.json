@@ -5,8 +5,9 @@
   "main": "./runtime/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build:dev": "run-s clean:dev compile:dev",
     "clean:dev": "rimraf runtime",
-    "build:dev": "tsc",
+    "compile:dev": "tsc",
     "start:dev": "node runtime/app.js"
   },
   "author": "Lieutenant Crunch",
@@ -20,6 +21,8 @@
   },
   "homepage": "https://github.com/LieutenantCrunch/website-boilerplate#readme",
   "dependencies": {
+    "@types/bcryptjs": "^2.4.2",
+    "bcryptjs": "^2.4.3",
     "express": "^4.17.1",
     "mysql": "^2.18.1",
     "reflect-metadata": "^0.1.13",

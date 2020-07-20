@@ -11,14 +11,23 @@ export class User {
     @Column({
         length: 100,
         type: 'varchar',
-        name: 'display_name'
+        name: 'email'
+    })
+    email: string;
+
+    @Column({
+        length: 100,
+        type: 'varchar',
+        name: 'display_name',
+        nullable: true
     })
     displayName: string;
 
     @Column({
-        length: 50,
+        length: 500,
         type: 'varchar',
-        name: 'username'
+        name: 'password_hash'
     })
-    username: string;
+    passwordHash: string;
+
 }

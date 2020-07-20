@@ -5,61 +5,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
 const express_1 = __importDefault(require("express"));
-const typeorm_1 = require("typeorm");
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const User_1 = require("./entity/User");
-const filehandler_1 = __importDefault(require("./utilities/filehandler"));
+const fileHandler_1 = __importDefault(require("./utilities/fileHandler"));
+const databaseHelper_1 = __importDefault(require("./utilities/databaseHelper"));
 const app = express_1.default();
 const port = 3000;
-var dbConnection;
-const fileHandler = new filehandler_1.default();
-app.get(/^\/(index)?$/, (req, res) => {
-    fileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
-});
-app.get(/.css$/, (req, res) => {
-    const cssFileName = path_1.default.resolve('./dist', req.path.substr(1));
-    fileHandler.sendFileResponse(res, cssFileName, 'text/css');
-});
-app.get(/\.js$/, (req, res) => {
-    const jsFileName = path_1.default.resolve('./dist', req.path.substr(1));
-    fileHandler.sendFileResponse(res, jsFileName, 'text/javascript');
-});
-app.get('/api/:methodName', async (req, res) => {
+const fileHandler = new fileHandler_1.default();
+const databaseHelper = new databaseHelper_1.default();
+function send404Response(res, message = 'Not Found') {
+    res.status(404).send(message);
+}
+;
+// Serve static files out of the dist directory using the static middleware function
+app.use(express_1.default.static('dist'));
+// Parse request bodies as JSON
+app.use(express_1.default.json());
+app.get('/api/users/:methodName', async (req, res) => {
     switch (req.params.methodName) {
-        case 'check-db':
-            fs_1.default.readFile('./private/dbpass.txt', 'utf8', (readFileError, data) => {
-                if (readFileError) {
-                    console.error(readFileError);
-                    res.send('Couldn\'t find the password');
-                }
-                typeorm_1.createConnection({
-                    type: 'mysql',
-                    host: 'localhost',
-                    port: 3306,
-                    username: 'nodejs',
-                    password: data.trim(),
-                    database: 'scrapbook_dev',
-                    synchronize: true,
-                    logging: false,
-                    entities: [
-                        __dirname + '/entity/*.js'
-                    ]
-                }).then((connection) => {
-                    dbConnection = connection;
-                    res.send('Successfully connected to database');
-                }).catch((error) => {
-                    console.error(error);
-                    res.send('Couldn\'t connect to the database');
-                });
-            });
-            break;
-        case 'list-users':
-            if (dbConnection === undefined || dbConnection === null) {
+        case 'list':
+            if (databaseHelper === undefined || databaseHelper === null) {
                 res.send('No database connection found');
             }
-            let userRepository = dbConnection.getRepository(User_1.User);
-            let allUsers = await userRepository.find();
+            let allUsers = await databaseHelper.getAllUsers();
             res.writeHead(200, { 'Content-Type': 'text/html' });
             allUsers.forEach((user) => {
                 res.write(user.displayName);
@@ -67,16 +33,94 @@ app.get('/api/:methodName', async (req, res) => {
             res.end();
             break;
         default:
-            res.writeHead(404, { 'Content-Type': 'text/html' });
-            res.write('Not Found');
-            res.end();
+            send404Response(res, req.params.methodName + ' is not a valid users method');
+            break;
+    }
+});
+app.get('/api/:methodName', async (req, res) => {
+    switch (req.params.methodName) {
+        default:
+            send404Response(res, req.params.methodName + ' is not a valid method');
+            break;
+    }
+});
+app.get(/^\/(index)?$/, (req, res) => {
+    fileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+});
+// It may be necessary to direct everything other than api calls to index due to the single page app
+app.get('*', (req, res) => {
+    fileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+});
+app.post('/api/users/:methodName', async (req, res) => {
+    switch (req.params.methodName) {
+        case 'register':
+            if (!req.body) {
+                res.status(204).json({ success: false, message: 'You must provide registration info' });
+            }
+            else {
+                let canContinue = true;
+                if (req.body.email) {
+                    let email = req.body.email;
+                    let userExists = await databaseHelper.userExistsForEmail(email);
+                    if (userExists) {
+                        canContinue = false;
+                        res.status(204).json({ success: false, message: 'That email address is already in use' });
+                    }
+                }
+                else {
+                    canContinue = false;
+                    res.status(204).json({ success: false, message: 'You must provide an email address' });
+                }
+                if (canContinue) {
+                    if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
+                        // Validate password strength
+                        let addSuccess = await databaseHelper.registerNewUser(req.body.email, req.body.password);
+                        if (addSuccess) {
+                            res.status(200).json({ success: true, message: 'That email address is available' });
+                        }
+                        else {
+                            res.status(204).json({ success: false, message: 'An error occurred during registration' });
+                        }
+                    }
+                    else {
+                        res.status(204).json({ success: false, message: 'Your passwords did not match' });
+                    }
+                }
+            }
+            break;
+        case 'login':
+            if (!req.body) {
+                res.status(204).json({ success: false, message: 'You must provide valid credentials' });
+            }
+            else {
+                if (req.body.email && req.body.password) {
+                    let loginSuccess = await databaseHelper.validateCredentials(req.body.email, req.body.password);
+                    if (loginSuccess) {
+                        res.status(200).json({ success: true, message: 'Login successful' });
+                    }
+                    else {
+                        res.status(204).json({ success: false, message: 'The credentials provided are not valid' });
+                    }
+                }
+                else {
+                    res.status(204).json({ success: false, message: 'You must provide a valid email address and password' });
+                }
+            }
+            break;
+        default:
+            send404Response(res, req.params.methodName + ' is not a valid users method');
+            break;
+    }
+});
+app.post('/api/:methodName', async (req, res) => {
+    switch (req.params.methodName) {
+        default:
+            send404Response(res, req.params.methodName + ' is not a valid method');
             break;
     }
 });
 app.use((req, res) => {
-    res.writeHead(404, { 'Content-Type': 'text/html' });
-    res.write('Not Found');
-    res.end();
+    send404Response(res);
 });
 app.listen(port, () => {
     console.log(`Listening on http://localhost:${port}`);
