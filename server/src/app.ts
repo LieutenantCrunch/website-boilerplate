@@ -62,7 +62,7 @@ app.get('*', (req: Request, res: Response) => {
     fileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
 });
 
-app.post('/api/users/:methodName', async (req: Request, res: Response) => {
+app.post('/api/auth/:methodName', async (req: Request, res: Response) => {
     switch (req.params.methodName)
     {
     case 'register':

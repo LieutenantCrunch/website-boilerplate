@@ -57,7 +57,7 @@ function LoginForm (props) {
             "password": state.password
         };
 
-        Axios.post(Constants.BASE_API_URL + Constants.API_PATH_USERS + 'login', payload).then((response) => {
+        Axios.post(Constants.BASE_API_URL + Constants.API_PATH_AUTH + 'login', payload).then((response) => {
             if (response.status === 200) {
                 updateStatusMessage({type: 'success', message: 'Login successful, redirecting to application'});
                 redirectToProfile();

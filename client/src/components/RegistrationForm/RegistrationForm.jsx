@@ -60,7 +60,7 @@ function RegistrationForm(props) {
             "confirmPassword": state.confirmPassword
         };
 
-        Axios.post(Constants.BASE_API_URL + Constants.API_PATH_USERS + 'register', payload).then((response) => {
+        Axios.post(Constants.BASE_API_URL + Constants.API_PATH_AUTH + 'register', payload).then((response) => {
             if (response.status === 200) {
                 updateStatusMessage({type: (response.data.success ? 'success' : 'danger'), message: (response.data.success ? 'Success' : 'Failure') + ': ' + (response.data.message ? response.data.message : 'No Message')});
 
