@@ -34,4 +34,4 @@ class FileHandler {
     }
 }
 exports.default = FileHandler;
-//# sourceMappingURL=filehandler.js.map
+//# sourceMappingURL=fileHandler.js.map

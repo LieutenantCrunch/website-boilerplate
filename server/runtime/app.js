@@ -5,12 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
 const express_1 = __importDefault(require("express"));
-const filehandler_1 = __importDefault(require("./utilities/filehandler"));
+const fileHandler_1 = __importDefault(require("./utilities/fileHandler"));
 const databaseHelper_1 = __importDefault(require("./utilities/databaseHelper"));
 const app = express_1.default();
 const port = 3000;
-const fileHandler = new filehandler_1.default();
-var databaseHelper = new databaseHelper_1.default();
+const fileHandler = new fileHandler_1.default();
+const databaseHelper = new databaseHelper_1.default();
 function send404Response(res, message = 'Not Found') {
     res.status(404).send(message);
 }
@@ -55,26 +55,57 @@ app.post('/api/users/:methodName', async (req, res) => {
     switch (req.params.methodName) {
         case 'register':
             if (!req.body) {
-                res.status(202).json({ success: false, message: 'You must provide registration info' });
-            }
-            else if (req.body.email) {
-                let email = req.body.email;
-                let userExists = await databaseHelper.userExistsForEmail(email);
-                if (userExists) {
-                    res.status(202).json({ success: false, message: 'That email address is already in use' });
-                }
-                else {
-                    res.status(200).json({ success: true, message: 'That email address is available' });
-                }
+                res.status(204).json({ success: false, message: 'You must provide registration info' });
             }
             else {
-                res.status(202).json({ success: false, message: 'You must provide an email address' });
+                let canContinue = true;
+                if (req.body.email) {
+                    let email = req.body.email;
+                    let userExists = await databaseHelper.userExistsForEmail(email);
+                    if (userExists) {
+                        canContinue = false;
+                        res.status(204).json({ success: false, message: 'That email address is already in use' });
+                    }
+                }
+                else {
+                    canContinue = false;
+                    res.status(204).json({ success: false, message: 'You must provide an email address' });
+                }
+                if (canContinue) {
+                    if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
+                        // Validate password strength
+                        let addSuccess = await databaseHelper.registerNewUser(req.body.email, req.body.password);
+                        if (addSuccess) {
+                            res.status(200).json({ success: true, message: 'That email address is available' });
+                        }
+                        else {
+                            res.status(204).json({ success: false, message: 'An error occurred during registration' });
+                        }
+                    }
+                    else {
+                        res.status(204).json({ success: false, message: 'Your passwords did not match' });
+                    }
+                }
             }
             break;
         case 'login':
-            res.status(200).json({
-                success: true
-            });
+            if (!req.body) {
+                res.status(204).json({ success: false, message: 'You must provide valid credentials' });
+            }
+            else {
+                if (req.body.email && req.body.password) {
+                    let loginSuccess = await databaseHelper.validateCredentials(req.body.email, req.body.password);
+                    if (loginSuccess) {
+                        res.status(200).json({ success: true, message: 'Login successful' });
+                    }
+                    else {
+                        res.status(204).json({ success: false, message: 'The credentials provided are not valid' });
+                    }
+                }
+                else {
+                    res.status(204).json({ success: false, message: 'You must provide a valid email address and password' });
+                }
+            }
             break;
         default:
             send404Response(res, req.params.methodName + ' is not a valid users method');

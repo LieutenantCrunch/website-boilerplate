@@ -63,10 +63,10 @@ function LoginForm (props) {
                 redirectToProfile();
             }
             else if (response.status === 204) {
-                updateStatusMessage({type: 'danger', message: 'Username and password do not match'});
+                updateStatusMessage({type: 'danger', message: (response.data.message ? response.data.message : 'Username and password do not match')});
             }
             else {
-                updateStatusMessage({type: 'danger', message: 'Failed to log in, response code: ' + response.status});
+                updateStatusMessage({type: 'danger', message: 'Failed to log in: ' + (response.data.message ? response.data.message : response.status)});
             }
         }).catch(error => {
             updateStatusMessage({type: 'danger', message: error.message});

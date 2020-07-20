@@ -31,10 +31,19 @@ __decorate([
     typeorm_1.Column({
         length: 100,
         type: 'varchar',
-        name: 'display_name'
+        name: 'display_name',
+        nullable: true
     }),
     __metadata("design:type", String)
 ], User.prototype, "displayName", void 0);
+__decorate([
+    typeorm_1.Column({
+        length: 500,
+        type: 'varchar',
+        name: 'password_hash'
+    }),
+    __metadata("design:type", String)
+], User.prototype, "passwordHash", void 0);
 User = __decorate([
     typeorm_1.Entity('registered_user')
 ], User);
