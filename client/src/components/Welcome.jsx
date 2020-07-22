@@ -1,12 +1,12 @@
 import React from 'react';
 import {withRouter} from 'react-router-dom';
 
-function Profile(props) {
+function Welcome(props) {
     return (
         <div>
-            'My Profile'
+            'Welcome!'
         </div>
     );
 };
 
-export default withRouter(Profile);
+export default withRouter(Welcome);

@@ -44,6 +44,14 @@ __decorate([
     }),
     __metadata("design:type", String)
 ], User.prototype, "passwordHash", void 0);
+__decorate([
+    typeorm_1.Column({
+        length: 36,
+        type: 'varchar',
+        name: 'unique_id'
+    }),
+    __metadata("design:type", String)
+], User.prototype, "uniqueID", void 0);
 User = __decorate([
     typeorm_1.Entity('registered_user')
 ], User);

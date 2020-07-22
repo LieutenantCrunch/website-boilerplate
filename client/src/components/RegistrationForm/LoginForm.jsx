@@ -6,12 +6,12 @@ import classNames from 'classnames';
 
 import * as Constants from '../../constants/constants';
 import * as Hooks from '../../hooks/hooks';
+import AuthService from '../../services/auth.service';
 
 function LoginForm (props) {
     const [state, setState] = useState({password: ''});
     const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {email: ''});
-    const [successMessage, setSuccessMessage] = useState(null);
-    const updateStatusMessage = props.updateStatusMessage;
+    const setStatusMessage = props.setStatusMessage;
 
     const handleSessionStateChange = (e) => {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
@@ -41,45 +41,33 @@ function LoginForm (props) {
         e.preventDefault();
         // This needs to be converted to leverage some better type of Form validation, whether HTML 5 or something else
         if (!sessionState.email.length) {
-            updateStatusMessage({type: 'danger', message: 'You must enter an email'});
+            setStatusMessage({type: 'danger', message: 'You must enter an email'});
         }
         else if (!state.password.length) {
-            updateStatusMessage({type: 'danger', message: 'You must enter a password'});
+            setStatusMessage({type: 'danger', message: 'You must enter a password'});
         }
         else {
             sendCredentialsToServer();
         }
     };
 
-    const sendCredentialsToServer = () => {
-        const payload = {
-            "email": sessionState.email,
-            "password": state.password
-        };
+    const sendCredentialsToServer = async () => {
+        let results = await AuthService.login(sessionState.email, state.password);
 
-        Axios.post(Constants.BASE_API_URL + Constants.API_PATH_AUTH + 'login', payload).then((response) => {
-            if (response.status === 200) {
-                updateStatusMessage({type: 'success', message: 'Login successful, redirecting to application'});
-                redirectToProfile();
-            }
-            else if (response.status === 204) {
-                updateStatusMessage({type: 'danger', message: (response.data.message ? response.data.message : 'Username and password do not match')});
-            }
-            else {
-                updateStatusMessage({type: 'danger', message: 'Failed to log in: ' + (response.data.message ? response.data.message : response.status)});
-            }
-        }).catch(error => {
-            updateStatusMessage({type: 'danger', message: error.message});
-        });
+        setStatusMessage(results.statusMessage);
+        if (results.success) {
+            props.setUserInfo(results.userInfo);
+            redirectToProfile();
+        }
     };
 
     const redirectToProfile = () => {
-        props.updateTitle('My Profile');
+        props.setTitle('My Profile');
         props.history.push('/profile');
     };
 
     const redirectToRegistration = () => {
-        props.updateTitle('Register');
+        props.setTitle('Register');
         props.history.push('/register')
     };
 

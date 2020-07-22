@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
 import bcrypt from 'bcryptjs';
 
@@ -47,7 +48,7 @@ export default class DatabaseHelper {
 
     async getAllUsers() {
         let userRepository: Repository<User> = this.getUserRepository();
-        let allUsers: User[] = await this.#userRepository.find();
+        let allUsers: User[] = await userRepository.find();
 
         return allUsers;
     }
@@ -59,28 +60,29 @@ export default class DatabaseHelper {
         return (foundUsers.length > 0)
     }
 
-    async registerNewUser(email: string, password: string): Promise<Boolean> {
+    async registerNewUser(email: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
             let salt: string = await bcrypt.genSalt(10);
             let hash: string = await bcrypt.hash(password, salt);
+            let userUUID: string = uuidv4();
             let newUser: User = new User();
 
-            newUser = {...newUser, email: email, passwordHash: hash};
+            newUser = {...newUser, email: email, passwordHash: hash, uniqueID: userUUID};
 
             await userRepository.save(newUser);
 
-            return true;
+            return {id: userUUID, success: true};
         }
         catch (err)
         {
             console.error(err.message);
-            return false;
+            return {id: null, success: false};
         }
     }
 
-    async validateCredentials(email: string, password: string): Promise<Boolean> {
+    async validateCredentials(email: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
@@ -89,16 +91,17 @@ export default class DatabaseHelper {
             if (foundUsers.length === 1) {
                 let user: User = foundUsers[0];
                 let passwordHash: string = user.passwordHash;
+                let isValid = await bcrypt.compare(password, passwordHash);
 
-                return await bcrypt.compare(password, passwordHash);
+                return {id: user.uniqueID, success: isValid};
             }
 
-            return false;
+            return {id: null, success: false};;
         }
         catch (err)
         {
             console.error(err.message);
-            return false;
+            return {id: null, success: false};
         }
     }
 };
