@@ -24,6 +24,7 @@ function Header(props) {
         /*  bg-dark sets the background color of the navbar to the dark theme (dark) color
             navbar-dark sets the foreground color of the navbar to the dark theme (light) color
             container-fluid is required for padding, fluid makes it take up the full width */
+        /* <></> is short for React.Fragment, which will eliminate a TypeScript warning about a parent element being necessary */
         <nav className="navbar fixed-top bg-dark navbar-dark">
             <div className="container-fluid">
                 <a className="navbar-brand" href="#">{props.title || title}</a>
@@ -32,13 +33,28 @@ function Header(props) {
                 </button>
                 <div className="collapse navbar-collapse" id="headerNavbarToggleMenu">
                     <ul className="navbar-nav mr-auto mt-2">
-                        <li className="nav-item">
-                            {
-                                userInfoExists 
-                                ? <Link className="nav-link text-right" to={'/login'} onClick={handleLogout}>Logout</Link>
-                                : <Link className="nav-link text-right" to={'/login'}>Login</Link>
-                            }
-                        </li>
+                        {
+                            userInfoExists 
+                            ? <> 
+                                <li className="nav-item">
+                                    <Link className="nav-link text-right" to={'/profile'}>Profile</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link text-right" to={'/'}>Home</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link text-right" to={'/login'} onClick={handleLogout}>Logout</Link>
+                                </li>
+                            </>
+                            : <>
+                                <li className="nav-item">
+                                    <Link className="nav-link text-right" to={'/login'}>Login</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link text-right" to={'/'}>Home</Link>
+                                </li>
+                            </>
+                        }
                     </ul>
                 </div>
             </div>
