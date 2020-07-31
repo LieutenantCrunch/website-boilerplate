@@ -30,4 +30,10 @@ export class User {
     })
     passwordHash: string;
 
+    @Column({
+        length: 36,
+        type: 'varchar',
+        name: 'unique_id'
+    })
+    uniqueID: string;
 }

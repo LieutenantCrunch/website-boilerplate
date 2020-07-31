@@ -6,11 +6,12 @@ import classNames from 'classnames';
 
 import * as Constants from '../../constants/constants';
 import * as Hooks from '../../hooks/hooks';
+import AuthService from '../../services/auth.service';
 
 function RegistrationForm(props) {
     const [state, setState] = useState({password: '', confirmPassword: ''});
     const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {email: ''});
-    const updateStatusMessage = props.updateStatusMessage;
+    const setStatusMessage = props.setStatusMessage;
 
     const handleSessionStateChange = (e) => {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
@@ -38,49 +39,38 @@ function RegistrationForm(props) {
         e.preventDefault();
         // This needs to be converted to leverage some better type of Form validation, whether HTML 5 or something else
         if (!sessionState.email.length) {
-            updateStatusMessage({type: 'danger', message: 'You must enter an email'});
+            setStatusMessage({type: 'danger', message: 'You must enter an email'});
         }
         else if (state.password === state.confirmPassword) {
             if (!state.password.length) {
-                updateStatusMessage({type: 'danger', message: 'You must enter a password'});
+                setStatusMessage({type: 'danger', message: 'You must enter a password'});
             }
             else {
                 sendRegistrationToServer();
             }
         }
         else {
-            updateStatusMessage({type: 'danger', message: 'Passwords do not match'});
+            setStatusMessage({type: 'danger', message: 'Passwords do not match'});
         }
     };
 
-    const sendRegistrationToServer = () => {
+    const sendRegistrationToServer = async () => {
         const payload = {
             "email": sessionState.email,
             "password": state.password,
             "confirmPassword": state.confirmPassword
         };
 
-        Axios.post(Constants.BASE_API_URL + Constants.API_PATH_USERS + 'register', payload).then((response) => {
-            if (response.status === 200) {
-                updateStatusMessage({type: (response.data.success ? 'success' : 'danger'), message: (response.data.success ? 'Success' : 'Failure') + ': ' + (response.data.message ? response.data.message : 'No Message')});
+        let results = await AuthService.register(sessionState.email, state.password, state.confirmPassword);
 
-                if (response.data.success) {
-                    redirectToLogin();
-                }
-            }
-            else if (response.status === 204) {
-                updateStatusMessage({type: (response.data.success ? 'success' : 'danger'), message: (response.data.success ? 'Success' : 'Failure') + ': ' + (response.data.message ? response.data.message : 'No Message')});
-            }
-            else {
-                updateStatusMessage({type: 'danger', message: 'Failed to register, response code: ' + response.status});
-            }
-        }).catch(error => {
-            updateStatusMessage({type: 'danger', message: error});
-        });
+        setStatusMessage(results.statusMessage);
+        if (results.success) {
+            redirectToLogin();
+        }
     };
 
     const redirectToLogin = () => {
-        props.updateTitle('Login');
+        props.setTitle('Login');
         props.history.push('/login')
     };
 

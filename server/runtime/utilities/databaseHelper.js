@@ -5,11 +5,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const uuid_1 = require("uuid");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const typeorm_1 = require("typeorm");
 const User_1 = require("../entity/User");
 class DatabaseHelper {
     constructor() {
+        if (DatabaseHelper.instance) {
+            return DatabaseHelper.instance;
+        }
+        DatabaseHelper.instance = this;
         fs_1.default.readFile('./private/dbpass.txt', 'utf8', (readFileError, data) => {
             if (readFileError) {
                 console.error(readFileError);
@@ -45,7 +50,7 @@ class DatabaseHelper {
     }
     async getAllUsers() {
         let userRepository = this.getUserRepository();
-        let allUsers = await this.#userRepository.find();
+        let allUsers = await userRepository.find();
         return allUsers;
     }
     async userExistsForEmail(email) {
@@ -53,19 +58,25 @@ class DatabaseHelper {
         let foundUsers = await userRepository.find({ email: email });
         return (foundUsers.length > 0);
     }
+    async getUserWithId(id) {
+        let userRepository = this.getUserRepository();
+        let foundUser = await userRepository.findOne({ uniqueID: id });
+        return foundUser;
+    }
     async registerNewUser(email, password) {
         try {
             let userRepository = this.getUserRepository();
             let salt = await bcryptjs_1.default.genSalt(10);
             let hash = await bcryptjs_1.default.hash(password, salt);
+            let userUUID = uuid_1.v4();
             let newUser = new User_1.User();
-            newUser = { ...newUser, email: email, passwordHash: hash };
+            newUser = { ...newUser, email: email, passwordHash: hash, uniqueID: userUUID };
             await userRepository.save(newUser);
-            return true;
+            return { id: userUUID, success: true };
         }
         catch (err) {
             console.error(err.message);
-            return false;
+            return { id: null, success: false };
         }
     }
     async validateCredentials(email, password) {
@@ -75,13 +86,15 @@ class DatabaseHelper {
             if (foundUsers.length === 1) {
                 let user = foundUsers[0];
                 let passwordHash = user.passwordHash;
-                return await bcryptjs_1.default.compare(password, passwordHash);
+                let isValid = await bcryptjs_1.default.compare(password, passwordHash);
+                return { id: user.uniqueID, success: isValid };
             }
-            return false;
+            return { id: null, success: false };
+            ;
         }
         catch (err) {
             console.error(err.message);
-            return false;
+            return { id: null, success: false };
         }
     }
 }

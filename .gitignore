@@ -1,4 +1,5 @@
+server/dist/
 server/node_modules/
 server/private/
-server/dist/
+server/runtime/
 client/node_modules/
