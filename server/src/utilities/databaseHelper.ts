@@ -8,10 +8,18 @@ import {createConnection, Connection, Repository} from 'typeorm';
 import {User} from '../entity/User';
 
 export default class DatabaseHelper {
+    private static instance: DatabaseHelper;
+
     #connection: Connection;
     #userRepository: Repository<User>;
 
     constructor() {
+        if (DatabaseHelper.instance) {
+            return DatabaseHelper.instance;
+        }
+
+        DatabaseHelper.instance = this;
+
         fs.readFile('./private/dbpass.txt', 'utf8', (readFileError: NodeJS.ErrnoException | null, data: string) => {
             if (readFileError) {
                 console.error(readFileError);
@@ -58,6 +66,13 @@ export default class DatabaseHelper {
         let foundUsers: User[] = await userRepository.find({email: email});
         
         return (foundUsers.length > 0)
+    }
+
+    async getUserWithId(id: string): Promise<User | undefined> {
+        let userRepository: Repository<User> = this.getUserRepository();
+        let foundUser: User | undefined = await userRepository.findOne({uniqueID: id});
+
+        return foundUser;
     }
 
     async registerNewUser(email: string, password: string): Promise<{id: string | null, success: Boolean}> {

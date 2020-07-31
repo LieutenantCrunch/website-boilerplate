@@ -11,6 +11,10 @@ const typeorm_1 = require("typeorm");
 const User_1 = require("../entity/User");
 class DatabaseHelper {
     constructor() {
+        if (DatabaseHelper.instance) {
+            return DatabaseHelper.instance;
+        }
+        DatabaseHelper.instance = this;
         fs_1.default.readFile('./private/dbpass.txt', 'utf8', (readFileError, data) => {
             if (readFileError) {
                 console.error(readFileError);
@@ -53,6 +57,11 @@ class DatabaseHelper {
         let userRepository = this.getUserRepository();
         let foundUsers = await userRepository.find({ email: email });
         return (foundUsers.length > 0);
+    }
+    async getUserWithId(id) {
+        let userRepository = this.getUserRepository();
+        let foundUser = await userRepository.findOne({ uniqueID: id });
+        return foundUser;
     }
     async registerNewUser(email, password) {
         try {

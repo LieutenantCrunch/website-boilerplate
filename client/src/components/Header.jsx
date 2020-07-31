@@ -12,7 +12,33 @@ function Header(props) {
         return s.charAt(0).toUpperCase() + s.slice(1);
     };
 
-    const handleLogout = () => {
+    const collapseNavbarMenu = () => {
+        let headerNavbarToggleMenu = document.getElementById('headerNavbarToggleMenu');
+        let bootstrapCollapse = new bootstrap.Collapse(headerNavbarToggleMenu, {
+            toggle: false
+        });
+        bootstrapCollapse.hide();
+    };
+
+    const handleMenuClickLogin = () => {
+        collapseNavbarMenu();
+        props.setTitle('Login');
+    };
+
+    const handleMenuClickHome = () => {
+        collapseNavbarMenu();
+        props.setTitle('Welcome!');
+    };
+
+      const handleMenuClickProfile = () => {
+        collapseNavbarMenu();
+        props.setTitle('Profile');
+    };
+
+    const handleMenuClickLogout = () => {
+        collapseNavbarMenu();
+        AuthService.logout();
+        props.setTitle('Login');
         props.setUserInfo(null);
     };
 
@@ -37,21 +63,21 @@ function Header(props) {
                             userInfoExists 
                             ? <> 
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/profile'}>Profile</Link>
+                                    <Link className="nav-link text-right" to={'/profile'} onClick={handleMenuClickProfile}>Profile</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/'}>Home</Link>
+                                    <Link className="nav-link text-right" to={'/'} onClick={handleMenuClickHome}>Home</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/login'} onClick={handleLogout}>Logout</Link>
+                                    <Link className="nav-link text-right" to={'/login'} onClick={handleMenuClickLogout}>Logout</Link>
                                 </li>
                             </>
                             : <>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/login'}>Login</Link>
+                                    <Link className="nav-link text-right" to={'/login'} onClick={handleMenuClickLogin}>Login</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/'}>Home</Link>
+                                    <Link className="nav-link text-right" to={'/'} onClick={handleMenuClickHome}>Home</Link>
                                 </li>
                             </>
                         }

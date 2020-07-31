@@ -8,7 +8,12 @@ export const useStateWithSessionStorage = (key, defaultValue) => {
         https://reactjs.org/docs/hooks-effect.html
         */
     useEffect(() => {
-        sessionStorage.setItem(key, JSON.stringify(value))
+        if (!value) {
+            sessionStorage.removeItem(key);
+        }
+        else {
+            sessionStorage.setItem(key, JSON.stringify(value))
+        }
     }, [key, value]);
 
     return [value, setValue];

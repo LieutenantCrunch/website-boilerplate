@@ -54,10 +54,13 @@ function LoginForm (props) {
     const sendCredentialsToServer = async () => {
         let results = await AuthService.login(sessionState.email, state.password);
 
-        setStatusMessage(results.statusMessage);
         if (results.success) {
+            setStatusMessage(null);
             props.setUserInfo(results.userInfo);
             redirectToProfile();
+        }
+        else {
+            setStatusMessage(results.statusMessage);
         }
     };
 
@@ -71,17 +74,18 @@ function LoginForm (props) {
         props.history.push('/register')
     };
 
-    const statusMessageType = props.statusMessage.type;
+    const hasStatusMessage = (props.statusMessage && props.statusMessage.message) || false;
+    const statusMessageType = (hasStatusMessage ? props.statusMessage.type : 'transparent');
 
     return (
         <div className="card col-8 col-md-4 mt-2 align-middle text-center">
             <div className={classNames('card-header', {
-                'd-none': !props.statusMessage.message,
+                'd-none': !hasStatusMessage,
                 [`bg-${statusMessageType}`]: true,
                 'text-light': statusMessageType !== 'warning',
                 'text-dark': statusMessageType === 'warning'
             })}>
-                {props.statusMessage.message}
+                {hasStatusMessage ? props.statusMessage.message : ''}
             </div>
             <div className="card-body">
                 <form>
