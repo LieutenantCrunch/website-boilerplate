@@ -1,13 +1,15 @@
 import React, {useState, useEffect} from 'react';
-import Axios from 'axios';
+import axiosApi from '../services/axios-api';
 import {withRouter} from 'react-router-dom';
 import * as Constants from '../constants/constants';
+import ProfilePictureUpload from './ProfilePictureUpload';
 
 function Profile(props) {
     const [username, setUsername] = useState('');
+    const [profilePic, setProfilePic] = useState('/i/s/pfpDefault.svgz');
 
     useEffect(() => {
-        Axios.get(Constants.BASE_API_URL + Constants.API_PATH_USERS + 'currentUsername').then(response => {
+        axiosApi.get(Constants.API_PATH_USERS + 'currentUsername').then(response => {
             if (response.data && response.data.username) {
                 setUsername(response.data.username);
             }
@@ -15,9 +17,17 @@ function Profile(props) {
     });
 
     return (
-        <div>
-            'My Profile'<br />
-            <span style={{fontWeight: 'bold'}}>Email Address: </span>{username}
+        <div className="card col-8 col-md-4 mt-2 align-middle text-center">
+            <div className="card-header">
+                <label className="w-25">
+                    <ProfilePictureUpload setProfilePic={setProfilePic} />
+                    <img className="rounded-circle bg-secondary w-100" src={profilePic} />
+                </label>
+            </div>
+            <div className="card-body">
+                <h5 className="card-title">Email Address:</h5>
+                <p className="card-text">{username}</p>
+            </div>
         </div>
     );
 };

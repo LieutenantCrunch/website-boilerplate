@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 
 import {createConnection, Connection, Repository} from 'typeorm';
 import {User} from '../entity/User';
+import {ProfilePicture} from '../entity/ProfilePicture';
 
 export default class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -54,25 +55,53 @@ export default class DatabaseHelper {
         return this.#userRepository;
     }
 
-    async getAllUsers() {
+    async getAllUsers(): Promise<User[]> {
         let userRepository: Repository<User> = this.getUserRepository();
-        let allUsers: User[] = await userRepository.find();
 
-        return allUsers;
+        try
+        {
+            let allUsers: User[] = await userRepository.find();
+            
+            return allUsers;
+        }
+        catch (err)
+        {
+            console.error(`Failed to retrieve users: ${err.message}`);
+        }
+
+        return [];
     }
 
-    async userExistsForEmail(email: string) {
+    async userExistsForEmail(email: string): Promise<Boolean> {
         let userRepository: Repository<User> = this.getUserRepository();
-        let foundUsers: User[] = await userRepository.find({email: email});
         
-        return (foundUsers.length > 0)
+        try
+        {
+            let foundUsers: User[] = await userRepository.find({email: email});
+
+            return (foundUsers.length > 0);
+        }
+        catch (err)
+        {
+            console.error(`Could not find any users for email ${email}: ${err.message}`);
+        }
+        
+        return false;
     }
 
     async getUserWithId(id: string): Promise<User | undefined> {
         let userRepository: Repository<User> = this.getUserRepository();
-        let foundUser: User | undefined = await userRepository.findOne({uniqueID: id});
 
-        return foundUser;
+        try
+        {
+            return await userRepository.findOne({uniqueID: id});
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with id ${id}: ${err.message}`);
+        }
+
+        return undefined;
     }
 
     async registerNewUser(email: string, password: string): Promise<{id: string | null, success: Boolean}> {
@@ -86,7 +115,15 @@ export default class DatabaseHelper {
 
             newUser = {...newUser, email: email, passwordHash: hash, uniqueID: userUUID};
 
-            await userRepository.save(newUser);
+            try
+            {
+                await userRepository.save(newUser);
+            }
+            catch(err)
+            {
+                console.error(`Error saving User to database: ${err.message}`);
+                return {id: null, success: false};
+            }
 
             return {id: userUUID, success: true};
         }
@@ -118,5 +155,66 @@ export default class DatabaseHelper {
             console.error(err.message);
             return {id: null, success: false};
         }
+    }
+
+    async addProfilePictureToUser(fileName: string, originalFileName: string, mimeType: string, userId: string): Promise<{success: Boolean}> {
+        try
+        {
+            let registeredUser: User | undefined = await this.getUserWithId(userId);
+            
+            if (registeredUser) {
+                let pfpRepository: Repository<ProfilePicture> = this.#connection.getRepository(ProfilePicture);
+                let newPFP: ProfilePicture = new ProfilePicture();
+
+                newPFP = {...newPFP, fileName: fileName, originalFileName: originalFileName, mimeType: mimeType, registeredUserId: registeredUser.id};
+
+                try
+                {
+                    await pfpRepository.save(newPFP);
+                }
+                catch (err)
+                {
+                    console.error(`Error saving Profile Picture to database: ${err.message}`);
+                    return {success: false};
+                }
+
+                return {success: true};
+            }
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user for Profile Picture: ${err.message}`);
+        }
+
+        return {success: false};
+    }
+
+    async getPFPFileNameForUserId(userId: string): Promise<string | null> {
+        let registeredUser: User | undefined = await this.getUserWithId(userId);
+        
+        if (registeredUser) {
+            let pfpRepository: Repository<ProfilePicture> = this.#connection.getRepository(ProfilePicture);
+            try
+            {
+                let profilePicture: ProfilePicture | undefined = await pfpRepository.findOne({
+                    where: {
+                        registeredUserId: registeredUser.id
+                    },
+                    order: {
+                        id: 'DESC'
+                    }
+                });
+
+                if (profilePicture) {
+                    return profilePicture.fileName;
+                }
+            }
+            catch (err)
+            {
+                console.error(`Failed to retrieve PFP for UserID: ${userId}: ${err.message}`);
+            }
+        }
+
+        return null;
     }
 };

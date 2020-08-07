@@ -3,10 +3,13 @@ import express, {Request, Response, Router, NextFunction} from 'express';
 import {User} from '../../entity/User';
 import DatabaseHelper from '../../utilities/databaseHelper';
 import AuthHelper from '../../utilities/authHelper';
+import {apiUserPFPRouter} from './users/pfp';
 
 const databaseHelper: DatabaseHelper = new DatabaseHelper();
 
 const apiUserRouter = express.Router();
+
+apiUserRouter.use('/pfp', apiUserPFPRouter);
 
 apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request, res: Response) => {
     switch (req.params.methodName)

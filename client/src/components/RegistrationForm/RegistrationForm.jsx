@@ -1,10 +1,8 @@
 // https://medium.com/technoetics/create-basic-login-forms-using-react-js-hooks-and-bootstrap-2ae36c15e551
 import React, {useState} from 'react';
-import Axios from 'axios';
 import { withRouter } from 'react-router-dom';
 import classNames from 'classnames';
 
-import * as Constants from '../../constants/constants';
 import * as Hooks from '../../hooks/hooks';
 import AuthService from '../../services/auth.service';
 
