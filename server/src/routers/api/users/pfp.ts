@@ -1,4 +1,4 @@
-import express, {Request, Response, Router, NextFunction} from 'express';
+import express, {Request, Response, Router, NextFunction, json} from 'express';
 
 import AuthHelper from '../../../utilities/authHelper';
 import DatabaseHelper from '../../../utilities/databaseHelper';
@@ -17,15 +17,15 @@ apiUserPFPRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Reque
             const pfpFileName: string | null = await databaseHelper.getPFPFileNameForUserId(req.userId);
 
             if (pfpFileName) {
-                res.status(200).sendFile(`${process.cwd()}/dist/i/u/${req.userId}/${pfpFileName}`);
+                res.status(200).json({success: true, path: `i/u/${req.userId}/${pfpFileName}`, message: null});
             }
             else {
-                res.status(200).sendFile(`${process.cwd()}/dist/i/s/pfpDefault.svgz`);
+                res.status(200).json({success: false, path: `i/s/pfpDefault.svgz`, message: null});
             }
         }
         break;
     default:
-        res.status(404).send(req.params.methodName + ' is not a valid user PFP method')
+        res.status(404).json({success: false, path: null, message: `${req.params.methodName} is not a valid user PFP method`});
         break;
     }
 });

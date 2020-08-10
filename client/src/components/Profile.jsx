@@ -19,10 +19,7 @@ function Profile(props) {
     return (
         <div className="card col-8 col-md-4 mt-2 align-middle text-center">
             <div className="card-header">
-                <label className="w-25">
-                    <ProfilePictureUpload setProfilePic={setProfilePic} />
-                    <img className="rounded-circle bg-secondary w-100" src={profilePic} />
-                </label>
+                <ProfilePictureUpload profilePic={profilePic} setProfilePic={setProfilePic} />
             </div>
             <div className="card-body">
                 <h5 className="card-title">Email Address:</h5>
