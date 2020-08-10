@@ -2,11 +2,9 @@ import React, {useState, useEffect} from 'react';
 import UploadService from '../services/upload.service';
 
 function ProfilePictureUpload (props) {
-    const [selectedFile, setSelectedFile] = useState(undefined);
     const [currentFile, setCurrentFile] = useState(undefined);
     const [progress, setProgress] = useState(0);
-    const [message, setMessage] = useState('');
-    const [fileInfos, setFileInfos] = useState([]);
+    const [isProcessing, setIsProcessing] = useState(false); 
 
     useEffect(() => {
         UploadService.getPFP().then((response) => {
@@ -23,10 +21,9 @@ function ProfilePictureUpload (props) {
         const tempImage = new Image();
         tempImage.src = imageSrc;
         tempImage.onload = (event) => {
-            console.log(`Load: ${Date.now()}`);
-            props.setProfilePic(imageSrc)
+            props.setProfilePic(imageSrc);
             setCurrentFile(undefined);
-            console.log(`End: ${Date.now()}`);
+            setIsProcessing(false);
         };
     };
 
@@ -37,19 +34,19 @@ function ProfilePictureUpload (props) {
             setCurrentFile(selectedFile);
 
             UploadService.uploadPFP(selectedFile, (event) => {
+                if (event.loaded === event.total) {
+                    setIsProcessing(true);
+                }
+
                 setProgress(Math.round((100 * event.loaded) / event.total));
             }).then((response) => {
-                setMessage(response.data.message);
                 return UploadService.getPFP();
             }).then((response) => {
-                console.log(`Start: ${Date.now()}`);
                 imageLoadHandler(response.data.path);
-                //props.setProfilePic(response.data.path);
-                //setCurrentFile(undefined);
             }).catch((err) => {
                 setProgress(0);
-                setMessage(`Failed to upload: ${err.message}`);
                 setCurrentFile(undefined);
+                console.error(err.message);
             });
         }
     };
@@ -101,7 +98,7 @@ function ProfilePictureUpload (props) {
                             position: 'absolute',
                             width: '100%'
                         }}>
-                            {progress}%
+                            {isProcessing ? 'Processing' : progress + '%'}
                         </div>
                     </div>
                 )}

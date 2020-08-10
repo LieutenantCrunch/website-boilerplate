@@ -1,4 +1,8 @@
 import express, {Request, Response, Router, NextFunction, json} from 'express';
+import fs from 'fs';
+import path, { ParsedPath } from 'path';
+import sharp, { OutputInfo, Sharp } from 'sharp';
+import {promisify} from 'util';
 
 import AuthHelper from '../../../utilities/authHelper';
 import DatabaseHelper from '../../../utilities/databaseHelper';
@@ -39,9 +43,41 @@ apiUserPFPRouter.post('/:methodName', [AuthHelper.verifyToken, PFPUploadHelper.u
             return res.status(200).json({success: false, message: 'You must select a photo'});
         }
 
+        const originalPath: string = req.file.path;
+        const parsedOriginalPath: ParsedPath = path.parse(originalPath);
+        let smallFileName: string = `${parsedOriginalPath.name}.small${parsedOriginalPath.ext}`;
+        let smallFilePath: string = path.join(parsedOriginalPath.dir, smallFileName);
+
         try
         {
-            let uploadResults: {success: Boolean} = await databaseHelper.addProfilePictureToUser(req.file.filename, req.file.originalname, req.file.mimetype, req.userId!);
+            const originalImage: Sharp = await sharp(req.file.path);
+            const originalMetaData: sharp.Metadata = await originalImage.metadata();
+
+            const originalWidth: number = originalMetaData.width || 501;
+            const originalHeight: number = originalMetaData.height || 501;
+
+            if (originalWidth > 500 || originalHeight > 500) {
+                const smallPFP: OutputInfo = await sharp(req.file.path).resize({
+                    width: 500,
+                    height: 500,
+                    fit: 'inside'
+                }).toFormat('png').toFile(smallFilePath);
+            }
+            else {
+                const copyFileAsync = promisify(fs.copyFile);
+
+                await copyFileAsync(originalPath, smallFilePath);
+            }
+        }
+        catch (err)
+        {
+            console.error(`Failed to create resized version: ${err.message}`);
+            return res.status(500).json({success: false, message: 'An error has occurred while processing your profile picture'});
+        }
+
+        try
+        {
+            let uploadResults: {success: Boolean} = await databaseHelper.addProfilePictureToUser(req.file.filename, smallFileName, req.file.originalname, req.file.mimetype, req.userId!);
 
             if (uploadResults.success) {
                 return res.status(200).json({success: true, message: 'Upload success!'});

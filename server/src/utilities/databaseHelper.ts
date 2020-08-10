@@ -157,7 +157,7 @@ export default class DatabaseHelper {
         }
     }
 
-    async addProfilePictureToUser(fileName: string, originalFileName: string, mimeType: string, userId: string): Promise<{success: Boolean}> {
+    async addProfilePictureToUser(fileName: string, smallFileName: string, originalFileName: string, mimeType: string, userId: string): Promise<{success: Boolean}> {
         try
         {
             let registeredUser: User | undefined = await this.getUserWithId(userId);
@@ -166,7 +166,7 @@ export default class DatabaseHelper {
                 let pfpRepository: Repository<ProfilePicture> = this.#connection.getRepository(ProfilePicture);
                 let newPFP: ProfilePicture = new ProfilePicture();
 
-                newPFP = {...newPFP, fileName: fileName, originalFileName: originalFileName, mimeType: mimeType, registeredUserId: registeredUser.id};
+                newPFP = {...newPFP, fileName, smallFileName, originalFileName, mimeType, registeredUserId: registeredUser.id};
 
                 try
                 {
@@ -189,7 +189,7 @@ export default class DatabaseHelper {
         return {success: false};
     }
 
-    async getPFPFileNameForUserId(userId: string): Promise<string | null> {
+    async getPFPFileNameForUserId(userId: string, originalSize?: Boolean): Promise<string | null> {
         let registeredUser: User | undefined = await this.getUserWithId(userId);
         
         if (registeredUser) {
@@ -206,7 +206,7 @@ export default class DatabaseHelper {
                 });
 
                 if (profilePicture) {
-                    return profilePicture.fileName;
+                    return originalSize ? profilePicture.fileName : profilePicture.smallFileName;
                 }
             }
             catch (err)

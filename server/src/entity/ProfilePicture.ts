@@ -36,6 +36,13 @@ export class ProfilePicture {
     })
     originalFileName: string
 
+    @Column({
+        length: 206,
+        type: 'varchar',
+        name: 'small_file_name'
+    })
+    smallFileName: string;
+
     @OneToOne(type => User, user => user.id)
     user: User;
 }
