@@ -1,10 +1,14 @@
 import React, {useState, useEffect} from 'react';
+import {isMobile} from 'react-device-detect';
+
 import UploadService from '../services/upload.service';
+
+import SmallAddButton from './SmallAddButton';
 
 function ProfilePictureUpload (props) {
     const [currentFile, setCurrentFile] = useState(undefined);
     const [progress, setProgress] = useState(0);
-    const [isProcessing, setIsProcessing] = useState(false); 
+    const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
         UploadService.getPFP().then((response) => {
@@ -53,55 +57,64 @@ function ProfilePictureUpload (props) {
 
     /* width: 100% + padding-top: 100% for aspect ratio: https://www.w3schools.com/howto/howto_css_aspect_ratio.asp */
     return (
-        <label className="rounded-circle w-25" style={{
+        <label className="w-25" style={{
             cursor: currentFile ? 'wait' : 'pointer',
+            position: 'relative'
+        }} title={`${isMobile ? 'Tap' : 'Click'} to add a new Profile Picture`}>
+            <div className="border border-secondary rounded-circle" style={{
             overflow: 'hidden'
             }}>
-            <div style={{
-                width: '100%',
-                paddingTop: '100%',
-                position: 'relative'
-            }}>
                 <div style={{
-                    backgroundImage: `url('${props.profilePic}')`,
-                    backgroundPosition: 'center',
-                    backgroundSize: 'cover',
-                    bottom: 0,
-                    left: 0,
-                    position: 'absolute',
-                    right: 0,
-                    top: 0
+                    width: '100%',
+                    paddingTop: '100%',
+                    position: 'relative'
                 }}>
-                    <input type="file" disabled={currentFile ? true : false} onChange={selectPicture} style={{
-                        visibility: 'hidden', 
-                        height: 0, 
-                        width: 0
-                    }} /> 
-                </div>
-
-                {currentFile && (
-                    <div className="progress rounded-circle" style={{
-                        position: 'absolute',
+                    <div style={{
+                        backgroundImage: `url('${props.profilePic}')`,
+                        backgroundPosition: 'center',
+                        backgroundSize: 'cover',
+                        bottom: 0,
                         left: 0,
-                        top: 0,
-                        height: '100%',
-                        opacity: '50%',
-                        width: '100%'
+                        position: 'absolute',
+                        right: 0,
+                        top: 0
                     }}>
-                        <div className="progress-bar progress-bar-animated progress-bar-info progress-bar-striped"
-                        aria-valuenow={progress}
-                        aria-valuemin="0"
-                        aria-valuemax="100"
-                        style={{
-                            bottom: 0,
-                            height: progress + '%', 
+                        <input type="file" disabled={currentFile ? true : false} onChange={selectPicture} style={{
+                            visibility: 'hidden', 
+                            height: 0, 
+                            width: 0
+                        }} /> 
+                    </div>
+
+                    {currentFile && (
+                        <div className="progress rounded-circle" style={{
                             position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            height: '100%',
+                            opacity: '50%',
                             width: '100%'
                         }}>
-                            {isProcessing ? 'Processing' : progress + '%'}
+                            <div className="progress-bar progress-bar-animated progress-bar-info progress-bar-striped"
+                            aria-valuenow={progress}
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            style={{
+                                bottom: 0,
+                                height: progress + '%', 
+                                position: 'absolute',
+                                width: '100%'
+                            }}>
+                                {isProcessing ? 'Processing' : progress + '%'}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
+                <SmallAddButton width={15} height={15} style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0
+                }} />
             </div>
         </label>
     );
