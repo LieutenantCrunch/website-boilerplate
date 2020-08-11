@@ -1,4 +1,5 @@
-import {Entity, Column, PrimaryGeneratedColumn} from 'typeorm';
+import {Entity, Column, PrimaryGeneratedColumn, OneToMany, JoinColumn} from 'typeorm';
+import { ProfilePicture } from './ProfilePicture';
 
 @Entity('registered_user')
 export class User {
@@ -36,4 +37,8 @@ export class User {
         name: 'unique_id'
     })
     uniqueID: string;
+
+    @OneToMany(type => ProfilePicture, profilePicture => profilePicture.registeredUserId)
+    @JoinColumn({ name: 'id', referencedColumnName: 'registered_user_id' })
+    profilePicture: ProfilePicture;
 }

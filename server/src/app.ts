@@ -18,6 +18,13 @@ function send404Response (res: Response, message = 'Not Found'): any {
     res.status(404).send(message);
 };
 
+// When serving svgz, need to add the gzip Content-Encoding header so the browser knows what to do with it
+// This has to come before the app.use(express.static('dist')) line
+app.use(/.*\.svgz$/, (req: Request, res: Response, next: NextFunction) => {
+    res.header('Content-Encoding', 'gzip');
+    next();
+});
+
 // Serve static files out of the dist directory using the static middleware function
 app.use(express.static('dist'));
 // Parse request bodies as JSON
@@ -36,6 +43,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     );
     next();
 });
+
+
 
 import {apiRouter} from './routers/api'
 app.use('/api', apiRouter);

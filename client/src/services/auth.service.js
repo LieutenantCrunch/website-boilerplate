@@ -1,4 +1,4 @@
-import Axios from 'axios';
+import axiosApi from '../services/axios-api';
 import * as Constants from '../constants/constants';
 import 'regenerator-runtime'; /* Necessary for async/await to not throw an error. https://tenor.com/view/idk-idont-know-sassy-kid-girl-gif-4561444 */
 
@@ -10,7 +10,7 @@ export default class AuthService {
         };
 
         try {
-            let response = await Axios.post(Constants.BASE_API_URL + Constants.API_PATH_AUTH + 'login', payload);
+            let response = await axiosApi.post(Constants.API_PATH_AUTH + 'login', payload);
         
             let loginSuccess = response.data && response.data.success ? response.data.success : false;
             if (response.status === 200) {
@@ -54,7 +54,7 @@ export default class AuthService {
         };
 
         try {
-            let response = await Axios.post(Constants.BASE_API_URL + Constants.API_PATH_AUTH + 'register', payload);
+            let response = await axiosApi.post(Constants.API_PATH_AUTH + 'register', payload);
 
             let registrationSuccess = response.data.success ? response.data.success : false;
 
@@ -90,7 +90,7 @@ export default class AuthService {
 
     static async logout() {
         try {
-            let response = await Axios.post(Constants.BASE_API_URL + Constants.API_PATH_AUTH + 'logout');
+            let response = await axiosApi.post(Constants.API_PATH_AUTH + 'logout');
         
             let logoutSuccess = response.data.success ? response.data.success : false;
             if (response.status === 200) {

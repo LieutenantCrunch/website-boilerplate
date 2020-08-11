@@ -31,12 +31,14 @@ export default class AuthHelper {
 
             if (decodedToken2) {
                 req.userId = decodedToken2.id;
+                next();
             }
-
-            next();
+            else {
+                return res.status(401).json({success: false, message: 'Unauthorized'});
+            }
         }
         catch (err) {
-            return res.status(401).json({success: false, message: 'Unauthorized'});
+            return res.status(401).json({success: false, message: 'Unauthorized Error'});
         }
     }
 
