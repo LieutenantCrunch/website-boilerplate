@@ -4,7 +4,7 @@ This project was started with the goal of making a reusable baseline website wit
 
 # Prerequisites
 1. **Database**
-    - The project is currently set up to use MySQL, but any type of database supported by [TypeORM](https://github.com/typeorm/typeorm) should work.
+    - The project is currently set up to use MySQL and uses [TypeORM](https://github.com/typeorm/typeorm) for database connectivity. If you would like to use another type of database, you will have to edit the classes in the [entities directory](server/src/entity)
     - The database connection is configured in [databaseHelper.ts](server/src/utilities/databaseHelper.ts)
     - If you grant the database user the necessary privileges, TypeORM should automatically update your schema
     - If you do not want TypeORM managing your schema, the necessary queries (written for MySQL) can be found in ***TODO***
