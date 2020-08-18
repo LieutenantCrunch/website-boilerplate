@@ -4,6 +4,10 @@ const jwt = require('jsonwebtoken'); // Need to do this so TypeScript doesn't th
 import fs from 'fs';
 import {promisify} from 'util';
 
+import DatabaseHelper from './databaseHelper';
+
+const databaseHelper: DatabaseHelper = new DatabaseHelper();
+
 export default class AuthHelper {
     private static jwtSecret: string = '';
 
@@ -30,7 +34,15 @@ export default class AuthHelper {
             }*/
 
             if (decodedToken2) {
+                let jwtID: string = decodedToken2.jti;
+                let activeJTI: string | null = await databaseHelper.getValidJWTForUserId(decodedToken2.id);
+
+                if (jwtID !== activeJTI) {
+                    return res.status(401).json({success: false, message: 'Unauthorized - Login Expired'});
+                }
+
                 req.userId = decodedToken2.id;
+
                 next();
             }
             else {
@@ -39,6 +51,28 @@ export default class AuthHelper {
         }
         catch (err) {
             return res.status(401).json({success: false, message: 'Unauthorized Error'});
+        }
+    }
+
+    static async decodeToken(req: Request, res: Response, next: NextFunction) {
+        let jwtSecret: string = await AuthHelper.getJWTSecret();
+        let token: string = req.cookies['authToken'] as string;
+        
+        if (!token) {
+            next();
+        }
+        else {
+            try {
+                let decodedToken = jwt.verify(token, jwtSecret);
+
+                if (decodedToken) {
+                    req.userId = decodedToken.id;
+                    next();
+                }
+            }
+            catch (err) {
+                return res.status(500).json({success: false, message: 'Internal Server Error'});
+            }
         }
     }
 

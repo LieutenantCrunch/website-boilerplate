@@ -1,14 +1,18 @@
 import express, {Request, Response, Router, NextFunction} from 'express';
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 
 import AuthHelper from '../../utilities/authHelper';
 import DatabaseHelper from '../../utilities/databaseHelper';
+import * as Constants from '../../constants/constants';
+
+import '../../extensions/date.extensions';
 
 const databaseHelper: DatabaseHelper = new DatabaseHelper();
 
-const apiAuthRouter = express.Router();
+const apiAuthRouter: Router = express.Router();
 
-apiAuthRouter.post('/:methodName', async (req: Request, res: Response) => {
+apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request, res: Response) => {
     switch (req.params.methodName)
     {
     case 'register':
@@ -61,15 +65,25 @@ apiAuthRouter.post('/:methodName', async (req: Request, res: Response) => {
                 if (loginResults.success) {
                     let userID: string | null = loginResults.id;
                     let secret: string = await AuthHelper.getJWTSecret();
-                    let authToken: string = jwt.sign({id: userID}, secret); /* Could pass in options on the third parameter */
+                    let jti: string = uuidv4();
+                    let authToken: string = jwt.sign({id: userID}, secret, {expiresIn: (60 * 60 * 24 * Constants.JWT_EXPIRATION_DAYS), jwtid: jti}); /* Could pass in options on the third parameter */
+                    let expirationDate: Date = new Date(Date.now()).addDays(Constants.JWT_EXPIRATION_DAYS);
 
-                    res.status(200)
-                        .cookie('authToken', authToken, {
-                            httpOnly: true,
-                            sameSite: true
-                        })
-                        .json({success: true, message: 'Login successful', userInfo: {authToken: authToken}});
-                    //res.status(200).json({success: true, message: 'Login successful', userInfo: {authToken: authToken}});
+                    let jwtResults: {success: Boolean} = await databaseHelper.addJWTToUser(userID!, {jti, expirationDate})
+
+                    if (jwtResults.success) {
+                        res.status(200)
+                            .cookie('authToken', authToken, {
+                                httpOnly: true,
+                                sameSite: true,
+                                expires: expirationDate
+                            })
+                            .json({success: true, message: 'Login successful', userInfo: {authToken: authToken}});
+                        //res.status(200).json({success: true, message: 'Login successful', userInfo: {authToken: authToken}});
+                    }
+                    else {
+                        res.status(200).json({success: false, message: 'Failed to secure a session with the server, please try again or contact support'});
+                    }
                 }
                 else {
                     let userID: string | null = loginResults.id;
@@ -82,6 +96,10 @@ apiAuthRouter.post('/:methodName', async (req: Request, res: Response) => {
         }
         break;
     case 'logout':
+        if (req.userId) {
+            await databaseHelper.invalidateJWTsForUser(req.userId);
+        }
+
         res.status(200)
             .clearCookie('authToken')
             .json({success: true, message: 'You have been logged out'});

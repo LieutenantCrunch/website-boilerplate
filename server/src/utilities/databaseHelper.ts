@@ -4,9 +4,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 import bcrypt from 'bcryptjs';
 
-import {createConnection, Connection, Repository} from 'typeorm';
+import {createConnection, Connection, Repository, QueryFailedError} from 'typeorm';
 import {User} from '../entity/User';
 import {ProfilePicture} from '../entity/ProfilePicture';
+import {UserJWT} from '../entity/UserJWT';
 
 export default class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -42,7 +43,12 @@ export default class DatabaseHelper {
                 this.#connection = con;
                 console.log('Successfully connected to database')
             }).catch((error: any) => {
-                console.error(error);
+                if (error && error.query) {
+                    console.error(`${error.message}\nQuery: ${error.query}`);
+                }
+                else {
+                    console.error(error);
+                }
             });
         });
     };
@@ -190,31 +196,141 @@ export default class DatabaseHelper {
     }
 
     async getPFPFileNameForUserId(userId: string, originalSize?: Boolean): Promise<string | null> {
-        let registeredUser: User | undefined = await this.getUserWithId(userId);
-        
-        if (registeredUser) {
-            let pfpRepository: Repository<ProfilePicture> = this.#connection.getRepository(ProfilePicture);
-            try
-            {
-                let profilePicture: ProfilePicture | undefined = await pfpRepository.findOne({
-                    where: {
-                        registeredUserId: registeredUser.id
-                    },
-                    order: {
-                        id: 'DESC'
-                    }
-                });
+        let userRepository: Repository<User> = this.getUserRepository();
+        let registeredUser: User | undefined = undefined;
 
-                if (profilePicture) {
-                    return originalSize ? profilePicture.fileName : profilePicture.smallFileName;
-                }
-            }
-            catch (err)
-            {
-                console.error(`Failed to retrieve PFP for UserID: ${userId}: ${err.message}`);
-            }
+        try
+        {
+            registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['profilePictures']});
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with id ${userId}: ${err.message}`);
+        }
+        
+        if (registeredUser && registeredUser.profilePictures.length > 0) {
+            // To guarantee we get the latest one, we could sort the array first
+            // registeredUser.profilePictures.sort((a, b) => { return b.id - a.id});
+
+            // However, it should just query them in ascending order by default, so we can just take the last one and save on some performance
+            let profilePicture: ProfilePicture = registeredUser.profilePictures[registeredUser.profilePictures.length - 1];
+            
+            return originalSize ? profilePicture.fileName : profilePicture.smallFileName;
         }
 
         return null;
+    }
+
+    async addJWTToUser(userId: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
+        try
+        {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let registeredUser: User | undefined = undefined;
+
+            try
+            {
+                registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['activeJWTs']});
+            }
+            catch (err)
+            {
+                console.error(`Error looking up user with id ${userId}: ${err.message}`);
+            }
+            
+            if (registeredUser) {
+                let jwtRepository: Repository<UserJWT> = this.#connection.getRepository(UserJWT);
+
+                let invalidateResults: {success: Boolean} = await this.invalidateJWTsForUser(userId);
+
+                if (!invalidateResults.success) {
+                    return {success: false};
+                }
+
+                let newJWT: UserJWT = new UserJWT();
+
+                newJWT = {...newJWT, ...jwtInfo, registeredUserId: registeredUser.id, isValid: true};
+
+                try
+                {
+                    await jwtRepository.save(newJWT);
+                }
+                catch (err)
+                {
+                    console.error(`Error saving new JWT to database: ${err.message}`);
+                    return {success: false};
+                }
+
+                return {success: true};
+            }
+        }
+        catch (err)
+        {
+            console.error(`Error adding new JWT to user ${userId}: ${err.message}`);
+        }
+
+        return {success: false};
+    }
+
+    async getValidJWTForUserId(userId: string): Promise<string | null> {
+        let userRepository: Repository<User> = this.getUserRepository();
+        let registeredUser: User | undefined = undefined;
+
+        try
+        {
+            //registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['activeJWTs']});
+            registeredUser = await userRepository.createQueryBuilder('user')
+            .innerJoinAndSelect('user.activeJWTs', 'jwt')
+            .where('jwt.isValid = 1 AND jwt.expirationDate > now()')
+            .getOne();
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with id ${userId}: ${err.message}`);
+        }
+        
+        if (registeredUser) {
+            return registeredUser.activeJWTs[0].jti;
+        }
+
+        return null;
+    }
+
+    async invalidateJWTsForUser(userId: string): Promise<{success: Boolean}> {
+        try
+        {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let registeredUser: User | undefined = undefined;
+
+            try
+            {
+                registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['activeJWTs']});
+            }
+            catch (err)
+            {
+                console.error(`Error looking up user with id ${userId}: ${err.message}`);
+            }
+            
+            if (registeredUser) {
+                let jwtRepository: Repository<UserJWT> = this.#connection.getRepository(UserJWT);
+
+                // Invalidate all previous active JWTs if they exist
+                if (registeredUser.activeJWTs && registeredUser.activeJWTs.length > 0) {
+                    registeredUser.activeJWTs.forEach((activeJWT) => {
+                        activeJWT.isValid = false;
+                        activeJWT.formerRegisteredUserId = registeredUser!.id;
+                        activeJWT.registeredUserId = null;
+                    });
+
+                    await jwtRepository.save(registeredUser.activeJWTs);
+                }
+
+                return {success: true};
+            }
+        }
+        catch (err)
+        {
+            console.error(`Error Invalidating JWTs: ${err.message}`);
+        }
+
+        return {success: false};
     }
 };

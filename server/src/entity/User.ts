@@ -1,5 +1,6 @@
-import {Entity, Column, PrimaryGeneratedColumn, OneToMany, JoinColumn} from 'typeorm';
+import {Entity, Column, PrimaryGeneratedColumn, OneToOne, OneToMany, JoinColumn} from 'typeorm';
 import { ProfilePicture } from './ProfilePicture';
+import { UserJWT } from './UserJWT';
 
 @Entity('registered_user')
 export class User {
@@ -38,7 +39,12 @@ export class User {
     })
     uniqueID: string;
 
-    @OneToMany(type => ProfilePicture, profilePicture => profilePicture.registeredUserId)
-    @JoinColumn({ name: 'id', referencedColumnName: 'registered_user_id' })
-    profilePicture: ProfilePicture;
+    @OneToMany(type => ProfilePicture, profilePicture => profilePicture.registeredUser, {onDelete: 'CASCADE'})
+    profilePictures: ProfilePicture[];
+
+    @OneToMany(type => UserJWT, userJWT => userJWT.registeredUser, {onDelete: 'CASCADE'})
+    activeJWTs: UserJWT[];
+
+    @OneToMany(type => UserJWT, userJWT => userJWT.formerRegisteredUser, {onDelete: 'CASCADE'})
+    inactiveJWTs: Promise<UserJWT[]>;
 }

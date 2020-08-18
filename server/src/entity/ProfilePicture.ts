@@ -1,4 +1,4 @@
-import {Entity, Column, PrimaryGeneratedColumn, OneToOne} from 'typeorm';
+import {Entity, Column, PrimaryGeneratedColumn, OneToOne, ManyToOne, JoinColumn, RelationId} from 'typeorm';
 import { User } from './User';
 
 @Entity('profile_picture')
@@ -43,6 +43,7 @@ export class ProfilePicture {
     })
     smallFileName: string;
 
-    @OneToOne(type => User, user => user.id)
-    user: User;
+    @ManyToOne(type => User, user => user.profilePictures)
+    @JoinColumn({ name: 'registered_user_id', referencedColumnName: 'id' })
+    registeredUser: User[];
 }
