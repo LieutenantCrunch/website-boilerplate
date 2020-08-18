@@ -78,7 +78,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
                                 sameSite: true,
                                 expires: expirationDate
                             })
-                            .json({success: true, message: 'Login successful', userInfo: {authToken: authToken}});
+                            .json({success: true, message: 'Login successful', userInfo: {loginDate: Date.now()}});
                         //res.status(200).json({success: true, message: 'Login successful', userInfo: {authToken: authToken}});
                     }
                     else {
