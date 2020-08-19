@@ -22,23 +22,19 @@ function Header(props) {
 
     const handleMenuClickLogin = () => {
         collapseNavbarMenu();
-        props.setTitle('Login');
     };
 
     const handleMenuClickHome = () => {
         collapseNavbarMenu();
-        props.setTitle('Welcome!');
     };
 
       const handleMenuClickProfile = () => {
         collapseNavbarMenu();
-        props.setTitle('Profile');
     };
 
     const handleMenuClickLogout = () => {
         collapseNavbarMenu();
         AuthService.logout();
-        props.setTitle('Login');
         props.setUserInfo(null);
     };
 

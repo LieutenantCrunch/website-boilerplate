@@ -16,6 +16,10 @@ function Profile(props) {
         }, [username]);
     });
 
+    useEffect(() => {
+        props.setTitle('Profile')
+    }, []);
+
     return (
         <div className="card col-8 col-md-4 mt-2 align-middle text-center">
             <div className="card-header">

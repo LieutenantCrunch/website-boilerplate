@@ -1,5 +1,5 @@
 // https://medium.com/technoetics/create-basic-login-forms-using-react-js-hooks-and-bootstrap-2ae36c15e551
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import { withRouter } from 'react-router-dom';
 import classNames from 'classnames';
 
@@ -10,6 +10,10 @@ function LoginForm (props) {
     const [state, setState] = useState({password: ''});
     const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {email: ''});
     const setStatusMessage = props.setStatusMessage;
+
+    useEffect(() => {
+        props.setTitle('Login')
+    }, []);
 
     const handleSessionStateChange = (e) => {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
