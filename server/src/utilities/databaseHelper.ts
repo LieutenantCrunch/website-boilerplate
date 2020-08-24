@@ -4,16 +4,19 @@ import { v4 as uuidv4 } from 'uuid';
 
 import bcrypt from 'bcryptjs';
 
-import {createConnection, Connection, Repository, QueryFailedError} from 'typeorm';
+import {createConnection, Connection, Repository, QueryFailedError, ObjectLiteral} from 'typeorm';
 import {User} from '../entity/User';
 import {ProfilePicture} from '../entity/ProfilePicture';
 import {UserJWT} from '../entity/UserJWT';
+import * as Constants from '../constants/constants';
 
 export default class DatabaseHelper {
     private static instance: DatabaseHelper;
 
     #connection: Connection;
     #userRepository: Repository<User>;
+    #userJWTRepository: Repository<UserJWT>;
+    #pfpRepository: Repository<ProfilePicture>;
 
     constructor() {
         if (DatabaseHelper.instance) {
@@ -59,6 +62,22 @@ export default class DatabaseHelper {
         }
 
         return this.#userRepository;
+    }
+
+    private getUserJWTRepository() {
+        if (!this.#userJWTRepository) {
+            this.#userJWTRepository = this.#connection.getRepository(UserJWT);
+        }
+
+        return this.#userJWTRepository;
+    }
+
+    private getProfilePictureRepository() {
+        if (!this.#pfpRepository) {
+            this.#pfpRepository = this.#connection.getRepository(ProfilePicture);
+        }
+
+        return this.#pfpRepository;
     }
 
     async getAllUsers(): Promise<User[]> {
@@ -169,7 +188,7 @@ export default class DatabaseHelper {
             let registeredUser: User | undefined = await this.getUserWithId(userId);
             
             if (registeredUser) {
-                let pfpRepository: Repository<ProfilePicture> = this.#connection.getRepository(ProfilePicture);
+                let pfpRepository: Repository<ProfilePicture> = this.getProfilePictureRepository();
                 let newPFP: ProfilePicture = new ProfilePicture();
 
                 newPFP = {...newPFP, fileName, smallFileName, originalFileName, mimeType, registeredUserId: registeredUser.id};
@@ -237,14 +256,7 @@ export default class DatabaseHelper {
             }
             
             if (registeredUser) {
-                let jwtRepository: Repository<UserJWT> = this.#connection.getRepository(UserJWT);
-
-                let invalidateResults: {success: Boolean} = await this.invalidateJWTsForUser(userId);
-
-                if (!invalidateResults.success) {
-                    return {success: false};
-                }
-
+                let jwtRepository: Repository<UserJWT> = this.getUserJWTRepository();
                 let newJWT: UserJWT = new UserJWT();
 
                 newJWT = {...newJWT, ...jwtInfo, registeredUserId: registeredUser.id, isValid: true};
@@ -270,7 +282,52 @@ export default class DatabaseHelper {
         return {success: false};
     }
 
-    async getValidJWTForUserId(userId: string): Promise<string | null> {
+    async extendJWTForUser(userId: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
+        try
+        {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let registeredUser: User | undefined = undefined;
+
+            try
+            {
+                registeredUser = await userRepository.createQueryBuilder('user')
+                .innerJoinAndSelect('user.activeJWTs', 'jwt')
+                .where('jwt.jti = :jti', {jti: jwtInfo.jti})
+                .getOne();
+            }
+            catch (err)
+            {
+                console.error(`Error looking up user with id ${userId}: ${err.message}`);
+            }
+            
+            if (registeredUser) {
+                let activeJWT: UserJWT = registeredUser.activeJWTs[0];
+                let jwtRepository: Repository<UserJWT> = this.getUserJWTRepository();
+
+                activeJWT.expirationDate = jwtInfo.expirationDate;
+
+                try
+                {
+                    await jwtRepository.save(activeJWT);
+                }
+                catch (err)
+                {
+                    console.error(`Error saving extended JWT to database: ${err.message}`);
+                    return {success: false};
+                }
+
+                return {success: true};
+            }
+        }
+        catch (err)
+        {
+            console.error(`Error extending JWT for user ${userId}: ${err.message}`);
+        }
+
+        return {success: false};
+    }
+
+    async validateJWTForUserId(userId: string, jti: string): Promise<Boolean> {
         let userRepository: Repository<User> = this.getUserRepository();
         let registeredUser: User | undefined = undefined;
 
@@ -279,7 +336,7 @@ export default class DatabaseHelper {
             //registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['activeJWTs']});
             registeredUser = await userRepository.createQueryBuilder('user')
             .innerJoinAndSelect('user.activeJWTs', 'jwt')
-            .where('jwt.isValid = 1 AND jwt.expirationDate > now()')
+            .where('jwt.jti = :jti AND jwt.isValid = 1 AND jwt.expirationDate > now()', {jti})
             .getOne();
         }
         catch (err)
@@ -288,21 +345,42 @@ export default class DatabaseHelper {
         }
         
         if (registeredUser) {
-            return registeredUser.activeJWTs[0].jti;
+            return true;
         }
 
-        return null;
+        return false;
     }
 
-    async invalidateJWTsForUser(userId: string): Promise<{success: Boolean}> {
+    async invalidateJWTsForUser(userId: string, mode: number = Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, jti?: string): Promise<{success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
             let registeredUser: User | undefined = undefined;
+            let whereClause: string = 'jwt.isValid = 1 AND jwt.expirationDate > now()';
+            let parameters: ObjectLiteral | undefined = jti ? {jti} : undefined;
 
+            if (!jti) { // If we don't have an ID, then we have to expire all of them
+                mode = Constants.INVALIDATE_TOKEN_MODE.ALL;
+            }
+
+            switch (mode) {
+            case Constants.INVALIDATE_TOKEN_MODE.ALL:
+                break;
+            case Constants.INVALIDATE_TOKEN_MODE.OTHERS:
+                whereClause += ' AND jwt.jti != :jti';
+                break;
+            case Constants.INVALIDATE_TOKEN_MODE.SPECIFIC:
+            default:
+                whereClause += ' AND jwt.jti = :jti';
+                break;
+            }
+            
             try
             {
-                registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['activeJWTs']});
+                registeredUser = await userRepository.createQueryBuilder('user')
+                    .innerJoinAndSelect('user.activeJWTs', 'jwt')
+                    .where(whereClause, parameters)
+                    .getOne();
             }
             catch (err)
             {
@@ -310,15 +388,15 @@ export default class DatabaseHelper {
             }
             
             if (registeredUser) {
-                let jwtRepository: Repository<UserJWT> = this.#connection.getRepository(UserJWT);
-
-                // Invalidate all previous active JWTs if they exist
-                if (registeredUser.activeJWTs && registeredUser.activeJWTs.length > 0) {
+                if (registeredUser.activeJWTs.length > 0) {
+                    // Invalidate all previous active JWTs if they exist
                     registeredUser.activeJWTs.forEach((activeJWT) => {
                         activeJWT.isValid = false;
                         activeJWT.formerRegisteredUserId = registeredUser!.id;
                         activeJWT.registeredUserId = null;
                     });
+
+                    let jwtRepository: Repository<UserJWT> = this.#connection.getRepository(UserJWT);
 
                     await jwtRepository.save(registeredUser.activeJWTs);
                 }

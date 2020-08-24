@@ -88,9 +88,14 @@ export default class AuthService {
         }
     }
 
-    static async logout() {
+    static async logout(fromHere = true, fromOtherLocations = false) {
         try {
-            let response = await axiosApi.post(Constants.API_PATH_AUTH + 'logout');
+            let payload = {
+                fromHere,
+                fromOtherLocations
+            };
+
+            let response = await axiosApi.post(Constants.API_PATH_AUTH + 'logout', payload);
         
             let logoutSuccess = response.data.success ? response.data.success : false;
             if (response.status === 200) {

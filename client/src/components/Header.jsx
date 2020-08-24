@@ -28,7 +28,11 @@ function Header(props) {
         collapseNavbarMenu();
     };
 
-      const handleMenuClickProfile = () => {
+    const handleMenuClickProfile = () => {
+        collapseNavbarMenu();
+    };
+
+    const handleMenuClickSecurity = () => {
         collapseNavbarMenu();
     };
 
@@ -63,6 +67,9 @@ function Header(props) {
                                 </li>
                                 <li className="nav-item">
                                     <Link className="nav-link text-right" to={'/'} onClick={handleMenuClickHome}>Home</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link text-right" to={'/security'} onClick={handleMenuClickSecurity}>Security</Link>
                                 </li>
                                 <li className="nav-item">
                                     <Link className="nav-link text-right" to={'/login'} onClick={handleMenuClickLogout}>Logout</Link>

@@ -12,6 +12,7 @@ import LoginForm from './RegistrationForm/LoginForm';
 import Profile from './Profile';
 import RegistrationForm from './RegistrationForm/RegistrationForm';
 import Welcome from './Welcome'
+import SecurityPage from './SecurityPage'
 
 
 export default function App() {
@@ -65,6 +66,14 @@ export default function App() {
                         <Route path="/profile" exact={true} render={() => {
                             return (checkForValidSession() ? 
                             <Profile setTitle={setTitle} /> : 
+                            <Redirect to="/login" />)
+                        }} />
+                        <Route path="/security" exact={true} render={() => {
+                            return (checkForValidSession() ? 
+                            <SecurityPage 
+                                setStatusMessage={setStatusMessage}
+                                setTitle={setTitle}
+                                setUserInfo={setUserInfo} /> : 
                             <Redirect to="/login" />)
                         }} />
                     </Switch>

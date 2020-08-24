@@ -64,12 +64,22 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
 
                 if (loginResults.success) {
                     let userID: string | null = loginResults.id;
-                    let secret: string = await AuthHelper.getJWTSecret();
-                    let jti: string = uuidv4();
-                    let authToken: string = jwt.sign({id: userID}, secret, {expiresIn: (60 * 60 * 24 * Constants.JWT_EXPIRATION_DAYS), jwtid: jti}); /* Could pass in options on the third parameter */
                     let expirationDate: Date = new Date(Date.now()).addDays(Constants.JWT_EXPIRATION_DAYS);
+                    let jwtResults: {success: Boolean} = {success: false};
 
-                    let jwtResults: {success: Boolean} = await databaseHelper.addJWTToUser(userID!, {jti, expirationDate})
+                    let authToken: string | undefined = undefined;
+
+                    if (req.authToken) { // Scenario: Maybe they lost their client token but not their cookie, so they're trying to log in again, just extend the life of their current cookie
+                        authToken = req.authToken;
+                        jwtResults = await databaseHelper.extendJWTForUser(req.userId!, {jti: req.jti!, expirationDate})
+                    }
+                    else {
+                        let secret: string = await AuthHelper.getJWTSecret();
+                        let jti: string = uuidv4();
+                        authToken = jwt.sign({id: userID}, secret, {expiresIn: (60 * 60 * 24 * Constants.JWT_EXPIRATION_DAYS), jwtid: jti}); /* Could pass in options on the third parameter */
+
+                        jwtResults = await databaseHelper.addJWTToUser(userID!, {jti, expirationDate})
+                    }
 
                     if (jwtResults.success) {
                         res.status(200)
@@ -78,8 +88,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
                                 sameSite: true,
                                 expires: expirationDate
                             })
-                            .json({success: true, message: 'Login successful', userInfo: {loginDate: Date.now(), expirationDate: (Date.now() + 180)/*expirationDate.valueOf()*/}});
-                        //res.status(200).json({success: true, message: 'Login successful', userInfo: {authToken: authToken}});
+                            .json({success: true, message: 'Login successful', userInfo: {loginDate: Date.now(), expirationDate: expirationDate.valueOf()}});
                     }
                     else {
                         res.status(200).json({success: false, message: 'Failed to secure a session with the server, please try again or contact support'});
@@ -96,8 +105,16 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
         }
         break;
     case 'logout':
-        if (req.userId) {
-            await databaseHelper.invalidateJWTsForUser(req.userId);
+        if (req.userId && req.jti) {
+            if (req.body.fromHere && req.body.fromOtherLocations) { // Everywhere - Here and Everywhere Else
+                await databaseHelper.invalidateJWTsForUser(req.userId, Constants.INVALIDATE_TOKEN_MODE.ALL, req.jti); 
+            }
+            else if (!req.body.fromHere && req.body.fromOtherLocations) { // Everywhere Else - Not Here but Everywhere Else
+                await databaseHelper.invalidateJWTsForUser(req.userId, Constants.INVALIDATE_TOKEN_MODE.OTHERS, req.jti);
+            }
+            else { // Only Here
+                await databaseHelper.invalidateJWTsForUser(req.userId, Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, req.jti);
+            }
         }
 
         res.status(200)
