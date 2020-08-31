@@ -9,6 +9,7 @@ import {User} from '../entity/User';
 import {ProfilePicture} from '../entity/ProfilePicture';
 import {UserJWT} from '../entity/UserJWT';
 import * as Constants from '../constants/constants';
+import { PasswordResetToken } from '../entity/PasswordResetToken';
 
 export default class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -17,6 +18,7 @@ export default class DatabaseHelper {
     #userRepository: Repository<User>;
     #userJWTRepository: Repository<UserJWT>;
     #pfpRepository: Repository<ProfilePicture>;
+    #passwordResetTokenRepository: Repository<PasswordResetToken>
 
     constructor() {
         if (DatabaseHelper.instance) {
@@ -78,6 +80,14 @@ export default class DatabaseHelper {
         }
 
         return this.#pfpRepository;
+    }
+
+    private getPasswordResetTokenRepository() {
+        if (!this.#passwordResetTokenRepository) {
+            this.#passwordResetTokenRepository = this.#connection.getRepository(PasswordResetToken);
+        }
+
+        return this.#passwordResetTokenRepository;
     }
 
     async getAllUsers(): Promise<User[]> {
@@ -163,7 +173,7 @@ export default class DatabaseHelper {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
-            let foundUsers: User[] = await userRepository.find({email: email});
+            let foundUsers: User[] = await userRepository.find({email});
 
             if (foundUsers.length === 1) {
                 let user: User = foundUsers[0];
@@ -180,6 +190,55 @@ export default class DatabaseHelper {
             console.error(err.message);
             return {id: null, success: false};
         }
+    }
+
+    async generatePasswordResetToken(email: string): Promise<{token: string | null, errorCode: number}> {
+        let errorCode: number = 0;
+        let token: string | null = null;
+
+        try
+        {
+            const userRepository: Repository<User> = this.getUserRepository();
+            let foundUsers: User[] = await userRepository.find({email});
+
+            if (foundUsers.length === 1) {
+                let passwordResetTokenRepository: Repository<PasswordResetToken> = this.getPasswordResetTokenRepository();
+                let user: User = foundUsers[0];
+                let currentDate: Date = new Date(Date.now());
+
+                let activeTokens: PasswordResetToken[] = await passwordResetTokenRepository.createQueryBuilder('rpt')
+                    .innerJoinAndSelect('rpt.registeredUser', 'user')
+                    .where('user.id = rpt.registeredUserId AND rpt.expirationDate > :currentDate', {currentDate})
+                    .getMany();
+                
+                if (activeTokens.length < Constants.RPT_MAX_ACTIVE_TOKENS) {
+                    token = uuidv4();
+                    let newPassResetToken: PasswordResetToken = new PasswordResetToken();
+                    let expirationDate: Date = new Date(Date.now()).addMinutes(Constants.RPT_EXPIRATION_MINUTES);
+
+                    newPassResetToken.registeredUserId = user.id;
+                    newPassResetToken.token = token;
+                    newPassResetToken.expirationDate = expirationDate;
+
+                    passwordResetTokenRepository.save(newPassResetToken);
+
+                    errorCode = 0;
+                }
+                else {
+                    errorCode = 3;
+                }
+            }
+            else {
+                errorCode = 2;
+            }
+        }
+        catch (err)
+        {
+            console.error(err.message);
+            errorCode = 1;
+        }
+
+        return {token, errorCode};
     }
 
     async addProfilePictureToUser(fileName: string, smallFileName: string, originalFileName: string, mimeType: string, userId: string): Promise<{success: Boolean}> {

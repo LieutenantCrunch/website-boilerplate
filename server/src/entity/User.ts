@@ -1,6 +1,7 @@
-import {Entity, Column, PrimaryGeneratedColumn, OneToOne, OneToMany, JoinColumn} from 'typeorm';
+import {Entity, Column, PrimaryGeneratedColumn, OneToMany} from 'typeorm';
 import { ProfilePicture } from './ProfilePicture';
 import { UserJWT } from './UserJWT';
+import { PasswordResetToken } from './PasswordResetToken';
 
 @Entity('registered_user')
 export class User {
@@ -47,4 +48,7 @@ export class User {
 
     @OneToMany(type => UserJWT, userJWT => userJWT.formerRegisteredUser, {onDelete: 'CASCADE'})
     inactiveJWTs: Promise<UserJWT[]>;
+
+    @OneToMany(type => PasswordResetToken, passwordResetToken => passwordResetToken.registeredUser, {onDelete: 'CASCADE'})
+    passwordResetTokens: Promise<PasswordResetToken[]>;
 }

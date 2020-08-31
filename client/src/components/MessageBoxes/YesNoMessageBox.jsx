@@ -1,6 +1,7 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
-function OKMessageBox(props) {
+function YesNoMessageBox(props) {
     const messageBoxLabelId = props.id + 'Label';
 
     return (
@@ -9,7 +10,7 @@ function OKMessageBox(props) {
                 <div className="modal-content">
                     <div className="modal-header">
                         <h5 className="modal-title" id={messageBoxLabelId}>{props.caption}</h5>
-                        <button type="button" className="close" data-dismiss="modal" aria-label="close">
+                        <button type="button" className="close" data-dismiss="modal" aria-label="close" onClick={props.noCallback}>
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
@@ -22,7 +23,8 @@ function OKMessageBox(props) {
                         }
                     </div>
                     <div className="modal-footer">
-                        <button type="button" className="btn btn-primary" data-dismiss="modal">OK</button>
+                        <button type="button" className="btn btn-primary" data-dismiss="modal" onClick={props.yesCallback}>Yes</button>
+                        <button type="button" className="btn btn-secondary" data-dismiss="modal" onClick={props.noCallback}>No</button>
                     </div>
                 </div>
             </div>
@@ -30,4 +32,13 @@ function OKMessageBox(props) {
     );
 }
 
-export default OKMessageBox;
+YesNoMessageBox.propTypes = {
+    id: PropTypes.string,
+    caption: PropTypes.string,
+    message: PropTypes.string,
+    subtext: PropTypes.string,
+    yesCallback: PropTypes.func,
+    noCallback: PropTypes.func
+};
+
+export default YesNoMessageBox;

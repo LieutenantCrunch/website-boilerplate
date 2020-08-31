@@ -121,6 +121,64 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
             .clearCookie('authToken')
             .json({success: true, message: 'You have been logged out'});
         break;
+    case 'reset-password-request':
+        if (req.body.email) {
+            let tokenResults: {token: string | null, errorCode: number} = await databaseHelper.generatePasswordResetToken(req.body.email);
+            let success: Boolean = true;
+            let message: string = 'If you are a valid user you will be sent a password reset email shortly. Please check your spam/junk folder if you do not see it soon.';
+
+            if (tokenResults.token) {
+                let resetPasswordLink: string = `${Constants.BASE_URL}reset-password?token=${tokenResults.token}`;
+            }
+            else {
+                switch (tokenResults.errorCode) {
+                case 3: // Too many active reset tokens
+                    success = false;
+                    message = 'You have exceeded the maximum number of reset attempts, please try again later or contact support.';
+                    break;
+                case 2: // User not found
+                    // They don't need to know this, pass it off as a success
+                    break;
+                case 1: // Exception
+                default:
+                    success = false;
+                    message = 'I\'m sorry but an error occurred while trying to reset your password, please try again or contact support.';
+                    break;
+                }
+            }
+
+            // Generate a password reset record that lasts for 5 minutes
+            // Send user email with link
+            // Create route so when the link is clicked, it takes them to a page where they can enter a new password and reset
+            res.status(200).json({success, message})
+        }
+        else {
+            res.status(200).json({success: false, message: 'You must provide an email address'})
+        }
+        break;
+    case 'reset-password':
+        // Grab the token from the URL and send it up on the request
+        // Make them re-enter their email address, a new password, and confirm the new password
+        if (req.body.email && req.body.token) {
+            // Verify email and token and that they match
+            let tokenIsValid: Boolean = false;
+
+            if (tokenIsValid) {
+                if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
+                    // Update their password with the new one
+
+                    // Invalidate all of their existing JWTs
+                    await databaseHelper.invalidateJWTsForUser('', Constants.INVALIDATE_TOKEN_MODE.ALL);
+
+                    // Clear their cookie and send them back to the login
+                    res.status(200)
+                        .clearCookie('authToken')
+                        .json({success: true, message: 'Your password has been changed, please log in using your new password'});
+                }                
+            }
+        }
+
+        break;
     default:
         res.status(404).send(req.params.methodName + ' is not a valid auth method');
         break;

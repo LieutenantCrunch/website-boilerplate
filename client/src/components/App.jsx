@@ -13,6 +13,7 @@ import Profile from './Profile';
 import RegistrationForm from './RegistrationForm/RegistrationForm';
 import Welcome from './Welcome'
 import SecurityPage from './SecurityPage'
+import ResetPassword from './ResetPassword'
 
 
 export default function App() {
@@ -62,6 +63,13 @@ export default function App() {
                                 userInfo={userInfo}
                                 setUserInfo={setUserInfo}
                             />
+                        </Route>
+                        <Route path="/reset-password" exact={true}>
+                            <ResetPassword 
+                                statusMessage={statusMessage} 
+                                setStatusMessage={setStatusMessage}
+                                setTitle={setTitle}
+                                setUserInfo={setUserInfo} />
                         </Route>
                         <Route path="/profile" exact={true} render={() => {
                             return (checkForValidSession() ? 
