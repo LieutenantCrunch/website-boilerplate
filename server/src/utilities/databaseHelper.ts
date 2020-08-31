@@ -169,6 +169,29 @@ export default class DatabaseHelper {
         }
     }
 
+    async updateCredentials(email: string, password: string): Promise<Boolean> {
+        try
+        {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let salt: string = await bcrypt.genSalt(10);
+            let hash: string = await bcrypt.hash(password, salt);
+            let user: User | undefined = await userRepository.findOne({email});
+
+            if (user) {
+                user.passwordHash = hash;
+                await userRepository.save(user);
+
+                return true;
+            }
+        }
+        catch (err)
+        {
+            console.error(err.message);
+        }
+
+        return false;
+    }
+
     async validateCredentials(email: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
         {
@@ -239,6 +262,29 @@ export default class DatabaseHelper {
         }
 
         return {token, errorCode};
+    }
+
+    async validatePasswordResetToken(token: string, email: string): Promise<Boolean> {
+        try
+        {
+            const userRepository: Repository<User> = this.getUserRepository();
+
+            let passwordResetTokenRepository: Repository<PasswordResetToken> = this.getPasswordResetTokenRepository();
+            let foundToken: PasswordResetToken | undefined = await passwordResetTokenRepository.createQueryBuilder('rpt')
+                .innerJoinAndSelect('rpt.registeredUser', 'user')
+                .where('rpt.token = :token AND user.email = :email', {token, email})
+                .getOne();
+
+            if (foundToken) {
+                return true;
+            }
+        }
+        catch (err)
+        {
+            console.error(err.message);
+        }
+
+        return false;
     }
 
     async addProfilePictureToUser(fileName: string, smallFileName: string, originalFileName: string, mimeType: string, userId: string): Promise<{success: Boolean}> {

@@ -5,6 +5,7 @@ import classNames from 'classnames';
 
 function ResetPassword(props) {
     const [state, setState] = useState({email: '', password: '', confirmPassword: ''});
+    const setStatusMessage = props.setStatusMessage;
 
     useEffect(() => {
         props.setTitle('Reset Password');
@@ -24,7 +25,7 @@ function ResetPassword(props) {
     const handleSubmitClick = (e) => {
         e.preventDefault();
         // This needs to be converted to leverage some better type of Form validation, whether HTML 5 or something else
-        if (!sessionState.email.length) {
+        if (!state.email.length) {
             setStatusMessage({type: 'danger', message: 'You must enter an email'});
         }
         else if (state.password === state.confirmPassword) {
@@ -32,7 +33,7 @@ function ResetPassword(props) {
                 setStatusMessage({type: 'danger', message: 'You must enter a password'});
             }
             else {
-                requestPasswordReset();
+                resetPassword();
             }
         }
         else {
@@ -41,7 +42,9 @@ function ResetPassword(props) {
     };
 
     const resetPassword = async () => {
-        let results = await AuthService.resetPassword(state.email, state.password, state.confirmPassword);
+        let searchParams = new URLSearchParams(props.location.search);
+        let token = searchParams.get('token');
+        let results = await AuthService.resetPassword(token, state.email, state.password, state.confirmPassword);
 
         setStatusMessage(results.statusMessage);
         if (results.success) {

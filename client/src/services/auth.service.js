@@ -162,8 +162,9 @@ export default class AuthService {
         }
     }
 
-    static async resetPassword (email, password, confirmPassword) {
+    static async resetPassword (token, email, password, confirmPassword) {
         const payload = {
+            token, 
             email,
             password,
             confirmPassword

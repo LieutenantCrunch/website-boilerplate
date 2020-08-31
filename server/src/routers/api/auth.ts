@@ -7,8 +7,10 @@ import DatabaseHelper from '../../utilities/databaseHelper';
 import * as Constants from '../../constants/constants';
 
 import '../../extensions/date.extensions';
+import EmailHelper from '../../utilities/emailHelper';
 
 const databaseHelper: DatabaseHelper = new DatabaseHelper();
+const emailHelper: EmailHelper = new EmailHelper();
 
 const apiAuthRouter: Router = express.Router();
 
@@ -38,7 +40,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
 
             if (canContinue) {
                 if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
-                    // Validate password strength
+                    // TODO: Validate password strength
                     let registerResults: {id: string | null, success: Boolean} = await databaseHelper.registerNewUser(req.body.email, req.body.password);
                     
                     if (registerResults.success) {
@@ -129,6 +131,13 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
 
             if (tokenResults.token) {
                 let resetPasswordLink: string = `${Constants.BASE_URL}reset-password?token=${tokenResults.token}`;
+
+                emailHelper.sendMail({
+                    to: req.body.email,
+                    subject: 'Password Reset',
+                    text: `Hello, You are being sent this email because someone requested a password reset. If you did not request it, you can ignore this email; your password will not be reset. Please use the following link to reset your password: ${resetPasswordLink}`,
+                    html: `<p>Hello,<br/>You are being sent this email because someone requested a password reset. If you did not request it, you can ignore this email; your password will not be reset.<br/>Please use the following link to reset your password: <b><a href="${resetPasswordLink}">${resetPasswordLink}</a><b></p>`
+                });
             }
             else {
                 switch (tokenResults.errorCode) {
@@ -150,6 +159,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
             // Generate a password reset record that lasts for 5 minutes
             // Send user email with link
             // Create route so when the link is clicked, it takes them to a page where they can enter a new password and reset
+
             res.status(200).json({success, message})
         }
         else {
@@ -159,23 +169,36 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
     case 'reset-password':
         // Grab the token from the URL and send it up on the request
         // Make them re-enter their email address, a new password, and confirm the new password
-        if (req.body.email && req.body.token) {
+        if (req.body.token && req.body.email) {
             // Verify email and token and that they match
-            let tokenIsValid: Boolean = false;
+            let tokenIsValid: Boolean = await databaseHelper.validatePasswordResetToken(req.body.token, req.body.email);
 
             if (tokenIsValid) {
                 if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
                     // Update their password with the new one
+                    if (await databaseHelper.updateCredentials(req.body.email, req.body.password)) {
+                        // Invalidate all of their existing JWTs
+                        await databaseHelper.invalidateJWTsForUser('', Constants.INVALIDATE_TOKEN_MODE.ALL);
 
-                    // Invalidate all of their existing JWTs
-                    await databaseHelper.invalidateJWTsForUser('', Constants.INVALIDATE_TOKEN_MODE.ALL);
-
-                    // Clear their cookie and send them back to the login
-                    res.status(200)
-                        .clearCookie('authToken')
-                        .json({success: true, message: 'Your password has been changed, please log in using your new password'});
+                        // Clear their cookie if they have one and send them back to the login
+                        res.status(200)
+                            .clearCookie('authToken')
+                            .json({success: true, message: 'Your password has been changed, please log in using your new password'});
+                    }
+                    else {
+                        res.status(200)
+                            .json({success: false, message: 'We\'re sorry, but an error occurred while changing your password, please try again.'})
+                    }
                 }                
             }
+            else {
+                res.status(200)
+                    .json({success: false, message: 'Your token has expired or is not valid, please request another password reset or contact support.'});
+            }
+        }
+        else {
+            res.status(200)
+                .json({success: false, message: 'Your password has been changed, please log in using your new password'});
         }
 
         break;

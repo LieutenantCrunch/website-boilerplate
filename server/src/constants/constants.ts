@@ -15,3 +15,5 @@ export const INVALIDATE_TOKEN_MODE = {
 };
 
 Object.freeze(INVALIDATE_TOKEN_MODE);
+
+export const EMAIL_FROM: string = '"Website Boilerplate" <test@test.test>';

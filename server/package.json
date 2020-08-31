@@ -29,6 +29,7 @@
     "jsonwebtoken": "^8.5.1",
     "multer": "^1.4.2",
     "mysql": "^2.18.1",
+    "nodemailer": "^6.4.11",
     "reflect-metadata": "^0.1.13",
     "sharp": "^0.25.4",
     "typeorm": "^0.2.25",
@@ -42,6 +43,7 @@
     "@types/jsonwebtoken": "^8.5.0",
     "@types/multer": "^1.4.3",
     "@types/node": "^14.0.18",
+    "@types/nodemailer": "^6.4.0",
     "@types/sharp": "^0.25.1",
     "@types/uuid": "^8.0.0"
   }
