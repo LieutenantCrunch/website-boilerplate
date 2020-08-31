@@ -11,3 +11,16 @@ This project was started with the goal of making a reusable baseline website wit
     - The database password is currently stored in \server\private\dbpass.txt, you will have to create this directory and text file manually, as they are not stored in this repository
 1. **JWT Secret**
     - The JWT secret is currently stored in \server\private\jwtsecret.txt, you will have to create this directory and text file manually, as they are not stored in this repository
+
+# Building
+1. **Building the Server**
+    - Run the following command in the server directory:
+    - > npm run build:dev
+1. **Building the Client**
+    - Run the following command in the client directory:
+    - > npm run build:dev
+
+# Running
+1. **Running the Server**
+    - Run the following command in the server directory:
+    - > npm run start:dev
