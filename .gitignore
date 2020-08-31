@@ -3,3 +3,7 @@ server/node_modules/
 server/private/
 server/runtime/
 client/node_modules/
+server/Ethereal
+server/IMAP
+server/Pending
+server/Project

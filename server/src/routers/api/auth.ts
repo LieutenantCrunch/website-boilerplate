@@ -1,14 +1,20 @@
 import express, {Request, Response, Router, NextFunction} from 'express';
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 
 import AuthHelper from '../../utilities/authHelper';
 import DatabaseHelper from '../../utilities/databaseHelper';
+import * as Constants from '../../constants/constants';
+
+import '../../extensions/date.extensions';
+import EmailHelper from '../../utilities/emailHelper';
 
 const databaseHelper: DatabaseHelper = new DatabaseHelper();
+const emailHelper: EmailHelper = new EmailHelper();
 
-const apiAuthRouter = express.Router();
+const apiAuthRouter: Router = express.Router();
 
-apiAuthRouter.post('/:methodName', async (req: Request, res: Response) => {
+apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request, res: Response) => {
     switch (req.params.methodName)
     {
     case 'register':
@@ -34,7 +40,7 @@ apiAuthRouter.post('/:methodName', async (req: Request, res: Response) => {
 
             if (canContinue) {
                 if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
-                    // Validate password strength
+                    // TODO: Validate password strength
                     let registerResults: {id: string | null, success: Boolean} = await databaseHelper.registerNewUser(req.body.email, req.body.password);
                     
                     if (registerResults.success) {
@@ -60,16 +66,35 @@ apiAuthRouter.post('/:methodName', async (req: Request, res: Response) => {
 
                 if (loginResults.success) {
                     let userID: string | null = loginResults.id;
-                    let secret: string = await AuthHelper.getJWTSecret();
-                    let authToken: string = jwt.sign({id: userID}, secret); /* Could pass in options on the third parameter */
+                    let expirationDate: Date = new Date(Date.now()).addDays(Constants.JWT_EXPIRATION_DAYS);
+                    let jwtResults: {success: Boolean} = {success: false};
 
-                    res.status(200)
-                        .cookie('authToken', authToken, {
-                            httpOnly: true,
-                            sameSite: true
-                        })
-                        .json({success: true, message: 'Login successful', userInfo: {authToken: authToken}});
-                    //res.status(200).json({success: true, message: 'Login successful', userInfo: {authToken: authToken}});
+                    let authToken: string | undefined = undefined;
+
+                    if (req.authToken) { // Scenario: Maybe they lost their client token but not their cookie, so they're trying to log in again, just extend the life of their current cookie
+                        authToken = req.authToken;
+                        jwtResults = await databaseHelper.extendJWTForUser(req.userId!, {jti: req.jti!, expirationDate})
+                    }
+                    else {
+                        let secret: string = await AuthHelper.getJWTSecret();
+                        let jti: string = uuidv4();
+                        authToken = jwt.sign({id: userID}, secret, {expiresIn: (60 * 60 * 24 * Constants.JWT_EXPIRATION_DAYS), jwtid: jti}); /* Could pass in options on the third parameter */
+
+                        jwtResults = await databaseHelper.addJWTToUser(userID!, {jti, expirationDate})
+                    }
+
+                    if (jwtResults.success) {
+                        res.status(200)
+                            .cookie('authToken', authToken, {
+                                httpOnly: true,
+                                sameSite: true,
+                                expires: expirationDate
+                            })
+                            .json({success: true, message: 'Login successful', userInfo: {loginDate: Date.now(), expirationDate: expirationDate.valueOf()}});
+                    }
+                    else {
+                        res.status(200).json({success: false, message: 'Failed to secure a session with the server, please try again or contact support'});
+                    }
                 }
                 else {
                     let userID: string | null = loginResults.id;
@@ -82,9 +107,100 @@ apiAuthRouter.post('/:methodName', async (req: Request, res: Response) => {
         }
         break;
     case 'logout':
+        if (req.userId && req.jti) {
+            if (req.body.fromHere && req.body.fromOtherLocations) { // Everywhere - Here and Everywhere Else
+                await databaseHelper.invalidateJWTsForUser(req.userId, Constants.INVALIDATE_TOKEN_MODE.ALL, req.jti); 
+            }
+            else if (!req.body.fromHere && req.body.fromOtherLocations) { // Everywhere Else - Not Here but Everywhere Else
+                await databaseHelper.invalidateJWTsForUser(req.userId, Constants.INVALIDATE_TOKEN_MODE.OTHERS, req.jti);
+            }
+            else { // Only Here
+                await databaseHelper.invalidateJWTsForUser(req.userId, Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, req.jti);
+            }
+        }
+
         res.status(200)
             .clearCookie('authToken')
             .json({success: true, message: 'You have been logged out'});
+        break;
+    case 'reset-password-request':
+        if (req.body.email) {
+            let tokenResults: {token: string | null, errorCode: number} = await databaseHelper.generatePasswordResetToken(req.body.email);
+            let success: Boolean = true;
+            let message: string = 'If you are a valid user you will be sent a password reset email shortly. Please check your spam/junk folder if you do not see it soon.';
+
+            if (tokenResults.token) {
+                let resetPasswordLink: string = `${Constants.BASE_URL}reset-password?token=${tokenResults.token}`;
+
+                emailHelper.sendMail({
+                    to: req.body.email,
+                    subject: 'Password Reset',
+                    text: `Hello, You are being sent this email because someone requested a password reset. If you did not request it, you can ignore this email; your password will not be reset. Please use the following link to reset your password: ${resetPasswordLink}`,
+                    html: `<p>Hello,<br/>You are being sent this email because someone requested a password reset. If you did not request it, you can ignore this email; your password will not be reset.<br/>Please use the following link to reset your password: <b><a href="${resetPasswordLink}">${resetPasswordLink}</a><b></p>`
+                });
+            }
+            else {
+                switch (tokenResults.errorCode) {
+                case 3: // Too many active reset tokens
+                    success = false;
+                    message = 'You have exceeded the maximum number of reset attempts, please try again later or contact support.';
+                    break;
+                case 2: // User not found
+                    // They don't need to know this, pass it off as a success
+                    break;
+                case 1: // Exception
+                default:
+                    success = false;
+                    message = 'I\'m sorry but an error occurred while trying to reset your password, please try again or contact support.';
+                    break;
+                }
+            }
+
+            // Generate a password reset record that lasts for 5 minutes
+            // Send user email with link
+            // Create route so when the link is clicked, it takes them to a page where they can enter a new password and reset
+
+            res.status(200).json({success, message})
+        }
+        else {
+            res.status(200).json({success: false, message: 'You must provide an email address'})
+        }
+        break;
+    case 'reset-password':
+        // Grab the token from the URL and send it up on the request
+        // Make them re-enter their email address, a new password, and confirm the new password
+        if (req.body.token && req.body.email) {
+            // Verify email and token and that they match
+            let tokenIsValid: Boolean = await databaseHelper.validatePasswordResetToken(req.body.token, req.body.email);
+
+            if (tokenIsValid) {
+                if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
+                    // Update their password with the new one
+                    if (await databaseHelper.updateCredentials(req.body.email, req.body.password)) {
+                        // Invalidate all of their existing JWTs
+                        await databaseHelper.invalidateJWTsForUser('', Constants.INVALIDATE_TOKEN_MODE.ALL);
+
+                        // Clear their cookie if they have one and send them back to the login
+                        res.status(200)
+                            .clearCookie('authToken')
+                            .json({success: true, message: 'Your password has been changed, please log in using your new password'});
+                    }
+                    else {
+                        res.status(200)
+                            .json({success: false, message: 'We\'re sorry, but an error occurred while changing your password, please try again.'})
+                    }
+                }                
+            }
+            else {
+                res.status(200)
+                    .json({success: false, message: 'Your token has expired or is not valid, please request another password reset or contact support.'});
+            }
+        }
+        else {
+            res.status(200)
+                .json({success: false, message: 'Your password has been changed, please log in using your new password'});
+        }
+
         break;
     default:
         res.status(404).send(req.params.methodName + ' is not a valid auth method');

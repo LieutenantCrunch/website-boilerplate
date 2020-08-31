@@ -1,3 +1,4 @@
+// Obsolete
 export default function authHeader() {
     try
     {

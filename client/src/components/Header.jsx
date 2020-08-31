@@ -22,23 +22,23 @@ function Header(props) {
 
     const handleMenuClickLogin = () => {
         collapseNavbarMenu();
-        props.setTitle('Login');
     };
 
     const handleMenuClickHome = () => {
         collapseNavbarMenu();
-        props.setTitle('Welcome!');
     };
 
-      const handleMenuClickProfile = () => {
+    const handleMenuClickProfile = () => {
         collapseNavbarMenu();
-        props.setTitle('Profile');
+    };
+
+    const handleMenuClickSecurity = () => {
+        collapseNavbarMenu();
     };
 
     const handleMenuClickLogout = () => {
         collapseNavbarMenu();
         AuthService.logout();
-        props.setTitle('Login');
         props.setUserInfo(null);
     };
 
@@ -67,6 +67,9 @@ function Header(props) {
                                 </li>
                                 <li className="nav-item">
                                     <Link className="nav-link text-right" to={'/'} onClick={handleMenuClickHome}>Home</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link text-right" to={'/security'} onClick={handleMenuClickSecurity}>Security</Link>
                                 </li>
                                 <li className="nav-item">
                                     <Link className="nav-link text-right" to={'/login'} onClick={handleMenuClickLogout}>Logout</Link>

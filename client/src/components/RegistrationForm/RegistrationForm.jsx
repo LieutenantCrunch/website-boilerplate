@@ -54,12 +54,12 @@ function RegistrationForm(props) {
 
     const sendRegistrationToServer = async () => {
         const payload = {
-            "email": sessionState.email,
-            "password": state.password,
-            "confirmPassword": state.confirmPassword
+            email: sessionState.email,
+            password: state.password,
+            confirmPassword: state.confirmPassword
         };
 
-        let results = await AuthService.register(sessionState.email, state.password, state.confirmPassword);
+        let results = await AuthService.register(payload);
 
         setStatusMessage(results.statusMessage);
         if (results.success) {
