@@ -8,7 +8,7 @@ import AuthService from '../../services/auth.service';
 
 function RegistrationForm(props) {
     const [state, setState] = useState({password: '', confirmPassword: ''});
-    const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {email: ''});
+    const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {email: '', displayName: ''});
     const setStatusMessage = props.setStatusMessage;
 
     const handleSessionStateChange = (e) => {
@@ -39,6 +39,9 @@ function RegistrationForm(props) {
         if (!sessionState.email.length) {
             setStatusMessage({type: 'danger', message: 'You must enter an email'});
         }
+        if (!sessionState.displayname.length) {
+            setStatusMessage({type: 'danger', message: 'You must enter a display name. Note that it does not have to be unique.'});
+        }
         else if (state.password === state.confirmPassword) {
             if (!state.password.length) {
                 setStatusMessage({type: 'danger', message: 'You must enter a password'});
@@ -55,6 +58,7 @@ function RegistrationForm(props) {
     const sendRegistrationToServer = async () => {
         const payload = {
             email: sessionState.email,
+            displayName: sessionState.displayName,
             password: state.password,
             confirmPassword: state.confirmPassword
         };
@@ -102,6 +106,19 @@ function RegistrationForm(props) {
                             onChange={handleSessionStateChange}
                         />
                         <small id="emailHelp" className="form-text text-muted">Your email will not be shared with anyone else.</small>
+                    </div>
+                    <div className="mb-3 text-left">
+                        <label htmlFor="displayName">Display Name</label>
+                        <input id="displayName"
+                            type="text"
+                            required
+                            className="form-control"
+                            placeholder="Enter display name"
+                            aria-describedby="displayNameHelp"
+                            value={sessiostanState.displayName}
+                            onChange={handleSessionStateChange}
+                        />
+                        <small id="displayNameHelp" className="form-text text-muted">This is the name other users will see.</small>
                     </div>
                     <div className="mb-3 text-left">
                         <label htmlFor="password">Password</label>

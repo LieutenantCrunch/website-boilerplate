@@ -19,7 +19,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
     {
     case 'register':
         if (!req.body) {
-            res.status(200).json({success: false, message: 'You must provide registration info'});
+            res.status(200).json({success: false, message: 'You must provide registration info.'});
         }
         else {
             let canContinue: Boolean = true;
@@ -30,35 +30,40 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
 
                 if (userExists) {
                     canContinue = false;
-                    res.status(200).json({success: false, message: 'That email address is already in use'});
+                    res.status(200).json({success: false, message: 'That email address is already in use.'});
                 }
             }
             else {
                 canContinue = false;
-                res.status(200).json({success: false, message: 'You must provide an email address'});
+                res.status(200).json({success: false, message: 'You must provide an email address.'});
+            }
+
+            if (canContinue && !req.body.displayName) {
+                res.status(200).json({success: false, message: 'You must provide a display name.'})
+                canContinue = false;
             }
 
             if (canContinue) {
                 if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
                     // TODO: Validate password strength
-                    let registerResults: {id: string | null, success: Boolean} = await databaseHelper.registerNewUser(req.body.email, req.body.password);
+                    let registerResults: {id: string | null, success: Boolean} = await databaseHelper.registerNewUser(req.body.email, req.body.displayName, req.body.password);
                     
                     if (registerResults.success) {
-                        res.status(200).json({success: true, message: 'Registration success! You can now log in'});
+                        res.status(200).json({success: true, message: 'Registration success! You can now log in.'});
                     }
                     else {
-                        res.status(200).json({success: false, message: 'An error occurred during registration'});
+                        res.status(200).json({success: false, message: 'An error occurred during registration.'});
                     }
                 }
                 else {
-                    res.status(200).json({success: false, message: 'Your passwords did not match'});
+                    res.status(200).json({success: false, message: 'Your passwords did not match.'});
                 }
             }
         }
         break;
     case 'login':
         if (!req.body) {
-            res.status(200).json({success: false, message: 'You must provide valid credentials'});
+            res.status(200).json({success: false, message: 'You must provide valid credentials.'});
         }
         else {
             if (req.body.email && req.body.password) {
@@ -93,16 +98,16 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
                             .json({success: true, message: 'Login successful', userInfo: {loginDate: Date.now(), expirationDate: expirationDate.valueOf()}});
                     }
                     else {
-                        res.status(200).json({success: false, message: 'Failed to secure a session with the server, please try again or contact support'});
+                        res.status(200).json({success: false, message: 'Failed to secure a session with the server, please try again or contact support.'});
                     }
                 }
                 else {
                     let userID: string | null = loginResults.id;
-                    res.status(200).json({success: false, message: 'The credentials provided are not valid'});
+                    res.status(200).json({success: false, message: 'The credentials provided are not valid.'});
                 }
             }
             else {
-                res.status(200).json({success: false, message: 'You must provide a valid email address and password'});
+                res.status(200).json({success: false, message: 'You must provide a valid email address and password.'});
             }
         }
         break;
@@ -121,7 +126,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
 
         res.status(200)
             .clearCookie('authToken')
-            .json({success: true, message: 'You have been logged out'});
+            .json({success: true, message: 'You have been logged out.'});
         break;
     case 'reset-password-request':
         if (req.body.email) {
@@ -198,12 +203,12 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
         }
         else {
             res.status(200)
-                .json({success: false, message: 'Your password has been changed, please log in using your new password'});
+                .json({success: false, message: 'Your password has been changed, please log in using your new password.'});
         }
 
         break;
     default:
-        res.status(404).send(req.params.methodName + ' is not a valid auth method');
+        res.status(404).send(req.params.methodName + ' is not a valid auth method.');
         break;
     }
 });

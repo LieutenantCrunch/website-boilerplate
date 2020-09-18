@@ -11,15 +11,19 @@ import Header from './Header';
 import LoginForm from './RegistrationForm/LoginForm';
 import Profile from './Profile';
 import RegistrationForm from './RegistrationForm/RegistrationForm';
-import Welcome from './Welcome'
-import SecurityPage from './SecurityPage'
-import ResetPassword from './ResetPassword'
+import Welcome from './Welcome';
+import SettingsPage from './SettingsPage';
+import ResetPassword from './ResetPassword';
+
+import UtilityService from '../services/utility.service';
 
 
 export default function App() {
     const [title, setTitle] = useState(null);
     const [statusMessage, setStatusMessage] = useState({type: 'info', message: null});
     const [userInfo, setUserInfo] = Hooks.useStateWithLocalStorage('userInfo', null);
+    const [appConstants, setAppConstants] = useState({displayNameChangeDays: 30});
+    const [userDetails, setUserDetails] = useState({email: '', displayName: '', displayNameIndex: -1, pfp: ''});
 
     const checkForValidSession = () => {
         if (!userInfo) {
@@ -37,6 +41,12 @@ export default function App() {
     // Check if the userInfo is hanging around and if it's expired, if so, delete it
     useEffect(() => {
         checkForValidSession();
+        UtilityService.getConstants().then(constants => {
+            setAppConstants({
+                ...appConstants,
+                ...constants
+            });
+        }, () => {});
     }, []);
 
     return(
@@ -73,15 +83,23 @@ export default function App() {
                         </Route>
                         <Route path="/profile" exact={true} render={() => {
                             return (checkForValidSession() ? 
-                            <Profile setTitle={setTitle} /> : 
+                            <Profile 
+                                setTitle={setTitle}
+                                userDetails={userDetails}
+                                setUserDetails={setUserDetails}
+                            /> : 
                             <Redirect to="/login" />)
                         }} />
-                        <Route path="/security" exact={true} render={() => {
+                        <Route path="/settings" exact={true} render={() => {
                             return (checkForValidSession() ? 
-                            <SecurityPage 
+                            <SettingsPage 
                                 setStatusMessage={setStatusMessage}
                                 setTitle={setTitle}
-                                setUserInfo={setUserInfo} /> : 
+                                setUserInfo={setUserInfo}
+                                appConstants={appConstants}
+                                userDetails={userDetails}
+                                setUserDetails={setUserDetails}
+                            /> : 
                             <Redirect to="/login" />)
                         }} />
                     </Switch>

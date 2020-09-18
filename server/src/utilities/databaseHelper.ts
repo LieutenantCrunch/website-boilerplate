@@ -8,6 +8,7 @@ import {createConnection, Connection, Repository, QueryFailedError, ObjectLitera
 import {User} from '../entity/User';
 import {ProfilePicture} from '../entity/ProfilePicture';
 import {UserJWT} from '../entity/UserJWT';
+import {DisplayName} from '../entity/DisplayName';
 import * as Constants from '../constants/constants';
 import { PasswordResetToken } from '../entity/PasswordResetToken';
 
@@ -18,7 +19,8 @@ export default class DatabaseHelper {
     #userRepository: Repository<User>;
     #userJWTRepository: Repository<UserJWT>;
     #pfpRepository: Repository<ProfilePicture>;
-    #passwordResetTokenRepository: Repository<PasswordResetToken>
+    #passwordResetTokenRepository: Repository<PasswordResetToken>;
+    #displayNameRepository: Repository<DisplayName>;
 
     constructor() {
         if (DatabaseHelper.instance) {
@@ -90,6 +92,14 @@ export default class DatabaseHelper {
         return this.#passwordResetTokenRepository;
     }
 
+    private getDisplayNameRepository() {
+        if (!this.#displayNameRepository) {
+            this.#displayNameRepository = this.#connection.getRepository(DisplayName);
+        }
+
+        return this.#displayNameRepository;
+    }
+
     async getAllUsers(): Promise<User[]> {
         let userRepository: Repository<User> = this.getUserRepository();
 
@@ -139,16 +149,16 @@ export default class DatabaseHelper {
         return undefined;
     }
 
-    async registerNewUser(email: string, password: string): Promise<{id: string | null, success: Boolean}> {
+    async registerNewUser(email: string, displayName: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
             let salt: string = await bcrypt.genSalt(10);
-            let hash: string = await bcrypt.hash(password, salt);
-            let userUUID: string = uuidv4();
+            let passwordHash: string = await bcrypt.hash(password, salt);
+            let uniqueID: string = uuidv4();
             let newUser: User = new User();
 
-            newUser = {...newUser, email: email, passwordHash: hash, uniqueID: userUUID};
+            newUser = {...newUser, email, displayName, passwordHash, uniqueID};
 
             try
             {
@@ -160,7 +170,7 @@ export default class DatabaseHelper {
                 return {id: null, success: false};
             }
 
-            return {id: userUUID, success: true};
+            return {id: uniqueID, success: true};
         }
         catch (err)
         {
@@ -515,5 +525,168 @@ export default class DatabaseHelper {
         }
 
         return {success: false};
+    }
+
+    async getUserEmail(uniqueID: string): Promise<string | null> {
+        try {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.findOne({uniqueID});
+
+            if (user) {
+                return user.email;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting email for user ${uniqueID}:\n${err.message}`);
+        }
+
+        return null;
+    }
+
+    async setUserEmail(uniqueID: string, email: string): Promise<{success: Boolean, message?: string}> {
+        try {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.findOne({uniqueID});
+
+            if (user) {
+                user.email = email;
+                await userRepository.save(user);
+
+                return {success: true};
+            }
+
+            return {success: false, message: `User not found.`};
+        }
+        catch (err) {
+            return {success: false, message: `Error changing email for user ${uniqueID}:\n${err.message}`};
+        }
+    }
+
+    async getUserDisplayName(uniqueID: string): Promise<string | null> {
+        try {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.createQueryBuilder('u')
+                .innerJoinAndSelect('u.displayNames', 'dn')
+                .where('u.uniqueID = :uniqueID AND dn.isActive = 1', {uniqueID})
+                .getOne();
+
+            if (user) {
+                return user.displayNames[0].displayName;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting display name for user ${uniqueID}:\n${err.message}`);
+        }
+
+        return null;
+    }
+
+    async setUserDisplayName(uniqueID: string, displayName: string): Promise<{success: Boolean, displayNameIndex?: number, message?: string}> {
+        try
+        {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let registeredUser: User | undefined = await userRepository.findOne({uniqueID});
+
+            if (!registeredUser) {
+                return {success: false, message: `No user found for when trying to change the display name`};
+            }
+
+            let displayNameRepository: Repository<DisplayName> = this.getDisplayNameRepository();
+
+            // First check to see if they have used this display name previously
+            let displayNames: DisplayName[] = await displayNameRepository.createQueryBuilder('dn')
+                .where('dn.registeredUserId = :userId', {userId: registeredUser.id})
+                .orderBy('dn.activationDate', 'DESC')
+                .getMany();
+
+            let currentDate: Date = new Date(Date.now());
+
+            // If they have existing display names
+            if (displayNames.length > 0) {
+                let currentDisplayName: DisplayName | undefined = displayNames.find(entry => entry.isActive);
+                let matchingDisplayName: DisplayName | undefined = displayNames.find(entry => entry.displayName === displayName);
+                let mostRecentChange: Date = displayNames[0].activationDate;
+
+                // Check if they haven't changed their name in at least the configured amount of days
+
+                if ((currentDate.getTime() - mostRecentChange.getTime())/(1000 * 60 * 60 * 24) <= Constants.DISPLAY_NAME_CHANGE_DAYS) {
+                    let nextAvailableChange: Date = new Date(mostRecentChange.getTime() + (1000 * 60 * 60 * 24 * Constants.DISPLAY_NAME_CHANGE_DAYS));
+                    // Fail with message
+                    return {success: false, message: `It hasn't been ${Constants.DISPLAY_NAME_CHANGE_DAYS} day${Constants.DISPLAY_NAME_CHANGE_DAYS === 1 ? '' : 's'} since the last time you changed your display name. You can change your display name again on ${nextAvailableChange.toLocaleString()}.`};
+                }
+
+                if (currentDisplayName) {
+                    if (currentDisplayName === matchingDisplayName) {
+                        // No need to make any changes, they already have the specified display name, return without doing anything else
+                        return {success: true, displayNameIndex: matchingDisplayName.displayNameIndex, message: 'Your display name has been changed successfully.'};
+                    }
+                    else {
+                        // Deactivate the current display name
+                        currentDisplayName.isActive = false;
+                        displayNameRepository.save(currentDisplayName);
+                    }
+                }
+
+                if (matchingDisplayName) {
+                    // Reactivate the former display name and return without creating a new display name
+                    matchingDisplayName.isActive = true;
+                    matchingDisplayName.activationDate = currentDate;
+                    displayNameRepository.save(matchingDisplayName);
+
+                    return {success: true, displayNameIndex: matchingDisplayName.displayNameIndex, message: 'Your display name has been changed successfully.'};
+                }
+            }
+
+            // Create a new display name
+            const { nextIndex } = await displayNameRepository.createQueryBuilder('dn')
+            .select('IFNULL(MAX(dn.displayNameIndex), 0) + 1', 'nextIndex')
+            .where('dn.displayName = :displayName', {displayName})
+            .getRawOne();
+
+            let newDisplayName: DisplayName = new DisplayName();
+
+            newDisplayName.registeredUserId = registeredUser.id;
+            newDisplayName.displayName = displayName;
+            newDisplayName.displayNameIndex = nextIndex;
+            newDisplayName.activationDate = currentDate;
+            newDisplayName.isActive = true;
+
+            await displayNameRepository.save(newDisplayName);
+
+            // Success
+            return {success: true, displayNameIndex: nextIndex, message: 'Your display name has been changed successfully.'};
+        }
+        catch (err) {
+            console.error(err.message);
+
+            return {success: false, message: `There was an issue changing the display name.`};
+        }
+    }
+
+    async getUserDetails(uniqueID: string): Promise<WebsiteBoilerplate.UserDetails | null> {
+        try {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.createQueryBuilder('u')
+                .leftJoinAndSelect('u.displayNames', 'dn', 'dn.isActive = 1')
+                .leftJoinAndSelect('u.profilePictures', 'pfp')
+                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .getOne();
+            
+            if (user) {
+                let userDetails: WebsiteBoilerplate.UserDetails = {
+                    email: user.email,
+                    displayName: (user.displayNames[0] ? user.displayNames[0].displayName : ''),
+                    displayNameIndex: (user.displayNames[0] ? user.displayNames[0].displayNameIndex : -1),
+                    pfp: (user.profilePictures[0] ? `i/u/${uniqueID}/${user.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz')
+                };
+
+                return userDetails;
+            }
+        }
+        catch (err) {
+            console.error(`Error looking up details for user ${uniqueID}:\n${err.message}`);
+        }
+
+        return null;
     }
 };

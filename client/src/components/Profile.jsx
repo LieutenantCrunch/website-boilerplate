@@ -5,29 +5,40 @@ import * as Constants from '../constants/constants';
 import ProfilePictureUpload from './ProfilePictureUpload';
 
 function Profile(props) {
-    const [username, setUsername] = useState('');
-    const [profilePic, setProfilePic] = useState('/i/s/pfpDefault.svgz');
+    // Create some local variables for accessing props for readability
+    let userDetails = props.userDetails;
+    let setUserDetails = props.setUserDetails;
 
     useEffect(() => {
-        axiosApi.get(Constants.API_PATH_USERS + 'currentUsername').then(response => {
-            if (response.data && response.data.username) {
-                setUsername(response.data.username);
+        axiosApi.get(Constants.API_PATH_USERS + 'currentUserDetails').then(response => {
+            if (response.data && response.data.success) {
+                setUserDetails(response.data.userDetails);
             }
-        }, [username]);
-    });
+        })
+    }, []);
 
     useEffect(() => {
         props.setTitle('Profile')
     }, []);
 
+    const setProfilePic = pfp => {
+        setUserDetails(userDetails => ({...userDetails, pfp}));
+    };
+
     return (
         <div className="card col-8 col-md-4 mt-2 align-middle text-center">
             <div className="card-header">
-                <ProfilePictureUpload profilePic={profilePic} setProfilePic={setProfilePic} />
+                <ProfilePictureUpload profilePic={userDetails.pfp} setProfilePic={setProfilePic} />
             </div>
             <div className="card-body">
-                <h5 className="card-title">Email Address:</h5>
-                <p className="card-text">{username}</p>
+                <h5 className="card-title">{userDetails.displayName}
+                    {
+                        userDetails.displayNameIndex > 0
+                        ? <small className="text-muted">#{userDetails.displayNameIndex}</small>
+                        : <></>
+                    }
+                </h5>
+                <p className="card-text">Email Address: {userDetails.email}</p>
             </div>
         </div>
     );

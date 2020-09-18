@@ -19,7 +19,7 @@ function ProfilePictureUpload (props) {
         }, []).catch((err) => {
             console.error(err.message);
         });
-    })
+    }, [currentFile])
 
     const imageLoadHandler = (imageSrc) => {
         const tempImage = new Image();
