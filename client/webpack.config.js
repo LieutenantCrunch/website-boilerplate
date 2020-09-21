@@ -23,6 +23,11 @@ module.exports = {
     resolve: {
         extensions: ['*', '.js', '.jsx'] /* This allows you to import from files without specifying the extension like ./src/components/MyClass */
     },
+    optimization: {
+        splitChunks: {
+            chunks: 'all'
+        }
+    },
     output: {
         path: path.resolve(__dirname, '../server/dist/js'),
         filename: 'bundle.js'
