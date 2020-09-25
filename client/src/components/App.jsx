@@ -15,6 +15,7 @@ import Welcome from './Welcome';
 import SettingsPage from './SettingsPage';
 import ResetPassword from './ResetPassword';
 
+import UserService from '../services/user.service';
 import UtilityService from '../services/utility.service';
 
 
@@ -37,10 +38,14 @@ export default function App() {
 
         return true;
     };
-
-    // Check if the userInfo is hanging around and if it's expired, if so, delete it
+    
     useEffect(() => {
-        checkForValidSession();
+        // Check if the userInfo is hanging around and if it's expired, if so, delete it
+        // Else make sure the userDetails are populated
+        if (checkForValidSession()) {
+            UserService.getCurrentDetails(setUserDetails);
+        }
+
         UtilityService.getConstants().then(constants => {
             setAppConstants({
                 ...appConstants,
@@ -52,7 +57,7 @@ export default function App() {
     return(
         <div className="App">
             <Router>
-                <Header title={title} userInfo={userInfo} setUserInfo={setUserInfo} />
+                <Header title={title} userInfo={userInfo} setUserInfo={setUserInfo} userDetails={userDetails} />
                 <div className="container-fluid d-flex align-items-center flex-column">
                     <Switch>
                         <Route path="/" exact={true}>

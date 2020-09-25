@@ -1,8 +1,9 @@
-import {Entity, Column, PrimaryGeneratedColumn, OneToMany} from 'typeorm';
+import {Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToMany} from 'typeorm';
 import { ProfilePicture } from './ProfilePicture';
 import { UserJWT } from './UserJWT';
 import { PasswordResetToken } from './PasswordResetToken';
 import { DisplayName } from './DisplayName';
+import { Role } from './Role';
 
 @Entity('registered_user')
 export class User {
@@ -55,4 +56,7 @@ export class User {
 
     @OneToMany(type => DisplayName, displayName => displayName.registeredUser, {onDelete: 'CASCADE'})
     displayNames: DisplayName[];
+
+    @ManyToMany(type => Role, role => role.users)
+    roles: Role[];
 }

@@ -2,6 +2,7 @@
 import React from 'react';
 import { withRouter, Link } from 'react-router-dom';
 import AuthService from '../services/auth.service';
+import UserService from '../services/user.service';
 
 function Header(props) {
     const capitalize = (s) => {
@@ -18,6 +19,10 @@ function Header(props) {
             toggle: false
         });
         bootstrapCollapse.hide();
+    };
+
+    const handleMenuClickAdmin = () => {
+        collapseNavbarMenu();
     };
 
     const handleMenuClickLogin = () => {
@@ -61,7 +66,14 @@ function Header(props) {
                     <ul className="navbar-nav mr-auto mt-2">
                         {
                             userInfoExists 
-                            ? <> 
+                            ? <>
+                                {
+                                    UserService.checkForRole(props.userDetails, 'Administrator')
+                                    ? <li className="nav-item">
+                                        <a className="nav-link text-right" href="/admin" onClick={handleMenuClickAdmin}>Admin</a>
+                                    </li>
+                                    : <></>
+                                }
                                 <li className="nav-item">
                                     <Link className="nav-link text-right" to={'/profile'} onClick={handleMenuClickProfile}>Profile</Link>
                                 </li>

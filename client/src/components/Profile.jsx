@@ -3,19 +3,12 @@ import axiosApi from '../services/axios-api';
 import {withRouter} from 'react-router-dom';
 import * as Constants from '../constants/constants';
 import ProfilePictureUpload from './ProfilePictureUpload';
+import UserService from '../services/user.service';
 
 function Profile(props) {
     // Create some local variables for accessing props for readability
     let userDetails = props.userDetails;
     let setUserDetails = props.setUserDetails;
-
-    useEffect(() => {
-        axiosApi.get(Constants.API_PATH_USERS + 'currentUserDetails').then(response => {
-            if (response.data && response.data.success) {
-                setUserDetails(response.data.userDetails);
-            }
-        })
-    }, []);
 
     useEffect(() => {
         props.setTitle('Profile')

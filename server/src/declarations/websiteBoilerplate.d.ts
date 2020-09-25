@@ -3,6 +3,7 @@ declare namespace WebsiteBoilerplate {
         email: string,
         displayName: string,
         displayNameIndex: number,
-        pfp: string
+        pfp: string,
+        roles: string[]
     }
 }

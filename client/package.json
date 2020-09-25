@@ -5,9 +5,10 @@
   "main": "./src/index.jsx",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:dev": "run-s compile:dev copy:dev",
+    "build:dev": "run-s compile:dev copy-index:dev copy-admin:dev",
     "compile:dev": "npx webpack",
-    "copy:dev": "cpy ./public/index.html ../server/dist/"
+    "copy-index:dev": "cpy ./public/index.html ../server/dist/",
+    "copy-admin:dev": "cpy ./public/admin.html ../server/dist/"
   },
   "author": "Lieutenant Crunch",
   "license": "MIT",

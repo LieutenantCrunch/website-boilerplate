@@ -1,7 +1,10 @@
 const path = require('path');
 
 module.exports = {
-    entry: './src/index.jsx',
+    entry: {
+        index: './src/index.jsx',
+        admin: './src/admin.jsx'
+    },
     mode: 'development',
     module: {
         rules: [
@@ -30,7 +33,7 @@ module.exports = {
     },
     output: {
         path: path.resolve(__dirname, '../server/dist/js'),
-        filename: 'bundle.js'
+        filename: '[name].js'
     },
     devtool: 'source-map'
 }

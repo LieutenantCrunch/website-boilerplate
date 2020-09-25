@@ -9,6 +9,7 @@ import {User} from '../entity/User';
 import {ProfilePicture} from '../entity/ProfilePicture';
 import {UserJWT} from '../entity/UserJWT';
 import {DisplayName} from '../entity/DisplayName';
+import {Role} from '../entity/Role';
 import * as Constants from '../constants/constants';
 import { PasswordResetToken } from '../entity/PasswordResetToken';
 
@@ -329,17 +330,17 @@ export default class DatabaseHelper {
         return {success: false};
     }
 
-    async getPFPFileNameForUserId(userId: string, originalSize?: Boolean): Promise<string | null> {
+    async getPFPFileNameForUserId(uniqueID: string, originalSize?: Boolean): Promise<string | null> {
         let userRepository: Repository<User> = this.getUserRepository();
         let registeredUser: User | undefined = undefined;
 
         try
         {
-            registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['profilePictures']});
+            registeredUser = await userRepository.findOne({uniqueID}, {relations: ['profilePictures']});
         }
         catch (err)
         {
-            console.error(`Error looking up user with id ${userId}: ${err.message}`);
+            console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
         }
         
         if (registeredUser && registeredUser.profilePictures.length > 0) {
@@ -355,7 +356,7 @@ export default class DatabaseHelper {
         return null;
     }
 
-    async addJWTToUser(userId: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
+    async addJWTToUser(uniqueID: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
@@ -363,11 +364,11 @@ export default class DatabaseHelper {
 
             try
             {
-                registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['activeJWTs']});
+                registeredUser = await userRepository.findOne({uniqueID}, {relations: ['activeJWTs']});
             }
             catch (err)
             {
-                console.error(`Error looking up user with id ${userId}: ${err.message}`);
+                console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
             }
             
             if (registeredUser) {
@@ -391,13 +392,13 @@ export default class DatabaseHelper {
         }
         catch (err)
         {
-            console.error(`Error adding new JWT to user ${userId}: ${err.message}`);
+            console.error(`Error adding new JWT to user ${uniqueID}: ${err.message}`);
         }
 
         return {success: false};
     }
 
-    async extendJWTForUser(userId: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
+    async extendJWTForUser(uniqueID: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
@@ -412,7 +413,7 @@ export default class DatabaseHelper {
             }
             catch (err)
             {
-                console.error(`Error looking up user with id ${userId}: ${err.message}`);
+                console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
             }
             
             if (registeredUser) {
@@ -436,19 +437,19 @@ export default class DatabaseHelper {
         }
         catch (err)
         {
-            console.error(`Error extending JWT for user ${userId}: ${err.message}`);
+            console.error(`Error extending JWT for user ${uniqueID}: ${err.message}`);
         }
 
         return {success: false};
     }
 
-    async validateJWTForUserId(userId: string, jti: string): Promise<Boolean> {
+    async validateJWTForUserId(uniqueID: string, jti: string): Promise<Boolean> {
         let userRepository: Repository<User> = this.getUserRepository();
         let registeredUser: User | undefined = undefined;
 
         try
         {
-            //registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['activeJWTs']});
+            //registeredUser = await userRepository.findOne({uniqueID: uniqueID}, {relations: ['activeJWTs']});
             registeredUser = await userRepository.createQueryBuilder('user')
             .innerJoinAndSelect('user.activeJWTs', 'jwt')
             .where('jwt.jti = :jti AND jwt.isValid = 1 AND jwt.expirationDate > now()', {jti})
@@ -456,7 +457,7 @@ export default class DatabaseHelper {
         }
         catch (err)
         {
-            console.error(`Error looking up user with id ${userId}: ${err.message}`);
+            console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
         }
         
         if (registeredUser) {
@@ -466,7 +467,7 @@ export default class DatabaseHelper {
         return false;
     }
 
-    async invalidateJWTsForUser(userId: string, mode: number = Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, jti?: string): Promise<{success: Boolean}> {
+    async invalidateJWTsForUser(uniqueID: string, mode: number = Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, jti?: string): Promise<{success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
@@ -499,7 +500,7 @@ export default class DatabaseHelper {
             }
             catch (err)
             {
-                console.error(`Error looking up user with id ${userId}: ${err.message}`);
+                console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
             }
             
             if (registeredUser) {
@@ -669,6 +670,7 @@ export default class DatabaseHelper {
             let user: User | undefined = await userRepository.createQueryBuilder('u')
                 .leftJoinAndSelect('u.displayNames', 'dn', 'dn.isActive = 1')
                 .leftJoinAndSelect('u.profilePictures', 'pfp')
+                .leftJoinAndSelect('u.roles', 'role')
                 .where('u.uniqueID = :uniqueID', {uniqueID})
                 .getOne();
             
@@ -677,7 +679,8 @@ export default class DatabaseHelper {
                     email: user.email,
                     displayName: (user.displayNames[0] ? user.displayNames[0].displayName : ''),
                     displayNameIndex: (user.displayNames[0] ? user.displayNames[0].displayNameIndex : -1),
-                    pfp: (user.profilePictures[0] ? `i/u/${uniqueID}/${user.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz')
+                    pfp: (user.profilePictures[0] ? `i/u/${uniqueID}/${user.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz'),
+                    roles: (user.roles.map(role => role.roleName))
                 };
 
                 return userDetails;
@@ -688,5 +691,25 @@ export default class DatabaseHelper {
         }
 
         return null;
+    }
+
+    async checkUserForRole(uniqueID: string, roleName: string): Promise<Boolean> {
+        try {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.findOne({uniqueID}, {relations: ['roles']});
+
+            if (user) {
+                let roles: Array<Role> = user.roles;
+                
+                if (roles.length > 0 && roles[0].roleName === 'Administrator') {
+                    return true;
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error checking role (${roleName}) for user ${uniqueID}:\n${err.message}`);
+        }
+
+        return false;
     }
 };

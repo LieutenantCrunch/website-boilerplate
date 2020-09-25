@@ -49,6 +49,10 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 import {apiRouter} from './routers/api'
 app.use('/api', apiRouter);
 
+app.get(/^\/admin$/, [AuthHelper.verifyToken, AuthHelper.verifyAdmin], (req: Request, res: Response) => {
+    FileHandler.sendFileResponse(res, './dist/admin.html', 'text/html');
+});
+
 app.get(/^\/(index)?$/, (req: Request, res: Response) => {
     FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
 });

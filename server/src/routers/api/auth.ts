@@ -95,7 +95,10 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
                                 sameSite: true,
                                 expires: expirationDate
                             })
-                            .json({success: true, message: 'Login successful', userInfo: {loginDate: Date.now(), expirationDate: expirationDate.valueOf()}});
+                            .json({success: true, message: 'Login successful', userInfo: {
+                                loginDate: Date.now(), 
+                                expirationDate: expirationDate.valueOf()
+                            }});
                     }
                     else {
                         res.status(200).json({success: false, message: 'Failed to secure a session with the server, please try again or contact support.'});

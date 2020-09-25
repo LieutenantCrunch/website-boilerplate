@@ -15,4 +15,21 @@ export default class UserService {
             return null;
         }
     }
+
+    static getCurrentDetails(successCallback) {
+        try {
+            axiosApi.get(Constants.API_PATH_USERS + 'currentUserDetails').then(response => {
+                if (response.data && response.data.success) {
+                    successCallback(response.data.userDetails);
+                }
+            })
+        }
+        catch (err) {
+            console.error(`Error getting user details: ${err.message}`);
+        }
+    }
+
+    static checkForRole(userDetails, roleName) {
+        return userDetails?.roles ? userDetails.roles.includes(roleName) : false;
+    }
 }

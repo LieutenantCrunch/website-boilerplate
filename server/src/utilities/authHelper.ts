@@ -85,4 +85,19 @@ export default class AuthHelper {
     
         return this.jwtSecret;
     }
+
+    static async verifyAdmin(req: Request, res: Response, next: NextFunction) {
+        let uniqueID: string | undefined = req.userId;
+
+        if (uniqueID) {
+            let hasAdminRole: Boolean = await databaseHelper.checkUserForRole(uniqueID, 'Administrator');
+
+            if (hasAdminRole) {
+                next();
+            }
+            else {
+                res.redirect('/');
+            }
+        }
+    }
 };
