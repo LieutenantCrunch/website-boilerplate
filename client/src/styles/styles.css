@@ -1,3 +1,17 @@
 body {
-    padding-top: 56px; /* Push the body down so the top nav bar doesn't cover it */
+    padding-top: 56px; /* Push the body down so the top nav bar doesn't cover it! */
+}
+
+.callAttentionToError {
+    animation: flashRedAndShake 0.75s;
+    animation-iteration-count: 1;
+    animation-timing-function: ease-in-out;
+}
+
+@keyframes flashRedAndShake {
+    0% { background-color: rgba(255,0,0,.50) }
+    25% { transform: translate(3px, 0px) }
+    50% { transform: translate(0px, 0px) }
+    75% { transform: translate(3px, 0px) }
+    100% { transform: translate(0px, 0px) }
 }

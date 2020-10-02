@@ -6,11 +6,20 @@ import UserService from '../services/user.service';
 function SettingsPage(props) {
     const [settingsPageAlert, setSettingsPageAlert] = useState({type: 'info', message: null});
     const settingsPageAlertEl = useRef(null);
-    const [state, setState] = useState({displayName: ''});
-
+    const [state, setState] = useState({displayName: '', displayNameError: false});
+    
     useEffect(() => {
         props.setTitle('Settings');
     }, []);
+
+    useEffect(() => {
+        if (state.displayNameError) {
+            setTimeout(() => {
+                setState(prevState => ({...prevState, displayNameError: false}))
+            }, 1000);
+        }
+
+    }, [state.displayNameError]);
 
     const handleLogoutFromEverywhereClick = async () => {
         await AuthService.logout(true, true);
@@ -49,11 +58,16 @@ function SettingsPage(props) {
         }));
     };
 
-    const handleDisplayNameFormSubmitClick = async () => {
+    const handleDisplayNameFormSubmitClick = () => {
+        if (!state.displayName || state.displayName.indexOf('#') > -1) {
+            setState(prevState => ({...prevState, displayNameError: true}));
+            return;
+        }
+
         let displayNameForm = bootstrap.Modal.getInstance(document.getElementById('displayNameForm'));
         displayNameForm.hide();
 
-        UserService.setDisplayName(state.displayName).then(results => {;
+        UserService.setDisplayName(state.displayName).then(results => {
             if (results.data.message) {
                 let alertType = (results.data.success === true ? 'info' : 'danger');
 
@@ -116,21 +130,23 @@ function SettingsPage(props) {
                 </div>
             </div>
             <div id="displayNameForm" className="modal fade" tabIndex="-1" data-backdrop="static" aria-labelledby="displayNameChangeLabel" aria-hidden="true">
-                <div className="modal-dialog">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h5 className="modal-title" id="displayNameChangeLabel">Enter your new display name</h5>
-                            <button type="button" className="close" data-dismiss="modal" arial-label="close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <p>Please enter your new display name. Please note that you can only change your display name every {props.appConstants.displayNameChangeDays} day{props.appConstants.displayNameChangeDays === 1 ? '' : 's'}. Names do not have to be unique and will be followed by a unique id number unless your account is verified.</p>
-                            <input type="text" id="displayName" className="form-control" placeholder="Display Name" aria-label="Display name input" value={state.displayName} onChange={handleStateChange} />
-                        </div>
-                        <div className="modal-footer">
-                            <button type="button" className="btn btn-primary" onClick={handleDisplayNameFormSubmitClick}>Submit</button>
-                            <button type="button" className="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <div className={state.displayNameError ? 'callAttentionToError' : ''}>
+                    <div className="modal-dialog">
+                        <div className="modal-content">
+                            <div className="modal-header">
+                                <h5 className="modal-title" id="displayNameChangeLabel">Enter your new display name</h5>
+                                <button type="button" className="close" data-dismiss="modal" arial-label="close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div className="modal-body">
+                                <p>Please enter your new display name. Please note that you can only change your display name every {props.appConstants.displayNameChangeDays} day{props.appConstants.displayNameChangeDays === 1 ? '' : 's'}. Names must not contain # and do not have to be unique. They will be followed by a unique id number unless your account is verified.</p>
+                                <input type="text" id="displayName" className="form-control" placeholder="Display Name" aria-label="Display name input" value={state.displayName} onChange={handleStateChange} />
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-primary" onClick={handleDisplayNameFormSubmitClick}>Submit</button>
+                                <button type="button" className="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -6,4 +6,14 @@ declare namespace WebsiteBoilerplate {
         pfp: string,
         roles: string[]
     }
+
+    export interface UserSearchResults {
+        currentPage: number,
+        total: number,
+        users: {
+            displayName: string,
+            displayNameIndex: number,
+            uniqueID: string,
+        }[]
+    }
 }

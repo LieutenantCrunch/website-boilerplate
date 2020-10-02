@@ -42,5 +42,5 @@ export class DisplayName {
 
     @ManyToOne(type => User, user => user.displayNames)
     @JoinColumn({ name: 'registered_user_id', referencedColumnName: 'id' })
-    registeredUser: User[];
+    registeredUser: User;
 }

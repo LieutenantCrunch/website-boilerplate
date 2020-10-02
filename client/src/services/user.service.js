@@ -32,4 +32,30 @@ export default class UserService {
     static checkForRole(userDetails, roleName) {
         return userDetails?.roles ? userDetails.roles.includes(roleName) : false;
     }
+
+    static async searchDisplayNameAndIndex(value) {
+        let parsedName = value.match(/^([^\s#]+)(?:#)?(\d+)?$/);
+
+        if (parsedName) {
+            let displayNameFilter = parsedName[1];
+            let displayNameIndexFilter = parsedName[2];
+            var queryParameters;
+
+            if (displayNameFilter && displayNameIndexFilter) {
+                queryParameters = {displayNameFilter, displayNameIndexFilter};
+            }
+            else {
+                queryParameters = {displayNameFilter};
+            }
+
+            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
+            let results = await axiosApi.get(Constants.API_PATH_USERS + `/search?${queryString}`);
+
+            if (results.data?.success) {
+                return results.data.results;
+            }
+
+            return null;
+        }
+    }
 }

@@ -9,6 +9,8 @@ export const RPT_EXPIRATION_MINUTES: number = 5; // Reset Password Token Expirat
 export const RPT_MAX_ACTIVE_TOKENS: number = 5; // The maximum allowable number of active Reset Password Tokens
 export const DISPLAY_NAME_CHANGE_DAYS: number = 30; // The number of days a user must wait between display name changes
 
+export const DB_USER_FETCH_PAGE_SIZE: number = 5; // The number of users to fetch at one time
+
 export const INVALIDATE_TOKEN_MODE = {
     SPECIFIC: 0,
     OTHERS: 1,

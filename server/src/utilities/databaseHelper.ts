@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import bcrypt from 'bcryptjs';
 
-import {createConnection, Connection, Repository, QueryFailedError, ObjectLiteral} from 'typeorm';
+import {createConnection, Connection, Repository, ObjectLiteral, SelectQueryBuilder} from 'typeorm';
 import {User} from '../entity/User';
 import {ProfilePicture} from '../entity/ProfilePicture';
 import {UserJWT} from '../entity/UserJWT';
@@ -153,6 +153,10 @@ export default class DatabaseHelper {
     async registerNewUser(email: string, displayName: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
         {
+            if (!displayName || displayName.indexOf('#') > -1) {
+                return {id: null, success: false};
+            }
+
             let userRepository: Repository<User> = this.getUserRepository();
             let salt: string = await bcrypt.genSalt(10);
             let passwordHash: string = await bcrypt.hash(password, salt);
@@ -699,7 +703,7 @@ export default class DatabaseHelper {
             let user: User | undefined = await userRepository.findOne({uniqueID}, {relations: ['roles']});
 
             if (user) {
-                let roles: Array<Role> = user.roles;
+                let roles: Role[] = user.roles;
                 
                 if (roles.length > 0 && roles[0].roleName === 'Administrator') {
                     return true;
@@ -711,5 +715,38 @@ export default class DatabaseHelper {
         }
 
         return false;
+    }
+
+    async searchUsers(displayNameFilter: string, displayNameIndexFilter: number, pageNumber: number): Promise<WebsiteBoilerplate.UserSearchResults | null> {
+        try {
+            let displayNameRepository: Repository<DisplayName> = this.getDisplayNameRepository();
+            let selectQB: SelectQueryBuilder<DisplayName> = displayNameRepository.createQueryBuilder('dn')
+                .innerJoinAndSelect('dn.registeredUser', 'u')
+                .where('dn.isActive = 1');
+            
+            if (displayNameFilter) {
+                selectQB = selectQB.andWhere('dn.displayName like :displayNameEscaped', {displayNameEscaped: `${displayNameFilter.replace(/[%_]/g,'\\$1')}%`});
+            }
+
+            if (displayNameIndexFilter >= 0) {
+                selectQB = selectQB.andWhere('convert(dn.displayNameIndex, char) like :displayNameIndex', {displayNameIndex: `${displayNameIndexFilter}%`})
+            }
+
+            let [displayNames, total]: [DisplayName[], number] = await selectQB.skip(pageNumber * Constants.DB_USER_FETCH_PAGE_SIZE).take(Constants.DB_USER_FETCH_PAGE_SIZE).getManyAndCount();
+            let results: WebsiteBoilerplate.UserSearchResults = {
+                currentPage: pageNumber,
+                total,
+                users: displayNames.map(displayName => {
+                    return {displayName: displayName.displayName, displayNameIndex: displayName.displayNameIndex, uniqueID: displayName.registeredUser.uniqueID};
+                })
+            };
+
+            return results;
+        }
+        catch (err) {
+            console.error(`An error occurred while looking up users, Display Name: ${displayNameFilter}, Index: ${displayNameIndexFilter}\n${err.message}`);
+        }
+
+        return null;        
     }
 };

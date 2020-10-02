@@ -77,6 +77,23 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
             }
         }
         break;
+    case 'search':
+        try {
+            if (req.query.displayNameFilter) {
+                let displayNameFilter: string = req.query.displayNameFilter.toString();
+                let displayNameIndexFilter: number =  req.query.displayNameIndexFilter ? parseInt(req.query.displayNameIndexFilter.toString()) : -1;
+                let pageNumber: number = req.query.pageNumber ? parseInt(req.query.pageNumber.toString()) : 0;
+
+                let results: WebsiteBoilerplate.UserSearchResults | null = await databaseHelper.searchUsers(displayNameFilter, displayNameIndexFilter, pageNumber);
+
+                return res.status(200).json({success: true, results});
+            }
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return res.status(200).json({success: false, results: []});
     default:
         res.status(404).send(req.params.methodName + ' is not a valid users method')
         break;
@@ -95,6 +112,9 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
             const results: {success: Boolean, displayNameIndex?: number, message?: string} = await databaseHelper.setUserDisplayName(req.userId, req.body.displayName);
 
             res.status(200).json(results);
+        }
+        else {
+            res.status(200).json({success: false, message: 'No user or display name found'});
         }
         break;
     default:
