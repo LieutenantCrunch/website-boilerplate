@@ -5,11 +5,9 @@
   "main": "./src/index.jsx",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:dev": "run-s clean-wp-output:dev compile:dev copy-index:dev copy-admin:dev",
+    "build:dev": "run-s clean-wp-output:dev compile:dev",
     "compile:dev": "npx webpack",
-    "clean-wp-output:dev": "rimraf ../server/dist/js",
-    "copy-index:dev": "cpy ./public/index.html ../server/dist/",
-    "copy-admin:dev": "cpy ./public/admin.html ../server/dist/"
+    "clean-wp-output:dev": "rimraf ../server/dist/js"
   },
   "author": "Lieutenant Crunch",
   "license": "MIT",
@@ -38,6 +36,7 @@
     "@babel/preset-react": "^7.10.4",
     "babel-loader": "^8.1.0",
     "css-loader": "^3.6.0",
+    "html-webpack-plugin": "^4.5.0",
     "style-loader": "^1.2.1",
     "webpack": "^4.44.2",
     "webpack-cli": "^3.3.12"
