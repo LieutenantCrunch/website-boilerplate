@@ -41,7 +41,13 @@ export default class UserService {
             this.userServiceCancel();
         }
 
+        let cacheIndex = `${value}${pageNumber}`.toLocaleUpperCase();
+        if (this.resultsCache[cacheIndex] && !this.resultsCache[cacheIndex].isStale()) {
+            return this.resultsCache[cacheIndex].results;
+        }
+
         let parsedName = value.match(/^([^\s#]+)(?:#)?(\d+)?$/);
+        let results = {status: Constants.USER_SEARCH_STATUS.NO_RESULTS, results: {total: 0, users: undefined}};
 
         if (parsedName) {
             let displayNameFilter = parsedName[1];
@@ -58,24 +64,33 @@ export default class UserService {
             let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
             
             try {
-                let results = await axiosApi.get(Constants.API_PATH_USERS + `/search?${queryString}`, {
+                let searchResults = await axiosApi.get(Constants.API_PATH_USERS + `/search?${queryString}`, {
                     cancelToken: new CancelToken(c => this.userServiceCancel = c)
                 });
 
-                if (results.data?.success) {
-                    return {status: Constants.USER_SEARCH_STATUS.RESULTS, results: results.data.results};
+                if (searchResults.data?.success) {
+                    results = {status: Constants.USER_SEARCH_STATUS.RESULTS, results: searchResults.data.results};
                 }
             }
             catch (err) {
                 if (axios.isCancel(err)) {
-                    return {status: Constants.USER_SEARCH_STATUS.CANCELLED, results: {total: 0, users: undefined}};
+                    results = {status: Constants.USER_SEARCH_STATUS.CANCELLED, results: {total: 0, users: undefined}};
                 }
             }
         }
 
-        return {status: Constants.USER_SEARCH_STATUS.NO_RESULTS, results: {total: 0, users: undefined}};
+        this.resultsCache[cacheIndex] = {
+            results,
+            storageDate: new Date(),
+            isStale: function () {
+                return ((new Date() - this.storageDate) / 60000 > Constants.USER_SEARCH_RESULTS.CACHE_LENGTH);
+            }
+        };
+
+        return results;
     }
 };
 
-// Ideally this should be a static property, but that requires a babel plugin and so on so just set it this way for now
+// Ideally these should be static properties, but that requires a babel plugin and so on so just set it this way for now
 UserService.userServiceCancel = undefined;
+UserService.resultsCache = [];

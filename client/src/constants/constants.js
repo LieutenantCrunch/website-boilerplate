@@ -9,7 +9,11 @@ export const API_PATH_PFP = 'pfp/';
 
 // User Search Status
 export const USER_SEARCH_STATUS = Object.freeze({
-    NO_RESULTS: 0,
-    RESULTS: 1,
-    CANCELLED: 2
+    NO_RESULTS: 0, /* No results from the server */
+    RESULTS: 1, /* Results from the server, does not guarantee users were returned */
+    CANCELLED: 2 /* The request to the server was cancelled */
+});
+
+export const USER_SEARCH_RESULTS = Object.freeze({
+    CACHE_LENGTH: 1 /* Number of minutes to retain fetched results before grabbing new ones */
 });
