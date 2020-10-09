@@ -1,5 +1,6 @@
 import React, {useState, useEffect, useRef, useCallback} from 'react';
 import classNames from 'classnames';
+import scrollIntoView from 'scroll-into-view-if-needed';
 
 import * as Constants from '../constants/constants';
 import UserService from '../services/user.service';
@@ -53,7 +54,8 @@ export default function UserSearch(props) {
             let currentItemRef = listItemRefs.current[currentSearchSuggestion.key];
 
             if (currentItemRef) {
-                currentItemRef.current.scrollIntoView(currentIndex.scrollToTop);
+                scrollIntoView(currentItemRef.current, {block: (currentIndex.scrollToTop ? 'start' : 'end'), scrollMode: 'if-needed'});
+                //currentItemRef.current.scrollIntoView(currentIndex.scrollToTop);
             }
         }
     }, [currentIndex.index, searchSuggestions]);
