@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect, useRef, useCallback} from 'react';
 import classNames from 'classnames';
 
 import * as Constants from '../constants/constants';
@@ -9,21 +9,54 @@ export default function UserSearch(props) {
     const userInput = useRef();
     const suggestions = useRef();
 
-    const [currentIndex, setCurrentIndex] = useState(0);
+    const [currentIndex, setCurrentIndex] = useState({index: 0, scrollToTop: true});
     const [searchSuggestions, setSearchSuggestions] = useState([]);
     const [currentState, setCurrentState] = useState({
         pageNumber: 0,
         total: 0
     });
 
+    // Intersection Observer testing
+    const intersectionObserverOptions = {
+        root: suggestions.current,
+        rootMargin: '0px',
+        threshold: 1.0
+    };
+
+    const intersectionObserverCB = (entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                console.log(entry.target.outerHTML)
+            }
+        });
+    };
+
+    const intersectionObserver = new IntersectionObserver(intersectionObserverCB, intersectionObserverOptions);
+
+    const moreResultsItem = useCallback(node => {
+        if (node !== null) {
+            intersectionObserver.observe(node);
+        }
+    }, []);
+    // End Intersection Observer testing
+
+    // This needs to be a ref so it hangs around between renders
+    const listItemRefs = useRef({});
+
     // Need to update the textboxes based on the current value in the search suggestions, but need to wait until it's been changed so we don't go out of the array boundaries
     useEffect(() => {
         // Still check just to be safe
-        if (currentIndex < searchSuggestions.length) {
-            let currentSearchSuggestion = searchSuggestions[currentIndex];
+        if (currentIndex.index < searchSuggestions.length) {
+            let currentSearchSuggestion = searchSuggestions[currentIndex.index];
             updateInputsFromDisplayName(currentSearchSuggestion.displayName, currentSearchSuggestion.displayNameIndex);
+
+            let currentItemRef = listItemRefs.current[currentSearchSuggestion.key];
+
+            if (currentItemRef) {
+                currentItemRef.current.scrollIntoView(currentIndex.scrollToTop);
+            }
         }
-    }, [currentIndex]);
+    }, [currentIndex.index, searchSuggestions]);
 
     const handleUserInput = async (event) => {
         updateSearchSuggestions(event, false);
@@ -36,16 +69,15 @@ export default function UserSearch(props) {
         userInput.current.value = fullDisplayName.substring(0, userInput.current.value.length); // This will adjust the capitalization of the input to match the results
     }
 
+    const moreResultsAvailable = () => {
+        return (searchSuggestions.length < currentState.total);
+    };
+
     const updateSearchSuggestions = async (event, fetchNextPage) => {
         let pageNumber = 0;
 
         if (fetchNextPage)  {
             pageNumber = currentState.pageNumber + 1;
-
-            setCurrentState({
-                ...currentState,
-                pageNumber
-            });
         }
 
         let text = userInput.current.value.trim();
@@ -54,11 +86,6 @@ export default function UserSearch(props) {
         // If the input is empty, it needs to go in here so it can clear out the autofil and suggestions
         // If the api request was cancelled, we don't want to go in here and update anything
         if (text === '' || searchResult.status !== Constants.USER_SEARCH_STATUS.CANCELLED) {
-            setCurrentState({
-                ...currentState,
-                total: searchResult.results.total
-            });
-
             let tempArray = [];
             let firstMatch = true;
 
@@ -89,15 +116,25 @@ export default function UserSearch(props) {
             if (tempArray.length === 0) {
                 autoFill.current.value = text;
             }
+
+            listItemRefs.current = tempArray.reduce((accumulator, currentItem) => {
+                accumulator[currentItem.key] = React.createRef();
+                return accumulator;
+            }, {});
     
             // Update the suggestions appropriately
             setSearchSuggestions(tempArray);
 
             // If the current index is invalid, reset it to 0
-            if (currentIndex >= tempArray.length) {
-                setCurrentIndex(0);
+            if (currentIndex.index >= tempArray.length) {
+                setCurrentIndex({index: 0, scrollToTop: true});
             }
         }
+
+        setCurrentState({
+            pageNumber,
+            total: searchResult.results.total
+        });
     };
 
     const handleUserInputKeyDown = (event) => {
@@ -129,15 +166,15 @@ export default function UserSearch(props) {
                 break;
             case 'ArrowDown':
                 {
-                    let nextIndex = currentIndex + 1;
+                    let nextIndex = currentIndex.index + 1;
 
-                    if (nextIndex === searchSuggestions.length && searchSuggestions.length < currentState.total) {
+                    if (nextIndex === searchSuggestions.length && moreResultsAvailable()) {
                         updateSearchSuggestions(undefined, true);
-                        setCurrentIndex(nextIndex);
+                        setCurrentIndex({index: nextIndex, scrollToTop: false});
                     }
                     else {
                         nextIndex = nextIndex % searchSuggestions.length;
-                        setCurrentIndex(nextIndex);
+                        setCurrentIndex({index: nextIndex, scrollToTop: nextIndex === 0});
                     }
 
                     event.preventDefault();
@@ -145,9 +182,10 @@ export default function UserSearch(props) {
                 break;
             case 'ArrowUp':
                 {
-                    let previousIndex = (currentIndex - 1) < 0 ? searchSuggestions.length - 1 : currentIndex - 1;
+                    let isLoop = (currentIndex.index - 1) < 0;
+                    let previousIndex = isLoop ? searchSuggestions.length - 1 : currentIndex.index - 1;
 
-                    setCurrentIndex(previousIndex);
+                    setCurrentIndex({index: previousIndex, scrollToTop: !isLoop});
                     event.preventDefault();
                 }
                 break;
@@ -172,14 +210,11 @@ export default function UserSearch(props) {
             onKeyDown={handleUserInputKeyDown}
             onKeyUp={handleUserInputKeyUp} />
         </div>
-        {
-            searchSuggestions.length > 0
-            ? <ul ref={suggestions} className='list-group w-100'>
-                {
-                    searchSuggestions.map((item, index) => <li key={item.key} className={classNames('list-group-item', {'active': index === currentIndex})}>{item.displayName + '#' + item.displayNameIndex}</li>)
-                }
-            </ul>
-            : <></>
-        }
+        <ul ref={suggestions} className={classNames('list-group', 'w-100', 'mb-10', {'d-none': searchSuggestions.length === 0})} style={{maxHeight:'300px', overflowY: `${moreResultsAvailable() ? 'scroll' : 'auto'}`}}>
+            {
+                searchSuggestions.map((item, index) => <li key={item.key} ref={listItemRefs.current[item.key]} className={classNames('list-group-item', {'active': index === currentIndex.index})}>{item.displayName + '#' + item.displayNameIndex}</li>)
+            }
+            <li ref={moreResultsItem} className={classNames('list-group-item', 'text-center', 'font-weight-bold', {'d-none': !moreResultsAvailable()})}>More results below...</li>
+        </ul>
     </div>;
 }
