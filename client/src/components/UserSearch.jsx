@@ -11,12 +11,8 @@ const UserSearch = (props) => {
     const suggestions = useRef();
     const fetchMoreResults = useRef();
 
-    const [currentIndex, setCurrentIndex] = useState({index: 0, scrollToTop: true});
-    const [searchSuggestions, setSearchSuggestions] = useState([]);
-    const [currentState, setCurrentState] = useState({
-        pageNumber: 0,
-        total: 0
-    });
+    // This needs to be a ref so it hangs around between renders
+    const listItemRefs = useRef({});
 
     const [state, updateState] = useState({
         currentIndex: 0,
@@ -27,11 +23,7 @@ const UserSearch = (props) => {
     });
 
     // Intersection Observer testing
-    const intersectionObserverOptions = {
-        root: suggestions.current, /* Want the suggestions <ul> to be the root element */
-        rootMargin: '0px', /* No margin */
-        threshold: 1.0 /* Want the callback to be called when the child is fully visible/hidden */
-    };
+    const intersectionObserver = useRef();
 
     const intersectionObserverCB = (entries) => {
         entries.forEach(entry => {
@@ -43,13 +35,12 @@ const UserSearch = (props) => {
                 if (el.className.indexOf('d-none') === -1 && entry.isIntersecting) {
                     // Go fetch more results.
                     // Problem: searchSuggestions is blown out at this point
-                    updateSearchSuggestions(undefined, true);
+                    debugger;
+                    //updateSearchSuggestions(undefined, true);
                 }
             }
         });
     };
-
-    const intersectionObserver = useRef();
 
     useEffect(() => {
         if (fetchMoreResults.current && suggestions.current && !intersectionObserver.current) {
@@ -64,23 +55,20 @@ const UserSearch = (props) => {
     }, []);
     // End Intersection Observer testing
 
-    // This needs to be a ref so it hangs around between renders
-    const listItemRefs = useRef({});
-
     // Need to update the textboxes based on the current value in the search suggestions, but need to wait until it's been changed so we don't go out of the array boundaries
     useEffect(() => {
         // Still check just to be safe
-        if (currentIndex.index < searchSuggestions.length) {
-            let currentSearchSuggestion = searchSuggestions[currentIndex.index];
+        if (state.currentIndex < state.searchSuggestions.length) {
+            let currentSearchSuggestion = state.searchSuggestions[state.currentIndex];
             updateInputsFromDisplayName(currentSearchSuggestion.displayName, currentSearchSuggestion.displayNameIndex);
 
             let currentItemRef = listItemRefs.current[currentSearchSuggestion.key];
 
             if (currentItemRef) {
-                scrollIntoView(currentItemRef.current, {block: (currentIndex.scrollToTop ? 'start' : 'end'), scrollMode: 'if-needed'});
+                scrollIntoView(currentItemRef.current, {block: (state.scrollToTop ? 'start' : 'end'), scrollMode: 'if-needed'});
             }
         }
-    }, [currentIndex.index, searchSuggestions]);
+    }, [state.currentIndex, state.searchSuggestions]);
 
     const handleUserInput = async (event) => {
         updateSearchSuggestions(event, false);
@@ -94,16 +82,15 @@ const UserSearch = (props) => {
     }
 
     const moreResultsAvailable = () => {
-        return (searchSuggestions.length < currentState.total);
+        return (state.searchSuggestions.length < state.total);
     };
 
-    const updateSearchSuggestions = async (event, fetchNextPage) => {
+    const updateSearchSuggestions = async (event, fetchNextPage, additionalUpdates = undefined) => {
         let updateObject = {};
         let pageNumber = 0;
 
         if (fetchNextPage)  {
-            pageNumber = currentState.pageNumber + 1;
-            console.log(`${Date.now()} Fetch page ${pageNumber}`);
+            pageNumber = state.pageNumber + 1;
             updateObject.pageNumber = pageNumber;
         }
 
@@ -119,7 +106,7 @@ const UserSearch = (props) => {
             // If the search finished processing, update the auto fill and suggestions with whatever the first value is
             if (searchResult.status === Constants.USER_SEARCH_STATUS.RESULTS) {
                 if (fetchNextPage)  {
-                    tempArray = searchSuggestions.slice();
+                    tempArray = state.searchSuggestions.slice();
                 }
 
                 searchResult.results.users.forEach(user => {
@@ -150,21 +137,10 @@ const UserSearch = (props) => {
             }, {});
     
             // Update the suggestions appropriately
-            console.log(`${Date.now()} setSearchSuggestions`);
-            //setSearchSuggestions(tempArray);
-            setSearchSuggestions(prevSuggestions => {
-                prevSuggestions.splice(0, prevSuggestions.length);
-                return [...prevSuggestions, ...tempArray];
-            });
             updateObject.searchSuggestions = tempArray.slice();
 
             // If the current index is invalid, reset it to 0
-            if (currentIndex.index >= tempArray.length) {
-                console.log(`${Date.now()} setCurrentIndex`);
-                //setCurrentIndex({index: 0, scrollToTop: true});
-                setCurrentIndex(prevCurrentIndex => {
-                    return {...prevCurrentIndex, index: 0, scrollToTop: true};
-                });
+            if (state.currentIndex >= tempArray.length) {
                 updateObject.currentIndex = 0;
                 updateObject.scrollToTop = true;
             }
@@ -172,15 +148,11 @@ const UserSearch = (props) => {
 
         updateObject.total = searchResult.results.total;
 
+        if (additionalUpdates !== undefined) {
+            updateObject = {...updateObject, ...additionalUpdates};
+        }
+
         console.log(`${Date.now()} setCurrentState`);
-        /*setCurrentState({
-            pageNumber,
-            total: searchResult.results.total
-        });*/
-        setCurrentState(prevState => {
-            return {...prevState, pageNumber, total: searchResult.results.total};
-        });
-        
         updateState(prevState => {
             prevState.searchSuggestions.splice(0, prevState.searchSuggestions.length);
 
@@ -211,21 +183,26 @@ const UserSearch = (props) => {
                     let text = autoFill.current.value.trim();
 
                     userInput.current.value = text;
-                    setSearchSuggestions([]);
+                    updateState(prevState => {
+                        prevState.searchSuggestions.splice(0, prevState.searchSuggestions.length);
+
+                        return prevState;
+                    })
                     event.preventDefault();
                 }
                 break;
             case 'ArrowDown':
                 {
-                    let nextIndex = currentIndex.index + 1;
+                    let nextIndex = state.currentIndex + 1;
 
-                    if (nextIndex === searchSuggestions.length && moreResultsAvailable()) {
-                        updateSearchSuggestions(undefined, true);
-                        setCurrentIndex({index: nextIndex, scrollToTop: false});
+                    if (nextIndex === state.searchSuggestions.length && moreResultsAvailable()) {
+                        updateSearchSuggestions(undefined, true, {currentIndex: nextIndex, scrollToTop: false});
                     }
                     else {
-                        nextIndex = nextIndex % searchSuggestions.length;
-                        setCurrentIndex({index: nextIndex, scrollToTop: nextIndex === 0});
+                        nextIndex = nextIndex % state.searchSuggestions.length;
+                        updateState(prevState => {
+                            return {...prevState, currentIndex: nextIndex, scrollToTop: nextIndex === 0};
+                        });
                     }
 
                     event.preventDefault();
@@ -233,10 +210,12 @@ const UserSearch = (props) => {
                 break;
             case 'ArrowUp':
                 {
-                    let isLoop = (currentIndex.index - 1) < 0;
-                    let previousIndex = isLoop ? searchSuggestions.length - 1 : currentIndex.index - 1;
+                    let isLoop = (state.currentIndex - 1) < 0;
+                    let previousIndex = isLoop ? state.searchSuggestions.length - 1 : state.currentIndex - 1;
 
-                    setCurrentIndex({index: previousIndex, scrollToTop: !isLoop});
+                    updateState(prevState => {
+                        return {...prevState, currentIndex: previousIndex, scrollToTop: !isLoop};
+                    })
                     event.preventDefault();
                 }
                 break;
@@ -263,9 +242,9 @@ const UserSearch = (props) => {
             onKeyDown={handleUserInputKeyDown}
             onKeyUp={handleUserInputKeyUp} />
         </div>
-        <ul ref={suggestions} className={classNames('list-group', 'w-100', 'mb-10', {'d-none': searchSuggestions.length === 0})} style={{maxHeight:'241px', overflowY: `${moreResultsAvailable() ? 'scroll' : 'auto'}`}}>
+        <ul ref={suggestions} className={classNames('list-group', 'w-100', 'mb-10', {'d-none': state.searchSuggestions.length === 0})} style={{maxHeight:'241px', overflowY: `${moreResultsAvailable() ? 'scroll' : 'auto'}`}}>
             {
-                searchSuggestions.map((item, index) => <li key={item.key} ref={listItemRefs.current[item.key]} className={classNames('list-group-item', {'active': index === currentIndex.index})} style={{maxHeight: '40px'}}>{item.displayName + '#' + item.displayNameIndex}</li>)
+                state.searchSuggestions.map((item, index) => <li key={item.key} ref={listItemRefs.current[item.key]} className={classNames('list-group-item', {'active': index === state.currentIndex})} style={{maxHeight: '40px'}}>{item.displayName + '#' + item.displayNameIndex}</li>)
             }
             <li className={classNames('list-group-item', 'text-center', 'font-weight-bold', 'text-no-wrap', {'d-none': !moreResultsAvailable()})}>More results below...</li>
             <li ref={fetchMoreResults} className={classNames('list-group-item', 'm-0', 'p-0', {'d-none': !moreResultsAvailable()})} style={{height: '2px', backgroundColor: 'red'}}>&nbsp;</li>
