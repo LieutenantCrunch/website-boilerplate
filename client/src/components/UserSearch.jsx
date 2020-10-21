@@ -1,14 +1,15 @@
-import React, {useState, useEffect, useRef, useCallback} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import classNames from 'classnames';
 import scrollIntoView from 'scroll-into-view-if-needed';
 
 import * as Constants from '../constants/constants';
 import UserService from '../services/user.service';
 
-export default function UserSearch(props) {
+const UserSearch = (props) => {
     const autoFill = useRef();
     const userInput = useRef();
     const suggestions = useRef();
+    const fetchMoreResults = useRef();
 
     const [currentIndex, setCurrentIndex] = useState({index: 0, scrollToTop: true});
     const [searchSuggestions, setSearchSuggestions] = useState([]);
@@ -17,26 +18,48 @@ export default function UserSearch(props) {
         total: 0
     });
 
+    const [state, updateState] = useState({
+        currentIndex: 0,
+        scrollToTop: true,
+        searchSuggestions: [],
+        pageNumber: 0,
+        total: 0
+    });
+
     // Intersection Observer testing
     const intersectionObserverOptions = {
-        root: suggestions.current,
-        rootMargin: '0px',
-        threshold: 1.0
+        root: suggestions.current, /* Want the suggestions <ul> to be the root element */
+        rootMargin: '0px', /* No margin */
+        threshold: 1.0 /* Want the callback to be called when the child is fully visible/hidden */
     };
 
-    const intersectionObserverCB = (entries, observer) => {
+    const intersectionObserverCB = (entries) => {
         entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                console.log(entry.target.outerHTML)
+            // If the entry is the fetchMoreResults <li>
+            if (fetchMoreResults.current && entry.target === fetchMoreResults.current) {
+                let el = fetchMoreResults.current;
+
+                // And it's visible, meaning they scrolled down to see it
+                if (el.className.indexOf('d-none') === -1 && entry.isIntersecting) {
+                    // Go fetch more results.
+                    // Problem: searchSuggestions is blown out at this point
+                    updateSearchSuggestions(undefined, true);
+                }
             }
         });
     };
 
-    const intersectionObserver = new IntersectionObserver(intersectionObserverCB, intersectionObserverOptions);
+    const intersectionObserver = useRef();
 
-    const moreResultsItem = useCallback(node => {
-        if (node !== null) {
-            intersectionObserver.observe(node);
+    useEffect(() => {
+        if (fetchMoreResults.current && suggestions.current && !intersectionObserver.current) {
+            intersectionObserver.current = new IntersectionObserver(intersectionObserverCB, {
+                root: suggestions.current, /* Want the suggestions <ul> to be the root element */
+                rootMargin: '0px', /* No margin */
+                threshold: 1.0 /* Want the callback to be called when the child is fully visible/hidden */
+            });
+
+            intersectionObserver.current.observe(fetchMoreResults.current);
         }
     }, []);
     // End Intersection Observer testing
@@ -55,7 +78,6 @@ export default function UserSearch(props) {
 
             if (currentItemRef) {
                 scrollIntoView(currentItemRef.current, {block: (currentIndex.scrollToTop ? 'start' : 'end'), scrollMode: 'if-needed'});
-                //currentItemRef.current.scrollIntoView(currentIndex.scrollToTop);
             }
         }
     }, [currentIndex.index, searchSuggestions]);
@@ -76,10 +98,13 @@ export default function UserSearch(props) {
     };
 
     const updateSearchSuggestions = async (event, fetchNextPage) => {
+        let updateObject = {};
         let pageNumber = 0;
 
         if (fetchNextPage)  {
             pageNumber = currentState.pageNumber + 1;
+            console.log(`${Date.now()} Fetch page ${pageNumber}`);
+            updateObject.pageNumber = pageNumber;
         }
 
         let text = userInput.current.value.trim();
@@ -125,17 +150,41 @@ export default function UserSearch(props) {
             }, {});
     
             // Update the suggestions appropriately
-            setSearchSuggestions(tempArray);
+            console.log(`${Date.now()} setSearchSuggestions`);
+            //setSearchSuggestions(tempArray);
+            setSearchSuggestions(prevSuggestions => {
+                prevSuggestions.splice(0, prevSuggestions.length);
+                return [...prevSuggestions, ...tempArray];
+            });
+            updateObject.searchSuggestions = tempArray.slice();
 
             // If the current index is invalid, reset it to 0
             if (currentIndex.index >= tempArray.length) {
-                setCurrentIndex({index: 0, scrollToTop: true});
+                console.log(`${Date.now()} setCurrentIndex`);
+                //setCurrentIndex({index: 0, scrollToTop: true});
+                setCurrentIndex(prevCurrentIndex => {
+                    return {...prevCurrentIndex, index: 0, scrollToTop: true};
+                });
+                updateObject.currentIndex = 0;
+                updateObject.scrollToTop = true;
             }
         }
 
-        setCurrentState({
+        updateObject.total = searchResult.results.total;
+
+        console.log(`${Date.now()} setCurrentState`);
+        /*setCurrentState({
             pageNumber,
             total: searchResult.results.total
+        });*/
+        setCurrentState(prevState => {
+            return {...prevState, pageNumber, total: searchResult.results.total};
+        });
+        
+        updateState(prevState => {
+            prevState.searchSuggestions.splice(0, prevState.searchSuggestions.length);
+
+            return {...prevState, ...updateObject};
         });
     };
 
@@ -196,6 +245,8 @@ export default function UserSearch(props) {
         }
     };
 
+    console.log(`${Date.now()} UserSearch rendered`);
+
     return <div className={props.className} style={props.style}>
         <div className='w-100' style={{position: 'relative', height: '100%'}}>
             <input ref={autoFill} className='form-control w-100' type='text' style={{
@@ -212,11 +263,14 @@ export default function UserSearch(props) {
             onKeyDown={handleUserInputKeyDown}
             onKeyUp={handleUserInputKeyUp} />
         </div>
-        <ul ref={suggestions} className={classNames('list-group', 'w-100', 'mb-10', {'d-none': searchSuggestions.length === 0})} style={{maxHeight:'300px', overflowY: `${moreResultsAvailable() ? 'scroll' : 'auto'}`}}>
+        <ul ref={suggestions} className={classNames('list-group', 'w-100', 'mb-10', {'d-none': searchSuggestions.length === 0})} style={{maxHeight:'241px', overflowY: `${moreResultsAvailable() ? 'scroll' : 'auto'}`}}>
             {
-                searchSuggestions.map((item, index) => <li key={item.key} ref={listItemRefs.current[item.key]} className={classNames('list-group-item', {'active': index === currentIndex.index})}>{item.displayName + '#' + item.displayNameIndex}</li>)
+                searchSuggestions.map((item, index) => <li key={item.key} ref={listItemRefs.current[item.key]} className={classNames('list-group-item', {'active': index === currentIndex.index})} style={{maxHeight: '40px'}}>{item.displayName + '#' + item.displayNameIndex}</li>)
             }
-            <li ref={moreResultsItem} className={classNames('list-group-item', 'text-center', 'font-weight-bold', {'d-none': !moreResultsAvailable()})}>More results below...</li>
+            <li className={classNames('list-group-item', 'text-center', 'font-weight-bold', 'text-no-wrap', {'d-none': !moreResultsAvailable()})}>More results below...</li>
+            <li ref={fetchMoreResults} className={classNames('list-group-item', 'm-0', 'p-0', {'d-none': !moreResultsAvailable()})} style={{height: '2px', backgroundColor: 'red'}}>&nbsp;</li>
         </ul>
     </div>;
-}
+};
+
+export default React.memo(UserSearch);
