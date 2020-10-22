@@ -17,7 +17,7 @@ export default function AdminPage() {
             <Router>
                 <AdminHeader  title={title} />
                 <div className="container-fluid d-flex align-items-center flex-column">
-                    <UserSearch className="w-25" />
+                    <UserSearch className="w-50 w-lg-33" />
                 </div>
             </Router>
         </div>

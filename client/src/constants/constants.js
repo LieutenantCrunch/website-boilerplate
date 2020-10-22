@@ -17,3 +17,8 @@ export const USER_SEARCH_STATUS = Object.freeze({
 export const USER_SEARCH_RESULTS = Object.freeze({
     CACHE_LENGTH: 1 /* Number of minutes to retain fetched results before grabbing new ones */
 });
+
+export const USER_SEARCH_TRIGGER = Object.freeze({
+    KEYBOARD: 0,
+    MOUSE: 1
+});

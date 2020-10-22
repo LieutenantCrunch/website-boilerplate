@@ -1,15 +1,16 @@
 import React, {useState, useEffect, useRef} from 'react';
 import classNames from 'classnames';
 import scrollIntoView from 'scroll-into-view-if-needed';
+import {isMobile} from 'react-device-detect';
 
 import * as Constants from '../constants/constants';
 import UserService from '../services/user.service';
 
 const UserSearch = (props) => {
+    const container = useRef();
     const autoFill = useRef();
     const userInput = useRef();
     const suggestions = useRef();
-    const fetchMoreResults = useRef();
 
     // This needs to be a ref so it hangs around between renders
     const listItemRefs = useRef({});
@@ -19,41 +20,42 @@ const UserSearch = (props) => {
         scrollToTop: true,
         searchSuggestions: [],
         pageNumber: 0,
-        total: 0
+        total: 0,
+        fetchTrigger: Constants.USER_SEARCH_TRIGGER.KEYBOARD
     });
 
-    // Intersection Observer testing
-    const intersectionObserver = useRef();
+    const hideSearchSuggestions = (event) => {
+        if (container.current && !container.current.contains(event.target)) {
+            let resetState = {
+                currentIndex: 0,
+                scrollToTop: true,
+                searchSuggestions: [],
+                pageNumber: 0,
+                total: 0,
+                fetchTrigger: Constants.USER_SEARCH_TRIGGER.KEYBOARD
+            };
 
-    const intersectionObserverCB = (entries) => {
-        entries.forEach(entry => {
-            // If the entry is the fetchMoreResults <li>
-            if (fetchMoreResults.current && entry.target === fetchMoreResults.current) {
-                let el = fetchMoreResults.current;
-
-                // And it's visible, meaning they scrolled down to see it
-                if (el.className.indexOf('d-none') === -1 && entry.isIntersecting) {
-                    // Go fetch more results.
-                    // Problem: searchSuggestions is blown out at this point
-                    debugger;
-                    //updateSearchSuggestions(undefined, true);
-                }
-            }
-        });
-    };
-
-    useEffect(() => {
-        if (fetchMoreResults.current && suggestions.current && !intersectionObserver.current) {
-            intersectionObserver.current = new IntersectionObserver(intersectionObserverCB, {
-                root: suggestions.current, /* Want the suggestions <ul> to be the root element */
-                rootMargin: '0px', /* No margin */
-                threshold: 1.0 /* Want the callback to be called when the child is fully visible/hidden */
+            updateState(prevState => {
+                return {...prevState, ...resetState};
             });
 
-            intersectionObserver.current.observe(fetchMoreResults.current);
+            if (autoFill.current) {
+                autoFill.current.value = '';
+            }
+
+            if (userInput.current) {
+                userInput.current.value = '';
+            }
+        }
+    }
+
+    useEffect(() => {
+        document.addEventListener('click', hideSearchSuggestions);
+
+        return function cleanup() {
+            document.removeEventListener('click', hideSearchSuggestions);
         }
     }, []);
-    // End Intersection Observer testing
 
     // Need to update the textboxes based on the current value in the search suggestions, but need to wait until it's been changed so we don't go out of the array boundaries
     useEffect(() => {
@@ -64,14 +66,14 @@ const UserSearch = (props) => {
 
             let currentItemRef = listItemRefs.current[currentSearchSuggestion.key];
 
-            if (currentItemRef) {
+            if (currentItemRef && state.fetchTrigger === Constants.USER_SEARCH_TRIGGER.KEYBOARD) {
                 scrollIntoView(currentItemRef.current, {block: (state.scrollToTop ? 'start' : 'end'), scrollMode: 'if-needed'});
             }
         }
     }, [state.currentIndex, state.searchSuggestions]);
 
     const handleUserInput = async (event) => {
-        updateSearchSuggestions(event, false);
+        updateSearchSuggestions(event, false, {fetchTrigger: Constants.USER_SEARCH_TRIGGER.KEYBOARD});
     }
 
     const updateInputsFromDisplayName = (displayName, displayNameIndex) => {
@@ -152,7 +154,6 @@ const UserSearch = (props) => {
             updateObject = {...updateObject, ...additionalUpdates};
         }
 
-        console.log(`${Date.now()} setCurrentState`);
         updateState(prevState => {
             prevState.searchSuggestions.splice(0, prevState.searchSuggestions.length);
 
@@ -196,7 +197,7 @@ const UserSearch = (props) => {
                     let nextIndex = state.currentIndex + 1;
 
                     if (nextIndex === state.searchSuggestions.length && moreResultsAvailable()) {
-                        updateSearchSuggestions(undefined, true, {currentIndex: nextIndex, scrollToTop: false});
+                        updateSearchSuggestions(event, true, {currentIndex: nextIndex, scrollToTop: false, fetchTrigger: Constants.USER_SEARCH_TRIGGER.KEYBOARD});
                     }
                     else {
                         nextIndex = nextIndex % state.searchSuggestions.length;
@@ -224,9 +225,29 @@ const UserSearch = (props) => {
         }
     };
 
-    console.log(`${Date.now()} UserSearch rendered`);
+    const handleSuggestionMouseEnter = (event) => {
+        let listItem = event.target;
+        let suggestionIndex = listItem.dataset.suggestionIndex;
 
-    return <div className={props.className} style={props.style}>
+        if (suggestionIndex !== undefined) {
+            try {
+                let currentIndex = parseInt(suggestionIndex);
+
+                updateState(prevState => {
+                    return {...prevState, currentIndex};
+                });
+            }
+            catch (err) {
+                console.error(`Error parsing index (${suggestionIndex}):\n${err.message}`);
+            }
+        }
+    };
+
+    const handleMoreResultsClick = (event) => {
+        updateSearchSuggestions(event, true, {fetchTrigger: Constants.USER_SEARCH_TRIGGER.MOUSE});
+    };
+
+    return <div ref={container} className={props.className} style={props.style}>
         <div className='w-100' style={{position: 'relative', height: '100%'}}>
             <input ref={autoFill} className='form-control w-100' type='text' style={{
                 opacity: '50%'
@@ -242,12 +263,33 @@ const UserSearch = (props) => {
             onKeyDown={handleUserInputKeyDown}
             onKeyUp={handleUserInputKeyUp} />
         </div>
-        <ul ref={suggestions} className={classNames('list-group', 'w-100', 'mb-10', {'d-none': state.searchSuggestions.length === 0})} style={{maxHeight:'241px', overflowY: `${moreResultsAvailable() ? 'scroll' : 'auto'}`}}>
+        <ul ref={suggestions} 
+            className={classNames('list-group', 'w-100', 'mb-10', {'d-none': state.searchSuggestions.length === 0})} 
+            style={{maxHeight:'241px', overflowY: `${moreResultsAvailable() ? 'scroll' : 'auto'}`}}
+        >
             {
-                state.searchSuggestions.map((item, index) => <li key={item.key} ref={listItemRefs.current[item.key]} className={classNames('list-group-item', {'active': index === state.currentIndex})} style={{maxHeight: '40px'}}>{item.displayName + '#' + item.displayNameIndex}</li>)
+                state.searchSuggestions.map((item, index) => {
+                    return (
+                        <li key={item.key} 
+                            ref={listItemRefs.current[item.key]} 
+                            className={classNames('list-group-item', {'active': index === state.currentIndex})} 
+                            style={{maxHeight: '40px'}}
+                            onMouseEnter={handleSuggestionMouseEnter}
+                            data-suggestion-index={index}
+                        >
+                                {item.displayName + '#' + item.displayNameIndex}
+                        </li>
+                    );
+                })
             }
-            <li className={classNames('list-group-item', 'text-center', 'font-weight-bold', 'text-no-wrap', {'d-none': !moreResultsAvailable()})}>More results below...</li>
-            <li ref={fetchMoreResults} className={classNames('list-group-item', 'm-0', 'p-0', {'d-none': !moreResultsAvailable()})} style={{height: '2px', backgroundColor: 'red'}}>&nbsp;</li>
+            <li className={classNames('list-group-item', 'text-center', 'p-0', {'d-none': !moreResultsAvailable()})}>
+                <button className="btn btn-link btn-block btn-sm text-nowrap text-truncate shadow-none" 
+                    type="button"
+                    onClick={handleMoreResultsClick}
+                >
+                    {isMobile ? 'Tap' : 'Click'} here for more results
+                </button>
+            </li>
         </ul>
     </div>;
 };
