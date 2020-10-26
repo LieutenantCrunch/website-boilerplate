@@ -112,7 +112,7 @@ const UserSearch = (props) => {
                         let displayNameIndex = user.displayNameIndex;
 
                         //tempArray.push(<li key={user.uniqueID} className={classNames('list-group-item', {'active': firstMatch})}>{displayName}</li>);
-                        tempArray.push({displayName, displayNameIndex, key: user.uniqueID})
+                        tempArray.push({displayName, displayNameIndex, key: user.uniqueID, pfpSmall: user.pfpSmall});
 
                         if (firstMatch) {
                             updateInputsFromDisplayName(displayName, displayNameIndex);
@@ -325,7 +325,13 @@ const UserSearch = (props) => {
                             onMouseEnter={handleSuggestionMouseEnter}
                             data-suggestion-index={index}
                         >
-                                {item.displayName + '#' + item.displayNameIndex}
+                            <img src={item.pfpSmall}
+                                className={'border-0 rounded-circle mr-1'}
+                                style={{
+                                    maxWidth: '5%'
+                                }}
+                            />
+                            {item.displayName + '#' + item.displayNameIndex}
                         </li>
                     );
                 })

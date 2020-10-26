@@ -14,6 +14,7 @@ declare namespace WebsiteBoilerplate {
             displayName: string,
             displayNameIndex: number,
             uniqueID: string,
+            pfpSmall: string
         }[]
     }
 }

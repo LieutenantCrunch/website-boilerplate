@@ -722,6 +722,7 @@ export default class DatabaseHelper {
             let displayNameRepository: Repository<DisplayName> = this.getDisplayNameRepository();
             let selectQB: SelectQueryBuilder<DisplayName> = displayNameRepository.createQueryBuilder('dn')
                 .innerJoinAndSelect('dn.registeredUser', 'u')
+                .leftJoinAndSelect('u.profilePictures', 'pfp')
                 .where('dn.isActive = 1');
             
             if (displayNameFilter) {
@@ -737,7 +738,12 @@ export default class DatabaseHelper {
                 currentPage: pageNumber,
                 total,
                 users: displayNames.map(displayName => {
-                    return {displayName: displayName.displayName, displayNameIndex: displayName.displayNameIndex, uniqueID: displayName.registeredUser.uniqueID};
+                    return {
+                        displayName: displayName.displayName, 
+                        displayNameIndex: displayName.displayNameIndex, 
+                        uniqueID: displayName.registeredUser.uniqueID,
+                        pfpSmall: (displayName.registeredUser.profilePictures[0] ? `i/u/${displayName.registeredUser.uniqueID}/${displayName.registeredUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                    };
                 })
             };
 
