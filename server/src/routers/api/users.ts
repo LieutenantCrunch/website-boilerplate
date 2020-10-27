@@ -62,19 +62,45 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         }
         break;
     case 'currentUserDetails':
-        if (req.userId) {
-            if (databaseHelper === undefined || databaseHelper === null) {
-                res.send('No database connection found');
-            }
+        try {
+            if (req.userId) {
+                if (databaseHelper === undefined || databaseHelper === null) {
+                    res.send('No database connection found');
+                }
 
-            let userDetails: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getUserDetails(req.userId);
+                let userDetails: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getUserDetails(req.userId);
 
-            if (userDetails) {
-                return res.status(200).json({success: true, userDetails});
+                if (userDetails) {
+                    return res.status(200).json({success: true, userDetails});
+                }
+                else {
+                    return res.status(200).json({success: false});
+                }
             }
-            else {
-                return res.status(200).json({success: false});
+        }
+        catch (err) {
+            return res.status(200).json({success: false});
+        }
+        break;
+    case 'getUserDetails':
+        try {
+            if (req.query.uniqueID) {
+                if (databaseHelper === undefined || databaseHelper === null) {
+                    res.send('No database connection found');
+                }
+
+                let userDetails: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getUserDetails(req.query.uniqueID.toString());
+
+                if (userDetails) {
+                    return res.status(200).json({success: true, userDetails});
+                }
+                else {
+                    return res.status(200).json({success: false});
+                }
             }
+        }
+        catch (err) {
+            return res.status(200).json({success: false});
         }
         break;
     case 'search':
@@ -116,6 +142,26 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
         else {
             res.status(200).json({success: false, message: 'No user or display name found'});
         }
+        break;
+    case 'verifyDisplayName':
+        try {
+            let uniqueID = req.userId;
+            let userUniqueID = req.body.userUniqueID;
+            let displayName = req.body.displayName;
+
+            if (uniqueID && userUniqueID && displayName) {
+                if (await databaseHelper.checkUserForRole(uniqueID, 'Administrator')) {
+                    let results: {success: Boolean, message: string} = await databaseHelper.verifyUserDisplayName(userUniqueID, displayName);
+
+                    res.status(200).json(results);
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error verifying display name\n${err.message}`);
+            res.status(200).json({success: false, message: 'An error occurred while verifying the display name. Please check the log.'});
+        }
+
         break;
     default:
         res.status(404).send(req.params.methodName + ' is not a valid users method')

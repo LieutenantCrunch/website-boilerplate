@@ -4,7 +4,8 @@ declare namespace WebsiteBoilerplate {
         displayName: string,
         displayNameIndex: number,
         pfp: string,
-        roles: string[]
+        roles: string[],
+        uniqueID: string
     }
 
     export interface UserSearchResults {

@@ -144,6 +144,15 @@ const UserSearch = (props) => {
 
         updateObject.total = searchResult.results.total;
 
+        /* This may not be the best place to catch this, may want to put it in the input handler like the other two calls to onUserSelect */
+        if (text === '') {
+            updateObject.selectedUserId = '';
+
+            if (props.onUserSelect) {
+                props.onUserSelect(text);
+            }
+        }
+
         if (additionalUpdates !== undefined) {
             updateObject = {...updateObject, ...additionalUpdates};
         }
@@ -281,7 +290,7 @@ const UserSearch = (props) => {
         updateSearchSuggestions(event, true, {fetchTrigger: Constants.USER_SEARCH_TRIGGER.MOUSE});
     };
 
-    return <div ref={container} className={props.className} style={props.style}>
+    return <div ref={container} className={classNames('text-left', props.className)} style={{...props.style, position: 'relative'}}>
         <div className='w-100' style={{position: 'relative', height: '100%'}}>
             <input ref={autoFill} 
                 className='form-control w-100' 
@@ -310,7 +319,7 @@ const UserSearch = (props) => {
         </div>
         <ul ref={suggestions} 
             className={classNames('list-group', 'w-100', 'mb-10', {'d-none': state.searchSuggestions.length === 0})} 
-            style={{maxHeight:'300px', overflowY: `${moreResultsAvailable() ? 'scroll' : 'auto'}`}}
+            style={{maxHeight:'300px', position: 'absolute', zIndex: 10, overflowY: `${moreResultsAvailable() ? 'scroll' : 'auto'}`}}
         >
             {
                 state.searchSuggestions.map((item, index) => {

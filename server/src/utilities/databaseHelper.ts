@@ -668,6 +668,40 @@ export default class DatabaseHelper {
         }
     }
 
+    async verifyUserDisplayName(uniqueID: string, displayName: string): Promise<{success: Boolean, message: string}> {
+        try {
+            let displayNameRepository: Repository<DisplayName> = this.getDisplayNameRepository();
+
+            // Make sure the display name is not already verified
+            let displayNameRecord: DisplayName | undefined = await displayNameRepository.createQueryBuilder('dn')
+                .where('dn.displayName = :displayName AND dn.displayNameIndex = 0', {displayName})
+                .getOne();
+            
+            if (displayNameRecord) {
+                return {success: false, message: 'That display name has already been verified.'};
+            }
+            else {
+                displayNameRecord = await displayNameRepository.createQueryBuilder('dn')
+                    .innerJoinAndSelect('dn.registeredUser', 'u', `u.uniqueID = :uniqueID`, {uniqueID})
+                    .where('dn.displayName = :displayName', {displayName})
+                    .getOne();
+                
+                if (displayNameRecord) {
+                    displayNameRecord.displayNameIndex = 0;
+
+                    await displayNameRepository.save(displayNameRecord);
+
+                    return {success: true, message: ''};
+                }
+            }
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return {success: false, message: `Error validating Display Name ${displayName} for user with unique ID ${uniqueID}, check log.`};
+    }
+
     async getUserDetails(uniqueID: string): Promise<WebsiteBoilerplate.UserDetails | null> {
         try {
             let userRepository: Repository<User> = this.getUserRepository();
@@ -684,7 +718,8 @@ export default class DatabaseHelper {
                     displayName: (user.displayNames[0] ? user.displayNames[0].displayName : ''),
                     displayNameIndex: (user.displayNames[0] ? user.displayNames[0].displayNameIndex : -1),
                     pfp: (user.profilePictures[0] ? `i/u/${uniqueID}/${user.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz'),
-                    roles: (user.roles.map(role => role.roleName))
+                    roles: (user.roles.map(role => role.roleName)),
+                    uniqueID
                 };
 
                 return userDetails;
@@ -705,7 +740,7 @@ export default class DatabaseHelper {
             if (user) {
                 let roles: Role[] = user.roles;
                 
-                if (roles.length > 0 && roles[0].roleName === 'Administrator') {
+                if (roles.length > 0 && roles[0].roleName === roleName) {
                     return true;
                 }
             }

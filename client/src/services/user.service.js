@@ -28,8 +28,24 @@ export default class UserService {
             })
         }
         catch (err) {
-            console.error(`Error getting user details: ${err.message}`);
+            console.error(`Error getting current user details: ${err.message}`);
         }
+    }
+
+    static async getUserDetails(uniqueID) {
+        try {
+            let queryString = encodeURI(`uniqueID=${uniqueID}`);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getUserDetails?${queryString}`);
+
+            if (response.data && response.data.success) {
+                return response.data.userDetails;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting user details for ${uniqueID}:\n${err.message}`);
+        }
+
+        return null;
     }
 
     static checkForRole(userDetails, roleName) {
@@ -88,6 +104,20 @@ export default class UserService {
         };
 
         return results;
+    }
+
+    static async verifyDisplayName(userUniqueID, displayName) {
+        try {
+            let payload = {userUniqueID, displayName};
+            let results = await axiosApi.post(Constants.API_PATH_USERS + '/verifyDisplayName', payload);
+
+            return results.data;
+        }
+        catch (err) {
+            console.error(err.message);
+
+            return {success: false, message: `An exception occurred while making the api request for verifying the display name ${displayName} for the user with unique id: ${userUniqueID}\n${err.message}`};
+        }
     }
 };
 
