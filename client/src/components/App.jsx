@@ -52,7 +52,7 @@ export default function App() {
                 ...constants
             });
         }, () => {});
-    }, []);
+    }, [userInfo]);
 
     return(
         <div className="App">
