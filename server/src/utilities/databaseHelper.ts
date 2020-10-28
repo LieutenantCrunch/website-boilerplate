@@ -4,10 +4,12 @@ import { v4 as uuidv4 } from 'uuid';
 
 import bcrypt from 'bcryptjs';
 
-import {createConnection, Connection, Repository, QueryFailedError, ObjectLiteral} from 'typeorm';
+import {createConnection, Connection, Repository, ObjectLiteral, SelectQueryBuilder} from 'typeorm';
 import {User} from '../entity/User';
 import {ProfilePicture} from '../entity/ProfilePicture';
 import {UserJWT} from '../entity/UserJWT';
+import {DisplayName} from '../entity/DisplayName';
+import {Role} from '../entity/Role';
 import * as Constants from '../constants/constants';
 import { PasswordResetToken } from '../entity/PasswordResetToken';
 
@@ -18,7 +20,8 @@ export default class DatabaseHelper {
     #userRepository: Repository<User>;
     #userJWTRepository: Repository<UserJWT>;
     #pfpRepository: Repository<ProfilePicture>;
-    #passwordResetTokenRepository: Repository<PasswordResetToken>
+    #passwordResetTokenRepository: Repository<PasswordResetToken>;
+    #displayNameRepository: Repository<DisplayName>;
 
     constructor() {
         if (DatabaseHelper.instance) {
@@ -90,6 +93,14 @@ export default class DatabaseHelper {
         return this.#passwordResetTokenRepository;
     }
 
+    private getDisplayNameRepository() {
+        if (!this.#displayNameRepository) {
+            this.#displayNameRepository = this.#connection.getRepository(DisplayName);
+        }
+
+        return this.#displayNameRepository;
+    }
+
     async getAllUsers(): Promise<User[]> {
         let userRepository: Repository<User> = this.getUserRepository();
 
@@ -139,20 +150,25 @@ export default class DatabaseHelper {
         return undefined;
     }
 
-    async registerNewUser(email: string, password: string): Promise<{id: string | null, success: Boolean}> {
+    async registerNewUser(email: string, displayName: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
         {
+            if (!displayName || displayName.indexOf('#') > -1) {
+                return {id: null, success: false};
+            }
+
             let userRepository: Repository<User> = this.getUserRepository();
             let salt: string = await bcrypt.genSalt(10);
-            let hash: string = await bcrypt.hash(password, salt);
-            let userUUID: string = uuidv4();
+            let passwordHash: string = await bcrypt.hash(password, salt);
+            let uniqueID: string = uuidv4();
             let newUser: User = new User();
 
-            newUser = {...newUser, email: email, passwordHash: hash, uniqueID: userUUID};
+            newUser = {...newUser, email, passwordHash, uniqueID};
 
             try
             {
-                await userRepository.save(newUser);
+                let registeredUser: User = await userRepository.save(newUser);
+                let results: {success: Boolean, displayNameIndex?: number, message?: string} = await this.setUserDisplayName(uniqueID, displayName);
             }
             catch(err)
             {
@@ -160,7 +176,7 @@ export default class DatabaseHelper {
                 return {id: null, success: false};
             }
 
-            return {id: userUUID, success: true};
+            return {id: uniqueID, success: true};
         }
         catch (err)
         {
@@ -319,17 +335,17 @@ export default class DatabaseHelper {
         return {success: false};
     }
 
-    async getPFPFileNameForUserId(userId: string, originalSize?: Boolean): Promise<string | null> {
+    async getPFPFileNameForUserId(uniqueID: string, originalSize?: Boolean): Promise<string | null> {
         let userRepository: Repository<User> = this.getUserRepository();
         let registeredUser: User | undefined = undefined;
 
         try
         {
-            registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['profilePictures']});
+            registeredUser = await userRepository.findOne({uniqueID}, {relations: ['profilePictures']});
         }
         catch (err)
         {
-            console.error(`Error looking up user with id ${userId}: ${err.message}`);
+            console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
         }
         
         if (registeredUser && registeredUser.profilePictures.length > 0) {
@@ -345,7 +361,7 @@ export default class DatabaseHelper {
         return null;
     }
 
-    async addJWTToUser(userId: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
+    async addJWTToUser(uniqueID: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
@@ -353,11 +369,11 @@ export default class DatabaseHelper {
 
             try
             {
-                registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['activeJWTs']});
+                registeredUser = await userRepository.findOne({uniqueID}, {relations: ['activeJWTs']});
             }
             catch (err)
             {
-                console.error(`Error looking up user with id ${userId}: ${err.message}`);
+                console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
             }
             
             if (registeredUser) {
@@ -381,13 +397,13 @@ export default class DatabaseHelper {
         }
         catch (err)
         {
-            console.error(`Error adding new JWT to user ${userId}: ${err.message}`);
+            console.error(`Error adding new JWT to user ${uniqueID}: ${err.message}`);
         }
 
         return {success: false};
     }
 
-    async extendJWTForUser(userId: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
+    async extendJWTForUser(uniqueID: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
@@ -402,7 +418,7 @@ export default class DatabaseHelper {
             }
             catch (err)
             {
-                console.error(`Error looking up user with id ${userId}: ${err.message}`);
+                console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
             }
             
             if (registeredUser) {
@@ -426,19 +442,19 @@ export default class DatabaseHelper {
         }
         catch (err)
         {
-            console.error(`Error extending JWT for user ${userId}: ${err.message}`);
+            console.error(`Error extending JWT for user ${uniqueID}: ${err.message}`);
         }
 
         return {success: false};
     }
 
-    async validateJWTForUserId(userId: string, jti: string): Promise<Boolean> {
+    async validateJWTForUserId(uniqueID: string, jti: string): Promise<Boolean> {
         let userRepository: Repository<User> = this.getUserRepository();
         let registeredUser: User | undefined = undefined;
 
         try
         {
-            //registeredUser = await userRepository.findOne({uniqueID: userId}, {relations: ['activeJWTs']});
+            //registeredUser = await userRepository.findOne({uniqueID: uniqueID}, {relations: ['activeJWTs']});
             registeredUser = await userRepository.createQueryBuilder('user')
             .innerJoinAndSelect('user.activeJWTs', 'jwt')
             .where('jwt.jti = :jti AND jwt.isValid = 1 AND jwt.expirationDate > now()', {jti})
@@ -446,7 +462,7 @@ export default class DatabaseHelper {
         }
         catch (err)
         {
-            console.error(`Error looking up user with id ${userId}: ${err.message}`);
+            console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
         }
         
         if (registeredUser) {
@@ -456,7 +472,7 @@ export default class DatabaseHelper {
         return false;
     }
 
-    async invalidateJWTsForUser(userId: string, mode: number = Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, jti?: string): Promise<{success: Boolean}> {
+    async invalidateJWTsForUser(uniqueID: string, mode: number = Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, jti?: string): Promise<{success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
@@ -489,7 +505,7 @@ export default class DatabaseHelper {
             }
             catch (err)
             {
-                console.error(`Error looking up user with id ${userId}: ${err.message}`);
+                console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
             }
             
             if (registeredUser) {
@@ -515,5 +531,264 @@ export default class DatabaseHelper {
         }
 
         return {success: false};
+    }
+
+    async getUserEmail(uniqueID: string): Promise<string | null> {
+        try {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.findOne({uniqueID});
+
+            if (user) {
+                return user.email;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting email for user ${uniqueID}:\n${err.message}`);
+        }
+
+        return null;
+    }
+
+    async setUserEmail(uniqueID: string, email: string): Promise<{success: Boolean, message?: string}> {
+        try {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.findOne({uniqueID});
+
+            if (user) {
+                user.email = email;
+                await userRepository.save(user);
+
+                return {success: true};
+            }
+
+            return {success: false, message: `User not found.`};
+        }
+        catch (err) {
+            return {success: false, message: `Error changing email for user ${uniqueID}:\n${err.message}`};
+        }
+    }
+
+    async getUserDisplayName(uniqueID: string): Promise<string | null> {
+        try {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.createQueryBuilder('u')
+                .innerJoinAndSelect('u.displayNames', 'dn')
+                .where('u.uniqueID = :uniqueID AND dn.isActive = 1', {uniqueID})
+                .getOne();
+
+            if (user) {
+                return user.displayNames[0].displayName;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting display name for user ${uniqueID}:\n${err.message}`);
+        }
+
+        return null;
+    }
+
+    async setUserDisplayName(uniqueID: string, displayName: string): Promise<{success: Boolean, displayNameIndex?: number, message?: string}> {
+        try
+        {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let registeredUser: User | undefined = await userRepository.findOne({uniqueID});
+
+            if (!registeredUser) {
+                return {success: false, message: `No user found for when trying to change the display name`};
+            }
+
+            let displayNameRepository: Repository<DisplayName> = this.getDisplayNameRepository();
+
+            // First check to see if they have used this display name previously
+            let displayNames: DisplayName[] = await displayNameRepository.createQueryBuilder('dn')
+                .where('dn.registeredUserId = :userId', {userId: registeredUser.id})
+                .orderBy('dn.activationDate', 'DESC')
+                .getMany();
+
+            let currentDate: Date = new Date(Date.now());
+
+            // If they have existing display names
+            if (displayNames.length > 0) {
+                let currentDisplayName: DisplayName | undefined = displayNames.find(entry => entry.isActive);
+                let matchingDisplayName: DisplayName | undefined = displayNames.find(entry => entry.displayName === displayName);
+                let mostRecentChange: Date = displayNames[0].activationDate;
+
+                // Check if they haven't changed their name in at least the configured amount of days
+
+                if ((currentDate.getTime() - mostRecentChange.getTime())/(1000 * 60 * 60 * 24) <= Constants.DISPLAY_NAME_CHANGE_DAYS) {
+                    let nextAvailableChange: Date = new Date(mostRecentChange.getTime() + (1000 * 60 * 60 * 24 * Constants.DISPLAY_NAME_CHANGE_DAYS));
+                    // Fail with message
+                    return {success: false, message: `It hasn't been ${Constants.DISPLAY_NAME_CHANGE_DAYS} day${Constants.DISPLAY_NAME_CHANGE_DAYS === 1 ? '' : 's'} since the last time you changed your display name. You can change your display name again on ${nextAvailableChange.toLocaleString()}.`};
+                }
+
+                if (currentDisplayName) {
+                    if (currentDisplayName === matchingDisplayName) {
+                        // No need to make any changes, they already have the specified display name, return without doing anything else
+                        return {success: true, displayNameIndex: matchingDisplayName.displayNameIndex, message: 'Your display name has been changed successfully.'};
+                    }
+                    else {
+                        // Deactivate the current display name
+                        currentDisplayName.isActive = false;
+                        displayNameRepository.save(currentDisplayName);
+                    }
+                }
+
+                if (matchingDisplayName) {
+                    // Reactivate the former display name and return without creating a new display name
+                    matchingDisplayName.isActive = true;
+                    matchingDisplayName.activationDate = currentDate;
+                    displayNameRepository.save(matchingDisplayName);
+
+                    return {success: true, displayNameIndex: matchingDisplayName.displayNameIndex, message: 'Your display name has been changed successfully.'};
+                }
+            }
+
+            // Create a new display name
+            const { nextIndex } = await displayNameRepository.createQueryBuilder('dn')
+            .select('IFNULL(MAX(dn.displayNameIndex), 0) + 1', 'nextIndex')
+            .where('dn.displayName = :displayName', {displayName})
+            .getRawOne();
+
+            let newDisplayName: DisplayName = new DisplayName();
+
+            newDisplayName.registeredUserId = registeredUser.id;
+            newDisplayName.displayName = displayName;
+            newDisplayName.displayNameIndex = nextIndex;
+            newDisplayName.activationDate = currentDate;
+            newDisplayName.isActive = true;
+
+            await displayNameRepository.save(newDisplayName);
+
+            // Success
+            return {success: true, displayNameIndex: nextIndex, message: 'Your display name has been changed successfully.'};
+        }
+        catch (err) {
+            console.error(err.message);
+
+            return {success: false, message: `There was an issue changing the display name.`};
+        }
+    }
+
+    async verifyUserDisplayName(uniqueID: string, displayName: string): Promise<{success: Boolean, message: string}> {
+        try {
+            let displayNameRepository: Repository<DisplayName> = this.getDisplayNameRepository();
+
+            // Make sure the display name is not already verified
+            let displayNameRecord: DisplayName | undefined = await displayNameRepository.createQueryBuilder('dn')
+                .where('dn.displayName = :displayName AND dn.displayNameIndex = 0', {displayName})
+                .getOne();
+            
+            if (displayNameRecord) {
+                return {success: false, message: 'That display name has already been verified.'};
+            }
+            else {
+                displayNameRecord = await displayNameRepository.createQueryBuilder('dn')
+                    .innerJoinAndSelect('dn.registeredUser', 'u', `u.uniqueID = :uniqueID`, {uniqueID})
+                    .where('dn.displayName = :displayName', {displayName})
+                    .getOne();
+                
+                if (displayNameRecord) {
+                    displayNameRecord.displayNameIndex = 0;
+
+                    await displayNameRepository.save(displayNameRecord);
+
+                    return {success: true, message: ''};
+                }
+            }
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return {success: false, message: `Error validating Display Name ${displayName} for user with unique ID ${uniqueID}, check log.`};
+    }
+
+    async getUserDetails(uniqueID: string): Promise<WebsiteBoilerplate.UserDetails | null> {
+        try {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.createQueryBuilder('u')
+                .leftJoinAndSelect('u.displayNames', 'dn', 'dn.isActive = 1')
+                .leftJoinAndSelect('u.profilePictures', 'pfp')
+                .leftJoinAndSelect('u.roles', 'role')
+                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .getOne();
+            
+            if (user) {
+                let userDetails: WebsiteBoilerplate.UserDetails = {
+                    email: user.email,
+                    displayName: (user.displayNames[0] ? user.displayNames[0].displayName : ''),
+                    displayNameIndex: (user.displayNames[0] ? user.displayNames[0].displayNameIndex : -1),
+                    pfp: (user.profilePictures[0] ? `i/u/${uniqueID}/${user.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz'),
+                    roles: (user.roles.map(role => role.roleName)),
+                    uniqueID
+                };
+
+                return userDetails;
+            }
+        }
+        catch (err) {
+            console.error(`Error looking up details for user ${uniqueID}:\n${err.message}`);
+        }
+
+        return null;
+    }
+
+    async checkUserForRole(uniqueID: string, roleName: string): Promise<Boolean> {
+        try {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.findOne({uniqueID}, {relations: ['roles']});
+
+            if (user) {
+                let roles: Role[] = user.roles;
+                
+                if (roles.length > 0 && roles[0].roleName === roleName) {
+                    return true;
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error checking role (${roleName}) for user ${uniqueID}:\n${err.message}`);
+        }
+
+        return false;
+    }
+
+    async searchUsers(displayNameFilter: string, displayNameIndexFilter: number, pageNumber: number): Promise<WebsiteBoilerplate.UserSearchResults | null> {
+        try {
+            let displayNameRepository: Repository<DisplayName> = this.getDisplayNameRepository();
+            let selectQB: SelectQueryBuilder<DisplayName> = displayNameRepository.createQueryBuilder('dn')
+                .innerJoinAndSelect('dn.registeredUser', 'u')
+                .leftJoinAndSelect('u.profilePictures', 'pfp')
+                .where('dn.isActive = 1');
+            
+            if (displayNameFilter) {
+                selectQB = selectQB.andWhere('dn.displayName like :displayNameEscaped', {displayNameEscaped: `${displayNameFilter.replace(/[%_]/g,'\\$1')}%`});
+            }
+
+            if (displayNameIndexFilter >= 0) {
+                selectQB = selectQB.andWhere('convert(dn.displayNameIndex, char) like :displayNameIndex', {displayNameIndex: `${displayNameIndexFilter}%`})
+            }
+
+            let [displayNames, total]: [DisplayName[], number] = await selectQB.skip(pageNumber * Constants.DB_USER_FETCH_PAGE_SIZE).take(Constants.DB_USER_FETCH_PAGE_SIZE).getManyAndCount();
+            let results: WebsiteBoilerplate.UserSearchResults = {
+                currentPage: pageNumber,
+                total,
+                users: displayNames.map(displayName => {
+                    return {
+                        displayName: displayName.displayName, 
+                        displayNameIndex: displayName.displayNameIndex, 
+                        uniqueID: displayName.registeredUser.uniqueID,
+                        pfpSmall: (displayName.registeredUser.profilePictures[0] ? `i/u/${displayName.registeredUser.uniqueID}/${displayName.registeredUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                    };
+                })
+            };
+
+            return results;
+        }
+        catch (err) {
+            console.error(`An error occurred while looking up users, Display Name: ${displayNameFilter}, Index: ${displayNameIndexFilter}\n${err.message}`);
+        }
+
+        return null;        
     }
 };

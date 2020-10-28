@@ -2,6 +2,7 @@
 import React from 'react';
 import { withRouter, Link } from 'react-router-dom';
 import AuthService from '../services/auth.service';
+import UserService from '../services/user.service';
 
 function Header(props) {
     const capitalize = (s) => {
@@ -20,6 +21,10 @@ function Header(props) {
         bootstrapCollapse.hide();
     };
 
+    const handleMenuClickAdmin = () => {
+        collapseNavbarMenu();
+    };
+
     const handleMenuClickLogin = () => {
         collapseNavbarMenu();
     };
@@ -32,7 +37,7 @@ function Header(props) {
         collapseNavbarMenu();
     };
 
-    const handleMenuClickSecurity = () => {
+    const handleMenuClickSettings = () => {
         collapseNavbarMenu();
     };
 
@@ -61,7 +66,14 @@ function Header(props) {
                     <ul className="navbar-nav mr-auto mt-2">
                         {
                             userInfoExists 
-                            ? <> 
+                            ? <>
+                                {
+                                    UserService.checkForRole(props.userDetails, 'Administrator')
+                                    ? <li className="nav-item">
+                                        <a className="nav-link text-right" href="/admin" onClick={handleMenuClickAdmin}>Admin</a>
+                                    </li>
+                                    : <></>
+                                }
                                 <li className="nav-item">
                                     <Link className="nav-link text-right" to={'/profile'} onClick={handleMenuClickProfile}>Profile</Link>
                                 </li>
@@ -69,7 +81,7 @@ function Header(props) {
                                     <Link className="nav-link text-right" to={'/'} onClick={handleMenuClickHome}>Home</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/security'} onClick={handleMenuClickSecurity}>Security</Link>
+                                    <Link className="nav-link text-right" to={'/settings'} onClick={handleMenuClickSettings}>Settings</Link>
                                 </li>
                                 <li className="nav-item">
                                     <Link className="nav-link text-right" to={'/login'} onClick={handleMenuClickLogout}>Logout</Link>

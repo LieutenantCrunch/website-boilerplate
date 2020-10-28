@@ -5,9 +5,9 @@
   "main": "./src/index.jsx",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:dev": "run-s compile:dev copy:dev",
+    "build:dev": "run-s clean-wp-output:dev compile:dev",
     "compile:dev": "npx webpack",
-    "copy:dev": "cpy ./public/index.html ../server/dist/"
+    "clean-wp-output:dev": "rimraf ../server/dist/js"
   },
   "author": "Lieutenant Crunch",
   "license": "MIT",
@@ -27,17 +27,19 @@
     "react": "^16.13.1",
     "react-device-detect": "^1.13.1",
     "react-dom": "^16.13.1",
-    "react-router-dom": "^5.2.0"
+    "react-router-dom": "^5.2.0",
+    "scroll-into-view-if-needed": "^2.2.26"
   },
   "devDependencies": {
-    "@babel/cli": "^7.10.4",
-    "@babel/core": "^7.10.4",
-    "@babel/preset-env": "^7.10.4",
+    "@babel/cli": "^7.11.6",
+    "@babel/core": "^7.11.6",
+    "@babel/preset-env": "^7.11.5",
     "@babel/preset-react": "^7.10.4",
     "babel-loader": "^8.1.0",
     "css-loader": "^3.6.0",
+    "html-webpack-plugin": "^4.5.0",
     "style-loader": "^1.2.1",
-    "webpack": "^4.43.0",
+    "webpack": "^4.44.2",
     "webpack-cli": "^3.3.12"
   }
 }

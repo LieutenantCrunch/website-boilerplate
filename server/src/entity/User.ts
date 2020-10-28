@@ -1,7 +1,9 @@
-import {Entity, Column, PrimaryGeneratedColumn, OneToMany} from 'typeorm';
+import {Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToMany} from 'typeorm';
 import { ProfilePicture } from './ProfilePicture';
 import { UserJWT } from './UserJWT';
 import { PasswordResetToken } from './PasswordResetToken';
+import { DisplayName } from './DisplayName';
+import { Role } from './Role';
 
 @Entity('registered_user')
 export class User {
@@ -17,14 +19,6 @@ export class User {
         name: 'email'
     })
     email: string;
-
-    @Column({
-        length: 100,
-        type: 'varchar',
-        name: 'display_name',
-        nullable: true
-    })
-    displayName: string;
 
     @Column({
         length: 500,
@@ -51,4 +45,10 @@ export class User {
 
     @OneToMany(type => PasswordResetToken, passwordResetToken => passwordResetToken.registeredUser, {onDelete: 'CASCADE'})
     passwordResetTokens: Promise<PasswordResetToken[]>;
+
+    @OneToMany(type => DisplayName, displayName => displayName.registeredUser, {onDelete: 'CASCADE'})
+    displayNames: DisplayName[];
+
+    @ManyToMany(type => Role, role => role.users)
+    roles: Role[];
 }

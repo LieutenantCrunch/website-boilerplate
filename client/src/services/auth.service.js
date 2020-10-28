@@ -204,21 +204,4 @@ export default class AuthService {
             };
         }
     }
-
-    static getCurrentUserInfo() {
-        try
-        {
-            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-    
-            if (userInfo) {
-                return userInfo;
-            }
-    
-            return null;
-        }
-        catch(err)
-        {
-            return null;
-        }
-    }
 };
