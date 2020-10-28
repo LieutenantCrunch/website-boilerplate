@@ -66,7 +66,13 @@ function RegistrationForm(props) {
         let results = await AuthService.register(payload);
 
         setStatusMessage(results.statusMessage);
+
         if (results.success) {
+            setSessionState(prevSessionState => ({
+                ...prevSessionState,
+                displayName: ''
+            }));
+
             redirectToLogin();
         }
     };
@@ -102,7 +108,7 @@ function RegistrationForm(props) {
                             className="form-control"
                             placeholder="Enter email"
                             aria-describedby="emailHelp"
-                            value={sessionState.email}
+                            value={sessionState.email || ''}
                             onChange={handleSessionStateChange}
                         />
                         <small id="emailHelp" className="form-text text-muted">Your email will not be shared with anyone else.</small>
@@ -115,7 +121,7 @@ function RegistrationForm(props) {
                             className="form-control"
                             placeholder="Enter display name"
                             aria-describedby="displayNameHelp"
-                            value={sessiostanState.displayName}
+                            value={sessionState.displayName || ''}
                             onChange={handleSessionStateChange}
                         />
                         <small id="displayNameHelp" className="form-text text-muted">This is the name other users will see.</small>
@@ -127,7 +133,7 @@ function RegistrationForm(props) {
                             required
                             className="form-control"
                             placeholder="Password"
-                            value={state.password}
+                            value={state.password || ''}
                             onChange={handleStateChange}
                         />
                     </div>
@@ -138,7 +144,7 @@ function RegistrationForm(props) {
                             required
                             className="form-control"
                             placeholder="Confirm Password"
-                            value={state.confirmPassword}
+                            value={state.confirmPassword || ''}
                             onChange={handleStateChange}
                         />
                     </div>

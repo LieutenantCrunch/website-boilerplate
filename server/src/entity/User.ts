@@ -21,14 +21,6 @@ export class User {
     email: string;
 
     @Column({
-        length: 100,
-        type: 'varchar',
-        name: 'display_name',
-        nullable: true
-    })
-    displayName: string;
-
-    @Column({
         length: 500,
         type: 'varchar',
         name: 'password_hash'

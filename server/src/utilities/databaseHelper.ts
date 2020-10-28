@@ -163,11 +163,12 @@ export default class DatabaseHelper {
             let uniqueID: string = uuidv4();
             let newUser: User = new User();
 
-            newUser = {...newUser, email, displayName, passwordHash, uniqueID};
+            newUser = {...newUser, email, passwordHash, uniqueID};
 
             try
             {
-                await userRepository.save(newUser);
+                let registeredUser: User = await userRepository.save(newUser);
+                let results: {success: Boolean, displayNameIndex?: number, message?: string} = await this.setUserDisplayName(uniqueID, displayName);
             }
             catch(err)
             {
