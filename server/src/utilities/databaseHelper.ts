@@ -341,7 +341,11 @@ export default class DatabaseHelper {
 
         try
         {
-            registeredUser = await userRepository.findOne({uniqueID}, {relations: ['profilePictures']});
+            registeredUser = await userRepository.createQueryBuilder('u')
+                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .innerJoinAndSelect('u.profilePictures', 'pfp')
+                .orderBy('pfp.id', 'DESC')
+                .getOne();
         }
         catch (err)
         {
@@ -349,11 +353,7 @@ export default class DatabaseHelper {
         }
         
         if (registeredUser && registeredUser.profilePictures.length > 0) {
-            // To guarantee we get the latest one, we could sort the array first
-            // registeredUser.profilePictures.sort((a, b) => { return b.id - a.id});
-
-            // However, it should just query them in ascending order by default, so we can just take the last one and save on some performance
-            let profilePicture: ProfilePicture = registeredUser.profilePictures[registeredUser.profilePictures.length - 1];
+            let profilePicture: ProfilePicture = registeredUser.profilePictures[0];
             
             return originalSize ? profilePicture.fileName : profilePicture.smallFileName;
         }
@@ -454,7 +454,6 @@ export default class DatabaseHelper {
 
         try
         {
-            //registeredUser = await userRepository.findOne({uniqueID: uniqueID}, {relations: ['activeJWTs']});
             registeredUser = await userRepository.createQueryBuilder('user')
             .innerJoinAndSelect('user.activeJWTs', 'jwt')
             .where('jwt.jti = :jti AND jwt.isValid = 1 AND jwt.expirationDate > now()', {jti})
@@ -711,6 +710,7 @@ export default class DatabaseHelper {
                 .leftJoinAndSelect('u.profilePictures', 'pfp')
                 .leftJoinAndSelect('u.roles', 'role')
                 .where('u.uniqueID = :uniqueID', {uniqueID})
+                .orderBy('pfp.id', 'DESC')
                 .getOne();
             
             if (user) {
@@ -769,6 +769,8 @@ export default class DatabaseHelper {
                 selectQB = selectQB.andWhere('convert(dn.displayNameIndex, char) like :displayNameIndex', {displayNameIndex: `${displayNameIndexFilter}%`})
             }
 
+            selectQB = selectQB.orderBy('pfp.id', 'DESC');
+
             let [displayNames, total]: [DisplayName[], number] = await selectQB.skip(pageNumber * Constants.DB_USER_FETCH_PAGE_SIZE).take(Constants.DB_USER_FETCH_PAGE_SIZE).getManyAndCount();
             let results: WebsiteBoilerplate.UserSearchResults = {
                 currentPage: pageNumber,
@@ -790,5 +792,9 @@ export default class DatabaseHelper {
         }
 
         return null;        
+    }
+
+    async getUserContacts(uniqueID: string): Promise<any> {
+        return [];
     }
 };

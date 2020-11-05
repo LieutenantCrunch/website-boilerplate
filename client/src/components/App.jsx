@@ -14,6 +14,7 @@ import RegistrationForm from './RegistrationForm/RegistrationForm';
 import Welcome from './Welcome';
 import SettingsPage from './SettingsPage';
 import ResetPassword from './ResetPassword';
+import SideMenu from './SideMenu/SideMenu';
 
 import UserService from '../services/user.service';
 import UtilityService from '../services/utility.service';
@@ -24,7 +25,7 @@ export default function App() {
     const [statusMessage, setStatusMessage] = useState({type: 'info', message: null});
     const [userInfo, setUserInfo] = Hooks.useStateWithLocalStorage('userInfo', null);
     const [appConstants, setAppConstants] = useState({displayNameChangeDays: 30});
-    const [userDetails, setUserDetails] = useState({email: '', displayName: '', displayNameIndex: -1, pfp: ''});
+    const [userDetails, setUserDetails] = useState({email: '', displayName: '', displayNameIndex: -1, pfp: '', roles: [], uniqueID: ''});
 
     const checkForValidSession = () => {
         if (!userInfo) {
@@ -110,6 +111,11 @@ export default function App() {
                     </Switch>
                 </div>
             </Router>
+            {
+                checkForValidSession()
+                ? <SideMenu userDetails={userDetails} />
+                : <></>
+            }
         </div>
     );
 };

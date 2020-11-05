@@ -119,6 +119,22 @@ export default class UserService {
             return {success: false, message: `An exception occurred while making the api request for verifying the display name ${displayName} for the user with unique id: ${userUniqueID}\n${err.message}`};
         }
     }
+
+    static async getContacts(uniqueID) {
+        try {
+            let queryString = encodeURI(`uniqueID=${uniqueID}`);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getContacts?${queryString}`);
+
+            if (response.data && response.data.success) {
+                return response.data.contacts;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting contacts for user ${uniqueID}:\n${err.message}`);
+        }
+
+        return null;
+    }
 };
 
 // Ideally these should be static properties, but that requires a babel plugin and so on so just set it this way for now

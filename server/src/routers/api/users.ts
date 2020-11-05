@@ -104,6 +104,20 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         }
 
         return res.status(200).json({success: false, results: []});
+    case 'getContacts':
+        try {
+            if (req.query.uniqueID) {
+                let uniqueID: string = req.query.uniqueID.toString();
+                let contacts: any = await databaseHelper.getUserContacts(uniqueID);
+
+                return res.status(200).json({success: true, contacts});
+            }
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return res.status(200).json({success: false, contacts: []});
     default:
         res.status(404).send(req.params.methodName + ' is not a valid users method')
         break;
