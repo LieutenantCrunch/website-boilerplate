@@ -1,9 +1,9 @@
 import React, {useEffect, useState, useRef} from 'react';
-import ContactsSideMenuItem from './ContactsSideMenuItem';
+import ConnectionsSideMenuItem from './ConnectionsSideMenuItem';
 
 export default function SideMenu(props) {
 
     return <>
-        <ContactsSideMenuItem userDetails={props.userDetails} />
+        <ConnectionsSideMenuItem userDetails={props.userDetails} />
     </>;
 }

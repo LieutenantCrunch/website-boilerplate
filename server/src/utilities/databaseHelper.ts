@@ -10,6 +10,7 @@ import {ProfilePicture} from '../entity/ProfilePicture';
 import {UserJWT} from '../entity/UserJWT';
 import {DisplayName} from '../entity/DisplayName';
 import {Role} from '../entity/Role';
+import {UserConnection} from '../entity/UserConnection';
 import * as Constants from '../constants/constants';
 import { PasswordResetToken } from '../entity/PasswordResetToken';
 
@@ -22,6 +23,7 @@ export default class DatabaseHelper {
     #pfpRepository: Repository<ProfilePicture>;
     #passwordResetTokenRepository: Repository<PasswordResetToken>;
     #displayNameRepository: Repository<DisplayName>;
+    #userConnectionRepository: Repository<UserConnection>;
 
     constructor() {
         if (DatabaseHelper.instance) {
@@ -99,6 +101,14 @@ export default class DatabaseHelper {
         }
 
         return this.#displayNameRepository;
+    }
+
+    private getUserConnectionRepository() {
+        if (!this.#userConnectionRepository) {
+            this.#userConnectionRepository = this.#connection.getRepository(UserConnection);
+        }
+
+        return this.#userConnectionRepository;
     }
 
     async getAllUsers(): Promise<User[]> {
@@ -794,7 +804,37 @@ export default class DatabaseHelper {
         return null;        
     }
 
-    async getUserContacts(uniqueID: string): Promise<any> {
-        return [];
+    async getUserConnections(uniqueID: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
+        try {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.createQueryBuilder('u')
+                .innerJoinAndSelect('u.outgoingConnections', 'oc')
+                .innerJoinAndSelect('oc.connectedUser', 'cu')
+                .leftJoinAndSelect('cu.displayNames', 'dn', 'dn.isActive = 1')
+                .leftJoinAndSelect('cu.profilePictures', 'pfp')
+                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .getOne();
+            
+            if (user) {
+                return user.outgoingConnections.reduce((previousValue, connection) => {
+                    let connectedUser: User = connection.connectedUser;
+
+                    return {
+                        ...previousValue,
+                        [connectedUser.uniqueID]: {
+                            displayName: (connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
+                            displayNameIndex: (connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
+                            pfpSmall: (connectedUser.profilePictures[0] ? `i/u/${uniqueID}/${connectedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                            isMutual: connection.isMutual
+                        }
+                    }
+                }, {});
+            }
+        }
+        catch (err) {
+            console.error(`Error looking up connections for uniqueID ${uniqueID}:\n${err.message}`);
+        }
+
+        return {};
     }
 };

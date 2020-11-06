@@ -18,4 +18,14 @@ declare namespace WebsiteBoilerplate {
             pfpSmall: string
         }[]
     }
+
+    export interface UserConnectionDetails {
+        [id: string]: {
+            displayName: string,
+            displayNameIndex: number,
+            pfp: string
+            isMutual: Boolean,
+            uniqueID: string
+        }
+    }
 }

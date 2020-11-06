@@ -120,17 +120,17 @@ export default class UserService {
         }
     }
 
-    static async getContacts(uniqueID) {
+    static async getConnections(uniqueID) {
         try {
             let queryString = encodeURI(`uniqueID=${uniqueID}`);
-            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getContacts?${queryString}`);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getConnections?${queryString}`);
 
             if (response.data && response.data.success) {
-                return response.data.contacts;
+                return response.data.connections;
             }
         }
         catch (err) {
-            console.error(`Error getting contacts for user ${uniqueID}:\n${err.message}`);
+            console.error(`Error getting connections for user ${uniqueID}:\n${err.message}`);
         }
 
         return null;
