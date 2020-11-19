@@ -4,6 +4,6 @@ import ConnectionsSideMenuItem from './ConnectionsSideMenuItem';
 export default function SideMenu(props) {
 
     return <>
-        <ConnectionsSideMenuItem userDetails={props.userDetails} />
+        <ConnectionsSideMenuItem userDetails={props.userDetails} fetchConnectionTypes={props.fetchConnectionTypes} appState={props.appState} />
     </>;
 }

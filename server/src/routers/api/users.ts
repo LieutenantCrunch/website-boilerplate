@@ -118,6 +118,17 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         }
 
         return res.status(200).json({success: false, connections: {}});
+    case 'getConnectionTypes':
+        try {
+            let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await databaseHelper.getConnectionTypes();
+
+            return res.status(200).json({success: true, connectionTypes});
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return res.status(200).json({success: false, connectionTypes: {}});
     default:
         res.status(404).send(req.params.methodName + ' is not a valid users method')
         break;

@@ -1,6 +1,7 @@
 import React, {useEffect, useState, useRef} from 'react';
 import classNames from 'classnames';
 import UserService from '../../services/user.service';
+import ConnectionPreviewDialog from '../Dialogs/ConnectionPreview';
 
 export default function ConnectionsSideMenuItem(props) {
     const [state, updateState] = useState({
@@ -26,7 +27,7 @@ export default function ConnectionsSideMenuItem(props) {
         }
     }
 
-    const handleConnectionClick = function (event) {
+    const handleConnectionClick = (event) => {
         let clickedButton = event.target;
 
         if (clickedButton.tagName === 'SMALL') {
@@ -56,7 +57,7 @@ export default function ConnectionsSideMenuItem(props) {
                                 return (
                                     <li className="sideMenuItemListItem" key={uniqueID}>
                                         <div className="sideMenuItemListItemText">
-                                            <button className="btn btn-sm btn-outline-primary border-0 w-100 text-left" data-toggle="modal" data-target="#connectionDetails" data-connection={uniqueID} onClick={handleConnectionClick}>
+                                            <button type="button" className="btn btn-sm btn-outline-primary border-0 w-100 text-left" data-toggle="modal" data-target="#connectionDetails" data-connection={uniqueID} onClick={handleConnectionClick}>
                                                 {details.displayName}<small className="text-muted">#{details.displayNameIndex}</small>
                                             </button>
                                         </div>
@@ -72,28 +73,7 @@ export default function ConnectionsSideMenuItem(props) {
             </div>
         </div>
 
-        <div id="connectionDetails" className="modal fade" tabIndex="-1" aria-labelledby="connectionDetailsLabel" aria-hidden="true">
-            <div>
-                <div className="modal-dialog">
-                    <div className="modal-content">
-                        <div className="modal-header card-header">
-                            <h5 className="modal-title" id="connectionDetailsLabel">{state.selectedConnection?.displayName}<small className="text-muted">#{state.selectedConnection?.displayNameIndex}</small></h5>
-                            <button type="button" className="close" data-dismiss="modal" arial-label="close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div className="modal-body">
-                            <p className="text-center">
-                                <img src={state.selectedConnection?.pfpSmall} className="border rounded-circle w-25" />
-                            </p>
-                        </div>
-                        <div className="modal-footer card-footer">
-                            <small style={{ display: state.selectedConnection?.isMutual ? '' : 'none'}}>🤝 This connection is mutual!</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <ConnectionPreviewDialog id="connectionDetails" selectedConnection={state.selectedConnection} fetchConnectionTypes={props.fetchConnectionTypes} appState={props.appState} />
         </>
     );
 }

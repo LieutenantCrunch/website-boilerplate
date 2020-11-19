@@ -97,9 +97,7 @@ function SettingsPage(props) {
             <div className="container-fluid">
                 <div id="settingsPageAlertEl" ref={settingsPageAlertEl} className={`alert alert-${settingsPageAlert.type.toLocaleLowerCase()} alert-dismissible collapse w-100`} role="alert">
                     <strong>{settingsPageAlert.message}</strong>
-                    <button type="button" className="close" aria-label="Close" data-target="#settingsPageAlertEl" data-toggle="collapse" aria-expanded="false" aria-controls="settingsPageAlert">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <button type="button" className="btn-close" aria-label="Close" data-target="#settingsPageAlertEl" data-toggle="collapse" aria-expanded="false" aria-controls="settingsPageAlert"></button>
                 </div>
                 <div className="text-center">
                     <h5 className="font-weight-bold">General</h5>
@@ -113,9 +111,7 @@ function SettingsPage(props) {
                     <div className="modal-content">
                         <div className="modal-header">
                             <h5 className="modal-title" id="logoutConfirmLabel">Log Out Choices</h5>
-                            <button type="button" className="close" data-dismiss="modal" aria-label="close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
+                            <button type="button" className="btn-close" data-dismiss="modal" aria-label="close"></button>
                         </div>
                         <div className="modal-body">
                             <p>You can log out from everywhere (including here) or everywhere else (excluding here), which would you like to do?</p>
@@ -135,9 +131,7 @@ function SettingsPage(props) {
                         <div className="modal-content">
                             <div className="modal-header">
                                 <h5 className="modal-title" id="displayNameChangeLabel">Enter your new display name</h5>
-                                <button type="button" className="close" data-dismiss="modal" arial-label="close">
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
+                                <button type="button" className="btn-close" data-dismiss="modal" arial-label="close"></button>
                             </div>
                             <div className="modal-body">
                                 <p>Please enter your new display name. Please note that you can only change your display name every {props.appConstants.displayNameChangeDays} day{props.appConstants.displayNameChangeDays === 1 ? '' : 's'}. Names must not contain # and do not have to be unique. They will be followed by a unique id number unless your account is verified.</p>

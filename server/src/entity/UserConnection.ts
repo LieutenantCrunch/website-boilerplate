@@ -1,5 +1,6 @@
-import {Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn} from 'typeorm';
+import {Entity, Column, PrimaryGeneratedColumn, ManyToMany, ManyToOne, JoinColumn, Repository} from 'typeorm';
 import { User } from './User';
+import { UserConnectionType } from './UserConnectionType';
 
 @Entity('registered_user_connection')
 export class UserConnection {
@@ -13,19 +14,13 @@ export class UserConnection {
         type: 'int',
         name: 'requested_user_id'
     })
-    requestedUserId: string;
+    requestedUserId: number;
 
     @Column({
         type: 'int',
         name: 'connected_user_id'
     })
-    connectedUserId: string;
-
-    @Column({
-        type: 'int',
-        name: 'connection_type'
-    })
-    connectionType: number;
+    connectedUserId: number;
 
     @Column({
         type: 'boolean',
@@ -40,4 +35,7 @@ export class UserConnection {
     @ManyToOne(type => User, user => user.incomingConnections)
     @JoinColumn({ name: 'connected_user_id', referencedColumnName: 'id' })
     connectedUser: User;
+
+    @ManyToMany(type => UserConnectionType, connectionType => connectionType.connections)
+    connectionTypes: UserConnectionType[];
 }

@@ -161,6 +161,23 @@ body {
 }
 
 /**************************/
+/* Bootstrap tweaks       */
+/**************************/
+
+/* Change the dropdown "caret" on dropdown buttons to point upwards when the dropdown is open */
+/* Taken from the appropriate dropup class */
+.dropdown-toggle.show::after {
+    display: inline-block;
+    margin-left: .255em;
+    vertical-align: .255em;
+    content: "";
+    border-top: 0;
+    border-right: .3em solid transparent;
+    border-bottom: .3em solid;
+    border-left: .3em solid transparent;
+}
+
+/**************************/
 /* Side menu classes      */
 /**************************/
 .sideMenuItem {

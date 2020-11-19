@@ -135,6 +135,21 @@ export default class UserService {
 
         return null;
     }
+
+    static async getConnectionTypes() {
+        try {
+            let response = await axiosApi.get(Constants.API_PATH_USERS + '/getConnectionTypes');
+
+            if (response.data && response.data.success) {
+                return response.data.connectionTypes;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting connection types:\n${err.message}`);
+        }
+
+        return {};
+    }
 };
 
 // Ideally these should be static properties, but that requires a babel plugin and so on so just set it this way for now

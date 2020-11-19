@@ -13,6 +13,7 @@ import {Role} from '../entity/Role';
 import {UserConnection} from '../entity/UserConnection';
 import * as Constants from '../constants/constants';
 import { PasswordResetToken } from '../entity/PasswordResetToken';
+import { UserConnectionType } from '../entity/UserConnectionType';
 
 export default class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -24,6 +25,7 @@ export default class DatabaseHelper {
     #passwordResetTokenRepository: Repository<PasswordResetToken>;
     #displayNameRepository: Repository<DisplayName>;
     #userConnectionRepository: Repository<UserConnection>;
+    #userConnectionTypeRepository: Repository<UserConnectionType>;
 
     constructor() {
         if (DatabaseHelper.instance) {
@@ -109,6 +111,14 @@ export default class DatabaseHelper {
         }
 
         return this.#userConnectionRepository;
+    }
+
+    private getUserConnectionTypeRepository() {
+        if (!this.#userConnectionTypeRepository) {
+            this.#userConnectionTypeRepository = this.#connection.getRepository(UserConnectionType);
+        }
+
+        return this.#userConnectionTypeRepository;
     }
 
     async getAllUsers(): Promise<User[]> {
@@ -812,6 +822,7 @@ export default class DatabaseHelper {
                 .innerJoinAndSelect('oc.connectedUser', 'cu')
                 .leftJoinAndSelect('cu.displayNames', 'dn', 'dn.isActive = 1')
                 .leftJoinAndSelect('cu.profilePictures', 'pfp')
+                .leftJoinAndSelect('oc.connectionTypes', 'uct')
                 .where('u.uniqueID = :uniqueID', {uniqueID})
                 .getOne();
             
@@ -825,7 +836,13 @@ export default class DatabaseHelper {
                             displayName: (connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
                             displayNameIndex: (connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
                             pfpSmall: (connectedUser.profilePictures[0] ? `i/u/${uniqueID}/${connectedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
-                            isMutual: connection.isMutual
+                            isMutual: connection.isMutual,
+                            connectionTypes: connection.connectionTypes.reduce((previousValue, connectionType) => {
+                                return {
+                                    ...previousValue,
+                                    [connectionType.displayName]: true
+                                }
+                            }, {})
                         }
                     }
                 }, {});
@@ -833,6 +850,29 @@ export default class DatabaseHelper {
         }
         catch (err) {
             console.error(`Error looking up connections for uniqueID ${uniqueID}:\n${err.message}`);
+        }
+
+        return {};
+    }
+
+    async getConnectionTypes(): Promise<WebsiteBoilerplate.UserConnectionTypeDictionary> {
+        try {
+            let connectionTypeRepository: Repository<UserConnectionType> = this.getUserConnectionTypeRepository();
+
+            let connectionTypes: UserConnectionType[] = await connectionTypeRepository.createQueryBuilder('uct')
+                .getMany();
+
+            let connectionTypesDictionary: WebsiteBoilerplate.UserConnectionTypeDictionary = connectionTypes.reduce((previousValue, currentValue) => {
+                return {
+                    ...previousValue,
+                    [currentValue.displayName]: true
+                }
+            }, {});
+
+            return connectionTypesDictionary;
+        }
+        catch (err) {
+            console.error(`Error looking up connection types:\n${err.message}`);
         }
 
         return {};

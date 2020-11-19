@@ -25,7 +25,13 @@ declare namespace WebsiteBoilerplate {
             displayNameIndex: number,
             pfp: string
             isMutual: Boolean,
-            uniqueID: string
+            connectionTypes: {
+                [displayName: string]: Boolean
+            }
         }
+    }
+
+    export interface UserConnectionTypeDictionary {
+        [id: string]: boolean
     }
 }

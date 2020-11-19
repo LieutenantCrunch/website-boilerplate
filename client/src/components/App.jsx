@@ -26,6 +26,9 @@ export default function App() {
     const [userInfo, setUserInfo] = Hooks.useStateWithLocalStorage('userInfo', null);
     const [appConstants, setAppConstants] = useState({displayNameChangeDays: 30});
     const [userDetails, setUserDetails] = useState({email: '', displayName: '', displayNameIndex: -1, pfp: '', roles: [], uniqueID: ''});
+    const [appState, updateAppState] = useState({
+        connectionTypes: {}
+    })
 
     const checkForValidSession = () => {
         if (!userInfo) {
@@ -54,6 +57,19 @@ export default function App() {
             });
         }, () => {});
     }, []);
+
+    const fetchConnectionTypes = async () => {
+        if (Object.keys(appState.connectionTypes).length === 0) {
+            let connectionTypes = await UserService.getConnectionTypes();
+            
+            updateAppState(prevState => ({
+                ...prevState,
+                connectionTypes
+            }));
+
+            return connectionTypes;
+        }
+    };
 
     return(
         <div className="App">
@@ -113,7 +129,7 @@ export default function App() {
             </Router>
             {
                 checkForValidSession()
-                ? <SideMenu userDetails={userDetails} />
+                ? <SideMenu userDetails={userDetails} fetchConnectionTypes={fetchConnectionTypes} appState={appState} />
                 : <></>
             }
         </div>
