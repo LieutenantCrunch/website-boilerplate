@@ -136,19 +136,29 @@ export default class UserService {
         return null;
     }
 
-    static async getConnectionTypes() {
+    static async getConnectionTypeDict() {
         try {
-            let response = await axiosApi.get(Constants.API_PATH_USERS + '/getConnectionTypes');
+            let response = await axiosApi.get(Constants.API_PATH_USERS + '/getConnectionTypeDict');
 
             if (response.data && response.data.success) {
-                return response.data.connectionTypes;
+                return response.data.connectionTypeDict;
             }
         }
         catch (err) {
-            console.error(`Error getting connection types:\n${err.message}`);
+            console.error(`Error getting connection type dictionary:\n${err.message}`);
         }
 
         return {};
+    }
+
+    static async updateOutgoingConnection(outgoingConnection) {
+        try {
+            let payload = {outgoingConnection};
+            axiosApi.post(Constants.API_PATH_USERS + '/updateConnection', payload);
+        }
+        catch (err) {
+            console.error(`Error updating connection:\n${err.message}`);
+        }
     }
 };
 

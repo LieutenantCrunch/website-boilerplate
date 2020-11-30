@@ -1,107 +1,93 @@
 import React, {useState, useRef, useEffect} from 'react';
+import classNames from 'classnames';
+import { usePopper } from 'react-popper';
 import SwitchCheckbox from '../FormControls/SwitchCheckbox';
 
 export default function ConnectionPreviewDialog (props) {
-    const modalRootEl = useRef();
-    const connectionTypeDropdown = useRef();
-    const connectionTypeDropdownBtn = useRef();
-    const [test, setTest] = useState(null);
-
-    // These are loading right away and not when the component is first shown
-    // Maybe hook the event up on the modal show
-    // Need to pass appState down through
-    const fetchConnectionTypes = async () => {
-        props.fetchConnectionTypes();
-    };
-
-    useEffect(() => {
-        if (connectionTypeDropdown.current) {
-            connectionTypeDropdown.current.addEventListener('hidden.bs.dropdown', connectionTypeDropdownHidden);
-            connectionTypeDropdown.current.addEventListener('hide.bs.dropdown', connectionTypeDropdownHide);
-        }
-
-        return function cleanup() {
-            if (connectionTypeDropdown.current) {
-                connectionTypeDropdown.current.removeEventListener('hidden.bs.dropdown', connectionTypeDropdownHidden);
-                connectionTypeDropdown.current.removeEventListener('hide.bs.dropdown', connectionTypeDropdownHide);
-            }
-        }
-    }, [connectionTypeDropdown.current]);
+    const dropdownMenuContainer = useRef();
+    const [referenceElement, setReferenceElement] = useState(null);
+    const [popperElement, setPopperElement] = useState(null);
+    const [arrowElement, setArrowElement] = useState(null);
+    const { styles, attributes, update } = usePopper(referenceElement, popperElement, {
+        modifiers: [
+        ],
+        placement: 'bottom-start'
+    });
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     useEffect(() => {
-        if (connectionTypeDropdownBtn.current) {
-            setTest(new bootstrap.Dropdown(connectionTypeDropdownBtn.current, {}));
-        }
+        document.addEventListener('click', hideDropdown);
 
         return function cleanup() {
-            if (connectionTypeDropdownBtn.current) {
-                setTest(null);
-            }
+            document.removeEventListener('click', hideDropdown);
         }
-    }, [connectionTypeDropdownBtn.current]);
+    }, []);
 
-    useEffect(() => {
-        if (modalRootEl.current) {
-            modalRootEl.current.addEventListener('show.bs.modal', fetchConnectionTypes);
-        }
-
-        return function cleanup() {
-            if (modalRootEl.current) {
-                modalRootEl.current.removeEventListener('show.bs.modal', fetchConnectionTypes);
-            }
-        }
-    }, [modalRootEl.current])
-
-    const connectionTypeDropdownHide = (event) => {
-        console.log('Closing');
-
-        let test = props;
-        console.log(test);
+    const hideDropdown = (event) => {
+        if (dropdownMenuContainer && !dropdownMenuContainer.current.contains(event.target)) {
+            setIsDropdownOpen(false);
+        }       
     };
 
-    const connectionTypeDropdownHidden = (event) => {
-        console.log('Closed');
-
-        let test = props;
-        console.log(test);
-    };
-
-    const handleTypeChange = (event) => {
-        console.log('Switch clicked');
-        console.log(event.target);
+    const toggleDropdown = (event) => {
+        update(); // This fixes the position of the dropdown menu
+        setIsDropdownOpen(!isDropdownOpen);
         event.stopPropagation();
     };
 
+    const handleTypeChange = (event) => {
+        let { name, checked } = event.target;
+
+        props.updateSelectedConnection({
+            ...props.selectedConnection,
+            details: {
+                ...props.selectedConnection.details,
+                connectionTypes: {
+                    ...props.selectedConnection.details.connectionTypes,
+                    [name]: checked
+                }
+            }
+        });
+
+        event.stopPropagation();
+    };
+
+    const handleCloseClick = (event) => {
+        props.saveSelectedConnection();
+    };
+
     return (
-        <div id={props.id} ref={modalRootEl} className="modal fade" data-backdrop="static" tabIndex="-1" aria-labelledby="connectionDetailsLabel" aria-hidden="true">
+        <div id={props.id} className="modal fade" data-backdrop="static" tabIndex="-1" aria-labelledby="connectionDetailsLabel" aria-hidden="true">
             <div>
                 <div className="modal-dialog">
                     <div className="modal-content">
                         <div className="modal-header card-header">
-                            <h5 className="modal-title" id="connectionDetailsLabel">{props.selectedConnection?.displayName}<small className="text-muted">#{props.selectedConnection?.displayNameIndex}</small></h5>
-                            <button type="button" className="btn-close" data-dismiss="modal" arial-label="close"></button>
+                            <h5 className="modal-title" id="connectionDetailsLabel">{props.selectedConnection?.details.displayName}<small className="text-muted">#{props.selectedConnection?.details.displayNameIndex}</small></h5>
+                            <button type="button" className="btn-close" data-dismiss="modal" arial-label="close" onClick={handleCloseClick}></button>
                         </div>
                         <div className="modal-body">
                             <p className="text-center">
-                                <img src={props.selectedConnection?.pfpSmall} className="border rounded-circle w-25" />
+                                <img src={props.selectedConnection?.details.pfpSmall} className="border rounded-circle w-25" />
                             </p>
                             <div className="text-right">
-                                <div ref={connectionTypeDropdown} className="dropdown">
-                                    <button type="button" className="btn btn-outline-primary dropdown-toggle" id="connectionTypeDropdownButton">
+                                <div ref={dropdownMenuContainer} className="dropdown">
+                                    <button ref={setReferenceElement} type="button" className={classNames('btn', 'btn-outline-primary', 'dropdown-toggle', {'show': isDropdownOpen})} id="connectionTypeDropdownButton" onClick={toggleDropdown}>
                                         Relationship
                                     </button>
-                                    <div className="dropdown-menu px-2">
+                                    <div ref={setPopperElement} className={classNames('dropdown-menu', 'px-2', {'show': isDropdownOpen})} style={styles.popper} {...styles.popper}>
                                         {
-                                            Object.entries(props.appState.connectionTypes).map(([connectionType, details]) => (
-                                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={props.selectedConnection.connectionTypes[connectionType]} onSwitchChanged={handleTypeChange} />
+                                            props.selectedConnection
+                                            ? Object.entries(props.selectedConnection.details.connectionTypes).map(([connectionType, details]) => (
+                                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
                                             ))
+                                            : <></>
                                         }
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div className="modal-footer card-footer">
-                            <small style={{ display: props.selectedConnection?.isMutual ? '' : 'none'}}>🤝 This connection is mutual!</small>
+                            <small style={{ display: props.selectedConnection?.details.isMutual ? '' : 'none'}}>🤝 This connection is mutual!</small>
                         </div>
                     </div>
                 </div>

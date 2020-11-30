@@ -7,7 +7,8 @@ export default function ConnectionsSideMenuItem(props) {
     const [state, updateState] = useState({
         expanded: false,
         connections: {},
-        selectedConnection: null
+        selectedConnection: null,
+        selectedConnectionUpdated: false
     })
 
     const getConnections = async () => {
@@ -15,6 +16,17 @@ export default function ConnectionsSideMenuItem(props) {
 
         return connections;
     };
+
+    const updateSelectedConnection = (selectedConnection) => {
+        updateState(prevState => ({
+            ...prevState,
+            selectedConnection: {
+                ...prevState.selectedConnection,
+                ...selectedConnection
+            },
+            selectedConnectionUpdated: true
+        }));
+    }
 
     const toggleExpanded = async () => {
         if (!state.expanded) {
@@ -34,9 +46,31 @@ export default function ConnectionsSideMenuItem(props) {
             clickedButton = clickedButton.parentNode;
         }
 
-        let selectedConnection = state.connections[clickedButton.dataset.connection];
+        let selectedConnection = {
+            id: clickedButton.dataset.connection,
+            details: state.connections[clickedButton.dataset.connection]
+        };
         
-        updateState(prevState => ({...prevState, selectedConnection}));
+        updateState(prevState => ({...prevState, selectedConnection, selectedConnectionUpdated: false}));
+    };
+
+    const saveSelectedConnection = () => {
+        let updateConnection = state.selectedConnectionUpdated;
+
+        updateState(prevState => ({
+            ...prevState,
+            connections: {
+                ...prevState.connections,
+                [prevState.selectedConnection.id]: {
+                    ...prevState.selectedConnection.details
+                }
+            },
+            selectedConnectionUpdated: false
+        }));
+
+        if (updateConnection) {
+            UserService.updateOutgoingConnection({ [state.selectedConnection.id]: state.selectedConnection.details });
+        }
     };
 
     return (
@@ -73,7 +107,7 @@ export default function ConnectionsSideMenuItem(props) {
             </div>
         </div>
 
-        <ConnectionPreviewDialog id="connectionDetails" selectedConnection={state.selectedConnection} fetchConnectionTypes={props.fetchConnectionTypes} appState={props.appState} />
+        <ConnectionPreviewDialog id="connectionDetails" selectedConnection={state.selectedConnection} updateSelectedConnection={updateSelectedConnection} saveSelectedConnection={saveSelectedConnection} />
         </>
     );
 }

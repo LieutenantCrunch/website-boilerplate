@@ -19,19 +19,17 @@ declare namespace WebsiteBoilerplate {
         }[]
     }
 
+    export interface UserConnectionTypeDictionary {
+        [id: string]: boolean
+    }
+
     export interface UserConnectionDetails {
         [id: string]: {
             displayName: string,
             displayNameIndex: number,
             pfp: string
             isMutual: Boolean,
-            connectionTypes: {
-                [displayName: string]: Boolean
-            }
+            connectionTypes: UserConnectionTypeDictionary
         }
-    }
-
-    export interface UserConnectionTypeDictionary {
-        [id: string]: boolean
     }
 }

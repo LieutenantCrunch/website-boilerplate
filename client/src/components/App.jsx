@@ -27,7 +27,7 @@ export default function App() {
     const [appConstants, setAppConstants] = useState({displayNameChangeDays: 30});
     const [userDetails, setUserDetails] = useState({email: '', displayName: '', displayNameIndex: -1, pfp: '', roles: [], uniqueID: ''});
     const [appState, updateAppState] = useState({
-        connectionTypes: {}
+        connectionTypeDict: {}
     })
 
     const checkForValidSession = () => {
@@ -58,16 +58,16 @@ export default function App() {
         }, () => {});
     }, []);
 
-    const fetchConnectionTypes = async () => {
-        if (Object.keys(appState.connectionTypes).length === 0) {
-            let connectionTypes = await UserService.getConnectionTypes();
+    const fetchConnectionTypeDict = async () => {
+        if (Object.keys(appState.connectionTypeDict).length === 0) {
+            let connectionTypeDict = await UserService.getConnectionTypeDict();
             
             updateAppState(prevState => ({
                 ...prevState,
-                connectionTypes
+                connectionTypeDict
             }));
 
-            return connectionTypes;
+            return connectionTypeDict;
         }
     };
 
@@ -129,7 +129,7 @@ export default function App() {
             </Router>
             {
                 checkForValidSession()
-                ? <SideMenu userDetails={userDetails} fetchConnectionTypes={fetchConnectionTypes} appState={appState} />
+                ? <SideMenu userDetails={userDetails} fetchConnectionTypeDict={fetchConnectionTypeDict} appState={appState} />
                 : <></>
             }
         </div>

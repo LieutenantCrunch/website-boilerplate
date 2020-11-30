@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import bcrypt from 'bcryptjs';
 
-import {createConnection, Connection, Repository, ObjectLiteral, SelectQueryBuilder} from 'typeorm';
+import {createConnection, Connection, Repository, ObjectLiteral, SelectQueryBuilder, In} from 'typeorm';
 import {User} from '../entity/User';
 import {ProfilePicture} from '../entity/ProfilePicture';
 import {UserJWT} from '../entity/UserJWT';
@@ -816,6 +816,7 @@ export default class DatabaseHelper {
 
     async getUserConnections(uniqueID: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
         try {
+            let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
             let userRepository: Repository<User> = this.getUserRepository();
             let user: User | undefined = await userRepository.createQueryBuilder('u')
                 .innerJoinAndSelect('u.outgoingConnections', 'oc')
@@ -830,6 +831,12 @@ export default class DatabaseHelper {
                 return user.outgoingConnections.reduce((previousValue, connection) => {
                     let connectedUser: User = connection.connectedUser;
 
+                    let userConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = connection.connectionTypes.reduce((previousValue, connectionType) => ({
+                        ...previousValue,
+                        [connectionType.displayName]: true
+                    }), {});
+
+
                     return {
                         ...previousValue,
                         [connectedUser.uniqueID]: {
@@ -837,12 +844,7 @@ export default class DatabaseHelper {
                             displayNameIndex: (connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
                             pfpSmall: (connectedUser.profilePictures[0] ? `i/u/${uniqueID}/${connectedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
                             isMutual: connection.isMutual,
-                            connectionTypes: connection.connectionTypes.reduce((previousValue, connectionType) => {
-                                return {
-                                    ...previousValue,
-                                    [connectionType.displayName]: true
-                                }
-                            }, {})
+                            connectionTypes: {...connectionTypes, ...userConnectionTypes}
                         }
                     }
                 }, {});
@@ -855,26 +857,95 @@ export default class DatabaseHelper {
         return {};
     }
 
-    async getConnectionTypes(): Promise<WebsiteBoilerplate.UserConnectionTypeDictionary> {
+    async getConnectionTypeDict(): Promise<WebsiteBoilerplate.UserConnectionTypeDictionary> {
         try {
             let connectionTypeRepository: Repository<UserConnectionType> = this.getUserConnectionTypeRepository();
 
             let connectionTypes: UserConnectionType[] = await connectionTypeRepository.createQueryBuilder('uct')
+                .cache(Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000)
                 .getMany();
 
-            let connectionTypesDictionary: WebsiteBoilerplate.UserConnectionTypeDictionary = connectionTypes.reduce((previousValue, currentValue) => {
+            let connectionTypesDict: WebsiteBoilerplate.UserConnectionTypeDictionary = connectionTypes.reduce((previousValue, currentValue) => {
                 return {
                     ...previousValue,
-                    [currentValue.displayName]: true
+                    [currentValue.displayName]: false
                 }
             }, {});
 
-            return connectionTypesDictionary;
+            return connectionTypesDict;
         }
         catch (err) {
             console.error(`Error looking up connection types:\n${err.message}`);
         }
 
         return {};
+    }
+
+    async getConnectionTypes(): Promise<UserConnectionType[]> {
+        try {
+            let connectionTypeRepository: Repository<UserConnectionType> = this.getUserConnectionTypeRepository();
+
+            let connectionTypes: UserConnectionType[] = await connectionTypeRepository.createQueryBuilder('uct')
+                .cache(Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000)
+                .getMany();
+
+            return connectionTypes;
+        }
+        catch (err) {
+            console.error(`Error looking up connection types:\n${err.message}`);
+        }
+
+        return [];
+    }
+
+    async updateUserConnection(uniqueID: string, outgoingConnection: WebsiteBoilerplate.UserConnectionDetails): Promise<Boolean> {
+        let allConnectionTypes: UserConnectionType[] = await this.getConnectionTypes();        
+        let userRepository: Repository<User> = this.getUserRepository();
+        let userConnectionRepository: Repository<UserConnection> = this.getUserConnectionRepository();
+        let connectedUserUniqueID: string = Object.keys(outgoingConnection)[0];
+
+        let currentUser: User | undefined = await userRepository.createQueryBuilder('u')
+            .leftJoinAndSelect('u.outgoingConnections', 'uc')
+            .leftJoinAndSelect('uc.connectionTypes', 'ct')
+            .leftJoinAndSelect('uc.connectedUser', 'cu')
+            .where('cu.uniqueID = :uniqueID', {uniqueID: connectedUserUniqueID})
+            .getOne();
+
+        if (currentUser) {
+            let { connectionTypes } : { connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary} = outgoingConnection[connectedUserUniqueID];
+            let connectionTypeCount: number = currentUser.outgoingConnections[0].connectionTypes.length;
+            let changesMade: Boolean = false;
+
+            // Remove any connections that are no longer selected
+            currentUser.outgoingConnections[0].connectionTypes = currentUser.outgoingConnections[0].connectionTypes.filter(connectionType => connectionTypes[connectionType.displayName]);
+
+            if (connectionTypeCount != currentUser.outgoingConnections[0].connectionTypes.length) {
+                changesMade = true;
+            }
+
+            let currentConnectionTypes: UserConnectionType[] = currentUser.outgoingConnections[0].connectionTypes;
+
+            Object.keys(connectionTypes).forEach((key: string) => {
+                let isSelected: Boolean = connectionTypes[key];
+
+                if (isSelected) {
+                    if (!currentConnectionTypes.find(elem => elem.displayName === key)) {
+                        // If it's selected and they don't currently have that type, it needs to be added
+                        let connectionTypeRecord: UserConnectionType | undefined = allConnectionTypes.find(elem => elem.displayName === key);
+
+                        if (connectionTypeRecord) {
+                            currentUser!.outgoingConnections[0].connectionTypes.push(connectionTypeRecord);
+                            changesMade = true;
+                        }
+                    }
+                }
+            });
+
+            if (changesMade) {
+                await userConnectionRepository.save(currentUser.outgoingConnections[0]);
+            }
+        }
+
+        return false;
     }
 };

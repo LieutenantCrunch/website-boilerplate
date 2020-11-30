@@ -118,9 +118,9 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         }
 
         return res.status(200).json({success: false, connections: {}});
-    case 'getConnectionTypes':
+    case 'getConnectionTypeDict':
         try {
-            let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await databaseHelper.getConnectionTypes();
+            let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await databaseHelper.getConnectionTypeDict();
 
             return res.status(200).json({success: true, connectionTypes});
         }
@@ -155,21 +155,39 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
     case 'verifyDisplayName':
         try {
             let uniqueID = req.userId;
-            let userUniqueID = req.body.userUniqueID;
-            let displayName = req.body.displayName;
+            let { userUniqueID, displayName } = req.body;
 
             if (uniqueID && userUniqueID && displayName) {
                 if (await databaseHelper.checkUserForRole(uniqueID, 'Administrator')) {
                     let results: {success: Boolean, message: string} = await databaseHelper.verifyUserDisplayName(userUniqueID, displayName);
 
-                    res.status(200).json(results);
+                    return res.status(200).json(results);
                 }
             }
         }
         catch (err) {
             console.error(`Error verifying display name\n${err.message}`);
-            res.status(200).json({success: false, message: 'An error occurred while verifying the display name. Please check the log.'});
         }
+
+        res.status(200).json({success: false, message: 'An error occurred while verifying the display name. Please check the log.'});
+
+        break;
+    case 'updateConnection':
+        try {
+            let uniqueID = req.userId;
+            let { outgoingConnection } = req.body;
+
+            if (uniqueID && outgoingConnection) {
+                databaseHelper.updateUserConnection(uniqueID, outgoingConnection);
+
+                return res.status(200).json({success: true, message: ''});
+            }
+        }
+        catch (err) {
+            console.error(`Error updating connection\n${err.message}`);
+        }
+
+        res.status(200).json({success: false, message: 'An error occurred while updating the connection'});
 
         break;
     default:
