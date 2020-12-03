@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {forwardRef, useState, useEffect, useImperativeHandle, useRef} from 'react';
 import classNames from 'classnames';
 import scrollIntoView from 'scroll-into-view-if-needed';
 import {isMobile} from 'react-device-detect';
@@ -6,7 +6,10 @@ import {isMobile} from 'react-device-detect';
 import * as Constants from '../constants/constants';
 import UserService from '../services/user.service';
 
-const UserSearch = (props) => {
+/**
+ * A text input component for searching users. Has autocomplete functionality, mostly triggered by keyboard inputs. Exposes a method clearInput() for clearing the input from a parent component. To use, set a ref on this component and call clearInput() on the ref.
+ */
+const UserSearch = forwardRef((props, ref) => {
     const container = useRef();
     const autoFill = useRef();
     const userInput = useRef();
@@ -14,6 +17,16 @@ const UserSearch = (props) => {
 
     // This needs to be a ref so it hangs around between renders
     const listItemRefs = useRef({});
+
+    useImperativeHandle(ref, () => ({
+        /**
+         * Clears the current value in the input
+         */
+        clearInput() {
+            autoFill.current.value = '';
+            userInput.current.value = '';
+        }
+    }));
 
     const [state, updateState] = useState({
         currentIndex: 0,
@@ -355,6 +368,6 @@ const UserSearch = (props) => {
             </li>
         </ul>
     </div>;
-};
+});
 
 export default React.memo(UserSearch);

@@ -2,6 +2,7 @@ import React, {useEffect, useState, useRef} from 'react';
 import classNames from 'classnames';
 import UserService from '../../services/user.service';
 import ConnectionPreviewDialog from '../Dialogs/ConnectionPreview';
+import AddConnectionDialog from '../Dialogs/AddConnection';
 
 export default function ConnectionsSideMenuItem(props) {
     const [state, updateState] = useState({
@@ -85,6 +86,25 @@ export default function ConnectionsSideMenuItem(props) {
                     <div className="sideMenuItemIcon"></div>
                 </div>
                 <div className="sideMenuItemContent">
+                    <hr style={{
+                        backgroundColor: 'rgb(204, 204, 204)',
+                        border: '0 none',
+                        color: 'rgb(204, 204, 204)',
+                        height: '2px',
+                        margin: 0,
+                        opacity: 1
+                    }} />
+                    <button type="button" className="btn btn-sm btn-outline-primary border-0 w-100 text-left" data-toggle="modal" data-target="#addConnection">
+                        <strong>Add New...</strong>
+                    </button>
+                    <hr style={{
+                        backgroundColor: 'rgb(204, 204, 204)',
+                        border: '0 none',
+                        color: 'rgb(204, 204, 204)',
+                        height: '1px',
+                        margin: 0,
+                        opacity: 1
+                    }} />
                     <ul className="sideMenuItemList">
                         {
                             Object.entries(state.connections).map(([uniqueID, details]) => {
@@ -108,6 +128,7 @@ export default function ConnectionsSideMenuItem(props) {
         </div>
 
         <ConnectionPreviewDialog id="connectionDetails" selectedConnection={state.selectedConnection} updateSelectedConnection={updateSelectedConnection} saveSelectedConnection={saveSelectedConnection} />
+        <AddConnectionDialog id="addConnection" appState={props.appState} />
         </>
     );
 }

@@ -2,8 +2,14 @@ import React, {useState, useRef, useEffect} from 'react';
 import classNames from 'classnames';
 import { usePopper } from 'react-popper';
 import SwitchCheckbox from '../FormControls/SwitchCheckbox';
+import UserSearch from '../UserSearch';
+import UserService from '../../services/user.service';
 
-export default function ConnectionPreviewDialog (props) {
+export default function AddConnectionDialog (props) {
+    const [state, updateState] = useState({
+        selectedUserDetails: null,
+        connectionTypeDict: null
+    });
     const dropdownMenuContainer = useRef();
     const [referenceElement, setReferenceElement] = useState(null);
     const [popperElement, setPopperElement] = useState(null);
@@ -13,6 +19,7 @@ export default function ConnectionPreviewDialog (props) {
         placement: 'bottom-start'
     });
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const userSearch = useRef();
 
     useEffect(() => {
         document.addEventListener('click', hideDropdown);
@@ -28,6 +35,19 @@ export default function ConnectionPreviewDialog (props) {
         }       
     };
 
+    const onUserSelect = async (selectedUserId) => {
+        let selectedUserDetails = null;
+        let connectionTypeDict = null;
+
+        if (selectedUserId !== '') {
+            selectedUserDetails = await UserService.getUserDetails(selectedUserId);
+        }
+
+        updateState(prevState => {
+            return {...prevState, selectedUserDetails, connectionTypeDict};
+        });
+    }
+
     const toggleDropdown = (event) => {
         update(); // This fixes the position of the dropdown menu
         setIsDropdownOpen(!isDropdownOpen);
@@ -35,24 +55,15 @@ export default function ConnectionPreviewDialog (props) {
     };
 
     const handleTypeChange = (event) => {
-        let { name, checked } = event.target;
 
-        props.updateSelectedConnection({
-            ...props.selectedConnection,
-            details: {
-                ...props.selectedConnection.details,
-                connectionTypes: {
-                    ...props.selectedConnection.details.connectionTypes,
-                    [name]: checked
-                }
-            }
-        });
-
-        event.stopPropagation();
     };
 
-    const handleCloseClick = (event) => {
-        props.saveSelectedConnection();
+    const clearSelectedUser = (event) => {
+        updateState(prevState => {
+            return {...prevState, selectedUserDetails: null};
+        });
+
+        userSearch.current.clearInput();
     };
 
     return (
@@ -61,13 +72,22 @@ export default function ConnectionPreviewDialog (props) {
                 <div className="modal-dialog">
                     <div className="modal-content">
                         <div className="modal-header card-header">
-                            <h5 className="modal-title" id="connectionDetailsLabel">{props.selectedConnection?.details.displayName}<small className="text-muted">#{props.selectedConnection?.details.displayNameIndex}</small></h5>
-                            <button type="button" className="btn-close" data-dismiss="modal" arial-label="close" onClick={handleCloseClick}></button>
+                            <h5 className="modal-title" id="connectionDetailsLabel">Add New Connection</h5>
+                            <button type="button" className="btn-close" data-dismiss="modal" arial-label="close" onClick={clearSelectedUser}></button>
                         </div>
-                        <div className="modal-body">
+                        <div className="modal-body card-body">
+                            <UserSearch ref={userSearch} className="w-100" onUserSelect={onUserSelect} selectAllOnFocus={true} />
+                        </div>
+                        <div className="modal-body card-body" style={{
+                                display: state.selectedUserDetails ? '' : 'none'
+                            }}
+                        >
                             <p className="text-center">
-                                <img src={props.selectedConnection?.details.pfpSmall} className="border rounded-circle w-25" />
+                                <img src={state.selectedUserDetails?.pfp} className="border rounded-circle w-25" />
                             </p>
+                            <div className="text-center">
+                                <h5 className="text-center">{state.selectedUserDetails?.displayName}<small className="text-muted">#{state.selectedUserDetails?.displayNameIndex}</small></h5>
+                            </div>
                             <div className="text-right">
                                 <div ref={dropdownMenuContainer} className="dropdown">
                                     <button ref={setReferenceElement} type="button" className={classNames('btn', 'btn-outline-primary', 'dropdown-toggle', {'show': isDropdownOpen})} id="connectionTypeDropdownButton" onClick={toggleDropdown}>
@@ -75,18 +95,15 @@ export default function ConnectionPreviewDialog (props) {
                                     </button>
                                     <div ref={setPopperElement} className={classNames('dropdown-menu', 'px-2', {'show': isDropdownOpen})} style={styles.popper} {...styles.popper}>
                                         {
-                                            props.selectedConnection
-                                            ? Object.entries(props.selectedConnection.details.connectionTypes).map(([connectionType, details]) => (
-                                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
+                                            Object.entries(props.appState.connectionTypeDict).map(([connectionType, details]) => (
+                                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={false} onSwitchChanged={handleTypeChange} />
                                             ))
-                                            : <></>
                                         }
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div className="modal-footer card-footer">
-                            <small style={{ display: props.selectedConnection?.details.isMutual ? '' : 'none'}}>🤝 This connection is mutual!</small>
                         </div>
                     </div>
                 </div>

@@ -776,9 +776,10 @@ export default class DatabaseHelper {
     async searchUsers(displayNameFilter: string, displayNameIndexFilter: number, pageNumber: number): Promise<WebsiteBoilerplate.UserSearchResults | null> {
         try {
             let displayNameRepository: Repository<DisplayName> = this.getDisplayNameRepository();
+            // Could add an isActive to pfp so I wouldn't have to do the join top 1 condition, would make the code more flexible
             let selectQB: SelectQueryBuilder<DisplayName> = displayNameRepository.createQueryBuilder('dn')
                 .innerJoinAndSelect('dn.registeredUser', 'u')
-                .leftJoinAndSelect('u.profilePictures', 'pfp')
+                .leftJoinAndSelect('u.profilePictures', 'pfp', '`pfp`.`id` = (select id FROM profile_picture where profile_picture.registered_user_id = u.id order by profile_picture.id desc limit 1)')
                 .where('dn.isActive = 1');
             
             if (displayNameFilter) {
@@ -789,7 +790,8 @@ export default class DatabaseHelper {
                 selectQB = selectQB.andWhere('convert(dn.displayNameIndex, char) like :displayNameIndex', {displayNameIndex: `${displayNameIndexFilter}%`})
             }
 
-            selectQB = selectQB.orderBy('pfp.id', 'DESC');
+            selectQB = selectQB.orderBy('dn.displayName', 'ASC')
+                .addOrderBy('dn.displayNameIndex', 'ASC');
 
             let [displayNames, total]: [DisplayName[], number] = await selectQB.skip(pageNumber * Constants.DB_USER_FETCH_PAGE_SIZE).take(Constants.DB_USER_FETCH_PAGE_SIZE).getManyAndCount();
             let results: WebsiteBoilerplate.UserSearchResults = {

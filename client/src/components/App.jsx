@@ -56,6 +56,8 @@ export default function App() {
                 ...constants
             });
         }, () => {});
+
+        fetchConnectionTypeDict();
     }, []);
 
     const fetchConnectionTypeDict = async () => {

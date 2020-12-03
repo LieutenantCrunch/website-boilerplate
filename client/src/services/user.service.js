@@ -58,6 +58,7 @@ export default class UserService {
         }
 
         let cacheIndex = `${value}${pageNumber}`.toLocaleUpperCase();
+
         if (this.resultsCache[cacheIndex] && !this.resultsCache[cacheIndex].isStale()) {
             return this.resultsCache[cacheIndex].results;
         }
@@ -142,6 +143,9 @@ export default class UserService {
 
             if (response.data && response.data.success) {
                 return response.data.connectionTypeDict;
+            }
+            else {
+                console.error(`Failed to get connection type dictionary`);
             }
         }
         catch (err) {
