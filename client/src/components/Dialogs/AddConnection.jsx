@@ -8,7 +8,9 @@ import UserService from '../../services/user.service';
 export default function AddConnectionDialog (props) {
     const [state, updateState] = useState({
         selectedUserDetails: null,
-        connectionTypeDict: null
+        connectionTypeDict: null,
+        connectionTypeDictStr: '',
+        isModified: false
     });
     const dropdownMenuContainer = useRef();
     const [referenceElement, setReferenceElement] = useState(null);
@@ -38,13 +40,16 @@ export default function AddConnectionDialog (props) {
     const onUserSelect = async (selectedUserId) => {
         let selectedUserDetails = null;
         let connectionTypeDict = null;
+        let connectionTypeDictStr = '';
 
         if (selectedUserId !== '') {
             selectedUserDetails = await UserService.getUserDetails(selectedUserId);
+            connectionTypeDict = {...props.appState.connectionTypeDict, ...selectedUserDetails.connectionTypes};
+            connectionTypeDictStr = JSON.stringify(connectionTypeDict);
         }
 
         updateState(prevState => {
-            return {...prevState, selectedUserDetails, connectionTypeDict};
+            return {...prevState, selectedUserDetails, connectionTypeDict, connectionTypeDictStr, isModified: false};
         });
     }
 
@@ -55,12 +60,37 @@ export default function AddConnectionDialog (props) {
     };
 
     const handleTypeChange = (event) => {
+        let { name, checked } = event.target;
+        let connectionTypeDict = {...state.connectionTypeDict, [name]: checked};
+        let connectionTypeDictStr = JSON.stringify(connectionTypeDict);
 
+        updateState(prevState => ({
+            ...prevState,
+            connectionTypeDict,
+            isModified: (connectionTypeDictStr !== prevState.connectionTypeDictStr)
+        }))
+
+        event.stopPropagation();
+    };
+
+    const handleConfirmClick = (event) => {
+        if (state.isModified) {
+            let selectedUserDetails = state.selectedUserDetails;
+            selectedUserDetails.connectionTypes = state.connectionTypeDict;
+
+            UserService.updateOutgoingConnection({ [state.selectedUserDetails.uniqueID]: state.selectedUserDetails });
+
+            updateState(prevState => ({
+                ...prevState,
+                connectionTypeDictStr: JSON.stringify(prevState.connectionTypeDict),
+                isModified: false
+            }))
+        }
     };
 
     const clearSelectedUser = (event) => {
         updateState(prevState => {
-            return {...prevState, selectedUserDetails: null};
+            return {...prevState, selectedUserDetails: null, connectionTypeDict: null, connectionTypeDictStr: '', isModified: false};
         });
 
         userSearch.current.clearInput();
@@ -76,7 +106,7 @@ export default function AddConnectionDialog (props) {
                             <button type="button" className="btn-close" data-dismiss="modal" arial-label="close" onClick={clearSelectedUser}></button>
                         </div>
                         <div className="modal-body card-body">
-                            <UserSearch ref={userSearch} className="w-100" onUserSelect={onUserSelect} selectAllOnFocus={true} />
+                            <UserSearch ref={userSearch} className="w-100" onUserSelect={onUserSelect} selectAllOnFocus={true} excludeConnections={true} />
                         </div>
                         <div className="modal-body card-body" style={{
                                 display: state.selectedUserDetails ? '' : 'none'
@@ -95,15 +125,22 @@ export default function AddConnectionDialog (props) {
                                     </button>
                                     <div ref={setPopperElement} className={classNames('dropdown-menu', 'px-2', {'show': isDropdownOpen})} style={styles.popper} {...styles.popper}>
                                         {
-                                            Object.entries(props.appState.connectionTypeDict).map(([connectionType, details]) => (
-                                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={false} onSwitchChanged={handleTypeChange} />
+                                            state.connectionTypeDict
+                                            ? Object.entries(state.connectionTypeDict).map(([connectionType, details]) => (
+                                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
                                             ))
+                                            : <></>
                                         }
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div className="modal-footer card-footer">
+                            <div className="text-right">
+                                <button type="button" className="btn btn-primary btn-small" style={{display: state.isModified ? '' : 'none'}} disabled={!state.isModified} onClick={handleConfirmClick}>
+                                    Confirm
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

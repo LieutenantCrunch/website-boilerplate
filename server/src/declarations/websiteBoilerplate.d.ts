@@ -1,11 +1,12 @@
 declare namespace WebsiteBoilerplate {
     export interface UserDetails {
-        email: string,
+        email?: string,
         displayName: string,
         displayNameIndex: number,
         pfp: string,
         roles: string[],
-        uniqueID: string
+        uniqueID: string,
+        connectionTypes?: UserConnectionTypeDictionary
     }
 
     export interface UserSearchResults {

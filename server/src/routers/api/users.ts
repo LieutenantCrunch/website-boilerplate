@@ -52,7 +52,7 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
                     res.send('No database connection found');
                 }
 
-                let userDetails: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getUserDetails(req.userId);
+                let userDetails: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getUserDetails(req.userId, req.userId, true);
 
                 if (userDetails) {
                     return res.status(200).json({success: true, userDetails});
@@ -68,12 +68,21 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         break;
     case 'getUserDetails':
         try {
+            let hasEmailRole: Boolean = false;
+            let currentId: string | undefined = req.userId;
+
+            if (currentId) {
+                if (await databaseHelper.checkUserForRole(currentId, 'Administrator')) {
+                    hasEmailRole = true;
+                }
+            }
+
             if (req.query.uniqueID) {
                 if (databaseHelper === undefined || databaseHelper === null) {
                     res.send('No database connection found');
                 }
 
-                let userDetails: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getUserDetails(req.query.uniqueID.toString());
+                let userDetails: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getUserDetails(currentId, req.query.uniqueID.toString(), hasEmailRole);
 
                 if (userDetails) {
                     return res.status(200).json({success: true, userDetails});
@@ -89,12 +98,14 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         break;
     case 'search':
         try {
-            if (req.query.displayNameFilter) {
+            if (req.query.displayNameFilter && req.userId) {
+                let userID: string = req.userId;
                 let displayNameFilter: string = req.query.displayNameFilter.toString();
                 let displayNameIndexFilter: number =  req.query.displayNameIndexFilter ? parseInt(req.query.displayNameIndexFilter.toString()) : -1;
                 let pageNumber: number = req.query.pageNumber ? parseInt(req.query.pageNumber.toString()) : 0;
+                let excludeConnections: Boolean = req.query.excludeConnections ? req.query.excludeConnections.toString().toLowerCase() === 'true' : false;
 
-                let results: WebsiteBoilerplate.UserSearchResults | null = await databaseHelper.searchUsers(displayNameFilter, displayNameIndexFilter, pageNumber);
+                let results: WebsiteBoilerplate.UserSearchResults | null = await databaseHelper.searchUsers(userID, displayNameFilter, displayNameIndexFilter, pageNumber, false);
 
                 return res.status(200).json({success: true, results});
             }

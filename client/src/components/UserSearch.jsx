@@ -104,7 +104,7 @@ const UserSearch = forwardRef((props, ref) => {
         }
 
         let text = userInput.current.value.trim();
-        let searchResult = await UserService.searchDisplayNameAndIndex(text, pageNumber);
+        let searchResult = await UserService.searchDisplayNameAndIndex(text, pageNumber, props.excludeConnections);
        
         // If the input is empty, it needs to go in here so it can clear out the autofil and suggestions
         // If the api request was cancelled, we don't want to go in here and update anything

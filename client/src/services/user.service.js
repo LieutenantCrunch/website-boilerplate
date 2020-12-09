@@ -52,12 +52,12 @@ export default class UserService {
         return userDetails?.roles ? userDetails.roles.includes(roleName) : false;
     }
 
-    static async searchDisplayNameAndIndex(value, pageNumber) {
+    static async searchDisplayNameAndIndex(value, pageNumber, excludeConnections) {
         if (this.userServiceCancel !== undefined) {
             this.userServiceCancel();
         }
 
-        let cacheIndex = `${value}${pageNumber}`.toLocaleUpperCase();
+        let cacheIndex = `${value}${pageNumber}${excludeConnections || false}`.toLocaleUpperCase();
 
         if (this.resultsCache[cacheIndex] && !this.resultsCache[cacheIndex].isStale()) {
             return this.resultsCache[cacheIndex].results;
@@ -72,10 +72,10 @@ export default class UserService {
             var queryParameters;
 
             if (displayNameFilter && displayNameIndexFilter) {
-                queryParameters = {displayNameFilter, displayNameIndexFilter, pageNumber};
+                queryParameters = {displayNameFilter, displayNameIndexFilter, pageNumber, excludeConnections};
             }
             else {
-                queryParameters = {displayNameFilter, pageNumber};
+                queryParameters = {displayNameFilter, pageNumber, excludeConnections};
             }
 
             let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
