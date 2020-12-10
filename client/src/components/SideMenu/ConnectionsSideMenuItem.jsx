@@ -4,6 +4,7 @@ import UserService from '../../services/user.service';
 import ConnectionPreviewDialog from '../Dialogs/ConnectionPreview';
 import AddConnectionDialog from '../Dialogs/AddConnection';
 import YesNoMessageBox from '../MessageBoxes/YesNoMessageBox';
+import {isMobile} from 'react-device-detect';
 
 export default function ConnectionsSideMenuItem(props) {
     const [state, updateState] = useState({
@@ -85,7 +86,11 @@ export default function ConnectionsSideMenuItem(props) {
             details: state.connections[clickedButton.dataset.connection]
         };
         
-        updateState(prevState => ({...prevState, selectedConnection}));
+        updateState(prevState => ({
+            ...prevState
+            , selectedConnection
+            , removeMessageMessage: `Are you sure you want to remove your connection to ${selectedConnection.details.displayName}#${selectedConnection.details.displayNameIndex}?`
+        }));
 
         let yesNoMessageBoxInstance = getYesNoMessageBox();
         
@@ -161,8 +166,11 @@ export default function ConnectionsSideMenuItem(props) {
                             ? Object.entries(state.connections).map(([uniqueID, details]) => {
                                 return (
                                     <li className="sideMenuItemListItem" key={uniqueID}>
-                                        <div className="sideMenuItemListItemText">
-                                            <button type="button" className="btn btn-sm btn-outline-primary border-0 w-100 text-left" data-toggle="modal" data-target="#connectionDetails" data-connection={uniqueID} onClick={handleConnectionClick}>
+                                        <div style={{width: '15%', padding: '1%'}}>
+                                            <img src={details.pfpSmall} className="border border-secondary rounded-circle w-100" />
+                                        </div>
+                                        <div className="sideMenuItemListItemText" style={{overflow: 'hidden'}}>
+                                            <button type="button" className={classNames('btn btn-outline-primary border-0 w-100 text-left', {'btn-sm': !isMobile})} data-toggle="modal" data-target="#connectionDetails" data-connection={uniqueID} onClick={handleConnectionClick} title={`${details.displayName}#${details.displayNameIndex}`}>
                                                 {details.displayName}<small className="text-muted">#{details.displayNameIndex}</small>
                                             </button>
                                         </div>
