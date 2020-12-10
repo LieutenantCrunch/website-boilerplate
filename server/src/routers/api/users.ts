@@ -189,9 +189,9 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
             let { outgoingConnection } = req.body;
 
             if (uniqueID && outgoingConnection) {
-                databaseHelper.updateUserConnection(uniqueID, outgoingConnection);
+                let result: Boolean = await databaseHelper.updateUserConnection(uniqueID, outgoingConnection);
 
-                return res.status(200).json({success: true, message: ''});
+                return res.status(200).json({success: result, message: ''});
             }
         }
         catch (err) {
@@ -201,6 +201,24 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
         res.status(200).json({success: false, message: 'An error occurred while updating the connection'});
 
         break;
+    case 'removeConnection':
+            try {
+                let uniqueID = req.userId;
+                let { connectedUserUniqueId } = req.body;
+    
+                if (uniqueID && connectedUserUniqueId) {
+                    let result: Boolean = await databaseHelper.removeUserConnection(uniqueID, connectedUserUniqueId);
+    
+                    return res.status(200).json({success: result, message: ''});
+                }
+            }
+            catch (err) {
+                console.error(`Error removing connection\n${err.message}`);
+            }
+    
+            res.status(200).json({success: false, message: 'An error occurred while removing the connection'});
+    
+            break;
     default:
         res.status(404).send(req.params.methodName + ' is not a valid users method')
         break;

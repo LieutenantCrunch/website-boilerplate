@@ -3,14 +3,36 @@ import classNames from 'classnames';
 import UserService from '../../services/user.service';
 import ConnectionPreviewDialog from '../Dialogs/ConnectionPreview';
 import AddConnectionDialog from '../Dialogs/AddConnection';
+import YesNoMessageBox from '../MessageBoxes/YesNoMessageBox';
 
 export default function ConnectionsSideMenuItem(props) {
     const [state, updateState] = useState({
         expanded: false,
         connections: {},
         selectedConnection: null,
-        selectedConnectionUpdated: false
-    })
+        selectedConnectionUpdated: false,
+        removeMessageTitle: 'Remove Connection Confirmation',
+        removeMessageMessage: 'Are you sure you want to remove this connection?',
+        removeMessageSubtext: 'The other user will not be notified but will be able to see that the connection is no longer mutual.',
+        yesNoMessageBox: null
+    });
+
+    const yesNoMessageBoxRef = useRef();
+
+    const getYesNoMessageBox = () => {
+        let yesNoMessageBox = state.yesNoMessageBox;
+
+        if (!yesNoMessageBox && yesNoMessageBoxRef.current) {
+            yesNoMessageBox = new bootstrap.Modal(yesNoMessageBoxRef.current, {show: false});
+
+            updateState(prevState => ({
+                ...prevState,
+                yesNoMessageBox
+            }));
+        }
+
+        return yesNoMessageBox;
+    };
 
     const getConnections = async () => {
         let connections = await UserService.getConnections(props.userDetails.uniqueID);
@@ -55,6 +77,25 @@ export default function ConnectionsSideMenuItem(props) {
         updateState(prevState => ({...prevState, selectedConnection, selectedConnectionUpdated: false}));
     };
 
+    const handleRemoveConnectionClick = (event) => {
+        let clickedButton = event.target;
+
+        let selectedConnection = {
+            id: clickedButton.dataset.connection,
+            details: state.connections[clickedButton.dataset.connection]
+        };
+        
+        updateState(prevState => ({...prevState, selectedConnection}));
+
+        let yesNoMessageBoxInstance = getYesNoMessageBox();
+        
+        if (yesNoMessageBoxInstance) {
+            yesNoMessageBoxInstance.show();
+        }
+
+        event.stopPropagation();
+    }
+
     const saveSelectedConnection = () => {
         let updateConnection = state.selectedConnectionUpdated;
 
@@ -72,6 +113,15 @@ export default function ConnectionsSideMenuItem(props) {
         if (updateConnection) {
             UserService.updateOutgoingConnection({ [state.selectedConnection.id]: state.selectedConnection.details });
         }
+    };
+
+    const removeSelectedConnection = () => {
+        UserService.removeOutgoingConnection({id: state.selectedConnection.id});
+
+        updateState(prevState => ({
+            ...prevState,
+            selectedConnection: null
+        }));
     };
 
     return (
@@ -107,7 +157,8 @@ export default function ConnectionsSideMenuItem(props) {
                     }} />
                     <ul className="sideMenuItemList">
                         {
-                            Object.entries(state.connections).map(([uniqueID, details]) => {
+                            Object.keys(state.connections).length > 0
+                            ? Object.entries(state.connections).map(([uniqueID, details]) => {
                                 return (
                                     <li className="sideMenuItemListItem" key={uniqueID}>
                                         <div className="sideMenuItemListItemText">
@@ -118,9 +169,13 @@ export default function ConnectionsSideMenuItem(props) {
                                         <div className="sideMenuItemListItemIcon" style={{display: details.isMutual ? '' : 'none'}}>
                                             <small>🤝</small>
                                         </div>
+                                        <div className="sideMenuItemListItemRemove">
+                                            <button type="button" className="btn btn-close" arial-label="remove" style={{boxSizing: 'border-box'}} data-connection={uniqueID} onClick={handleRemoveConnectionClick}></button>
+                                        </div>
                                     </li>
                                 );
                             })
+                            : <></>
                         }
                     </ul>
                 </div>
@@ -129,6 +184,13 @@ export default function ConnectionsSideMenuItem(props) {
 
         <ConnectionPreviewDialog id="connectionDetails" selectedConnection={state.selectedConnection} updateSelectedConnection={updateSelectedConnection} saveSelectedConnection={saveSelectedConnection} />
         <AddConnectionDialog id="addConnection" appState={props.appState} />
+        <YesNoMessageBox ref={yesNoMessageBoxRef}
+                caption={state.removeMessageTitle} 
+                message={state.removeMessageMessage} 
+                subtext={state.removeMessageSubtext} 
+                yesCallback={removeSelectedConnection}
+                noCallback={() => {}}
+            />
         </>
     );
 }

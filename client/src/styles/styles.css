@@ -318,6 +318,17 @@ body {
     margin: 2px;
 }
 
+.sideMenuItemListItemRemove {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    opacity: 0.25;
+}
+
+.sideMenuItemListItemRemove:hover {
+    opacity: 1;
+}
+
 @media only screen and (max-width: 576px) {
     @keyframes expandSideMenuItem {
         0% {

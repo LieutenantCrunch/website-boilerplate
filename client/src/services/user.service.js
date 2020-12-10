@@ -164,6 +164,18 @@ export default class UserService {
             console.error(`Error updating connection:\n${err.message}`);
         }
     }
+
+    static async removeOutgoingConnection(outgoingConnection) {
+        try {
+            let connectedUserUniqueId = outgoingConnection.id;
+            let payload = {connectedUserUniqueId};
+            
+            axiosApi.post(Constants.API_PATH_USERS + '/removeConnection', payload);
+        }
+        catch (err) {
+            console.error(`Error removing connection:\n${err.message}`);
+        }
+    }
 };
 
 // Ideally these should be static properties, but that requires a babel plugin and so on so just set it this way for now

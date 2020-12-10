@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import bcrypt from 'bcryptjs';
 
-import {Brackets, createConnection, Connection, Repository, ObjectLiteral, SelectQueryBuilder, In} from 'typeorm';
+import {Brackets, createConnection, Connection, DeleteQueryBuilder, DeleteResult, Repository, ObjectLiteral, SelectQueryBuilder} from 'typeorm';
 import {User} from '../entity/User';
 import {ProfilePicture} from '../entity/ProfilePicture';
 import {UserJWT} from '../entity/UserJWT';
@@ -960,6 +960,59 @@ export default class DatabaseHelper {
         }
 
         return [];
+    }
+
+    async removeUserConnection(currentUserUniqueId: string, connectedUserUniqueId: string): Promise<Boolean> {
+        let userConnectionRepository: Repository<UserConnection> = this.getUserConnectionRepository();
+        let currentUser: User | undefined = await this.getUserWithId(currentUserUniqueId);
+        let connectedUser: User | undefined = await this.getUserWithId(connectedUserUniqueId);
+
+        if (currentUser && connectedUser) {
+            try
+            {
+                let userConnection: UserConnection | undefined = await userConnectionRepository.createQueryBuilder()
+                    .where('requested_user_id = :currentUserId AND connected_user_id = :connectedUserId', {
+                        currentUserId: currentUser.id,
+                        connectedUserId: connectedUser.id
+                    })
+                    .getOne();
+                
+                if (userConnection) {
+                    // The column names do not get converted, nor do aliases get used when doing deletes like this
+                    let deleteQB: DeleteQueryBuilder<UserConnection> = userConnectionRepository.createQueryBuilder()
+                        .delete()
+                        .from(UserConnection)
+                        .where('id = :id', {
+                            id: userConnection.id
+                        });
+
+                    let result: DeleteResult = await deleteQB.execute();
+
+                    console.log(`${result.affected ? result.affected : 0} rows affected by User Connection Delete`);
+
+                    if (result.affected && result.affected > 0) {
+                        let inverseConnection: UserConnection | undefined = await userConnectionRepository.createQueryBuilder()
+                            .where('requested_user_id = :connectedUserId AND connected_user_id = :currentUserId', {
+                                connectedUserId: connectedUser.id,
+                                currentUserId: currentUser.id
+                            })
+                            .getOne();
+                      
+                        if (inverseConnection) {
+                            inverseConnection.isMutual = false;
+                            userConnectionRepository.save(inverseConnection);
+                        }
+                    }
+                }
+                
+                return true;
+            }
+            catch (err) {
+                console.error(`Error removing connection:\n${err.message}`);
+            }
+        }
+
+        return false;
     }
 
     async updateUserConnection(uniqueID: string, outgoingConnection: WebsiteBoilerplate.UserConnectionDetails): Promise<Boolean> {

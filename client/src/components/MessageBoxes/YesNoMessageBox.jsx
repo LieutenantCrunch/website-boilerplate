@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import PropTypes from 'prop-types';
 
-function YesNoMessageBox(props) {
+const YesNoMessageBox = forwardRef((props, ref) => {
     const messageBoxLabelId = props.id + 'Label';
 
     return (
-        <div id={props.id} className="modal fade" tabIndex="-1" data-backdrop="static" data-keyboard="false" aria-labelledby={messageBoxLabelId} aria-hidden="true">
+        <div id={props.id} ref={ref} className="modal fade" tabIndex="-1" data-backdrop="static" data-keyboard="false" aria-labelledby={messageBoxLabelId} aria-hidden="true">
             <div className="modal-dialog">
                 <div className="modal-content">
                     <div className="modal-header">
@@ -28,7 +28,7 @@ function YesNoMessageBox(props) {
             </div>
         </div>
     );
-}
+});
 
 YesNoMessageBox.propTypes = {
     id: PropTypes.string,

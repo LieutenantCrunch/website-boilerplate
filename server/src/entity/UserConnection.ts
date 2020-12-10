@@ -36,6 +36,6 @@ export class UserConnection {
     @JoinColumn({ name: 'connected_user_id', referencedColumnName: 'id' })
     connectedUser: User;
 
-    @ManyToMany(type => UserConnectionType, connectionType => connectionType.connections)
+    @ManyToMany(type => UserConnectionType, connectionType => connectionType.connections, {onDelete: 'CASCADE'})
     connectionTypes: UserConnectionType[];
 }
