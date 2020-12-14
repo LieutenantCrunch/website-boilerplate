@@ -259,7 +259,7 @@ body {
 }
 
 .sideMenuItemTab {
-    background-color: #99d9ea;
+    background-color: rgb(153, 217, 234);
     flex-shrink: 0;
     width: 10px;
     cursor: pointer;

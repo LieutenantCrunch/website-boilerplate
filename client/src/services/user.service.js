@@ -170,11 +170,15 @@ export default class UserService {
             let connectedUserUniqueId = outgoingConnection.id;
             let payload = {connectedUserUniqueId};
             
-            axiosApi.post(Constants.API_PATH_USERS + '/removeConnection', payload);
+            let response = await axiosApi.post(Constants.API_PATH_USERS + '/removeConnection', payload);
+
+            return response;
         }
         catch (err) {
             console.error(`Error removing connection:\n${err.message}`);
         }
+
+        return {};
     }
 };
 

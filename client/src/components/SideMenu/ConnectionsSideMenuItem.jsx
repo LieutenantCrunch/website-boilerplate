@@ -6,6 +6,24 @@ import AddConnectionDialog from '../Dialogs/AddConnection';
 import YesNoMessageBox from '../MessageBoxes/YesNoMessageBox';
 import {isMobile} from 'react-device-detect';
 
+import Tooltip from '@material-ui/core/Tooltip';
+import Zoom from '@material-ui/core/Zoom';
+import { withStyles } from '@material-ui/core/styles';
+
+const HtmlTooltip = withStyles((theme) => ({
+    tooltip: {
+      backgroundColor: 'rgb(153,217,234)',
+      border: '1px solid rgb(0,162,232)',
+      color: 'rgb(0,0,0)',
+      fontWeight: 'bold',
+      margin: '6px 0',
+      opacity: 0.9
+    },
+    arrow: {
+        color: 'rgb(0,162,232)'
+    }
+  }))(Tooltip);
+
 export default function ConnectionsSideMenuItem(props) {
     const [state, updateState] = useState({
         expanded: false,
@@ -120,13 +138,26 @@ export default function ConnectionsSideMenuItem(props) {
         }
     };
 
-    const removeSelectedConnection = () => {
-        UserService.removeOutgoingConnection({id: state.selectedConnection.id});
+    const removeSelectedConnection = async () => {
+        let { data } = await UserService.removeOutgoingConnection({id: state.selectedConnection.id});
 
-        updateState(prevState => ({
-            ...prevState,
-            selectedConnection: null
-        }));
+        if (data?.success) {
+            let connections = {...state.connections};
+            delete connections[state.selectedConnection.id];
+
+            updateState(prevState => ({
+                ...prevState,
+                selectedConnection: null,
+                connections
+            }));
+        }
+        else {
+            // Should alert them that the removal failed
+            updateState(prevState => ({
+                ...prevState,
+                selectedConnection: null
+            }));
+        }
     };
 
     return (
@@ -170,9 +201,20 @@ export default function ConnectionsSideMenuItem(props) {
                                             <img src={details.pfpSmall} className="border border-secondary rounded-circle w-100" />
                                         </div>
                                         <div className="sideMenuItemListItemText" style={{overflow: 'hidden'}}>
-                                            <button type="button" className={classNames('btn btn-outline-primary border-0 w-100 text-left', {'btn-sm': !isMobile})} data-toggle="modal" data-target="#connectionDetails" data-connection={uniqueID} onClick={handleConnectionClick} title={`${details.displayName}#${details.displayNameIndex}`}>
-                                                {details.displayName}<small className="text-muted">#{details.displayNameIndex}</small>
-                                            </button>
+                                            <HtmlTooltip title={
+                                                    <>
+                                                        {details.displayName}<small>#{details.displayNameIndex}</small>
+                                                    </>
+                                                }
+                                                TransitionComponent={Zoom}
+                                                enterDelay={500}
+                                                arrow
+                                                interactive
+                                            >
+                                                <button type="button" className={classNames('btn btn-outline-primary border-0 w-100 text-left', {'btn-sm': !isMobile})} data-toggle="modal" data-target="#connectionDetails" data-connection={uniqueID} onClick={handleConnectionClick}>
+                                                    {details.displayName}<small className="text-muted">#{details.displayNameIndex}</small>
+                                                </button>
+                                            </HtmlTooltip>
                                         </div>
                                         <div className="sideMenuItemListItemIcon" style={{display: details.isMutual ? '' : 'none'}}>
                                             <small>🤝</small>
