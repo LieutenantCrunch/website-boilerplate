@@ -119,9 +119,7 @@ export default function AdminPage() {
                     }}
                 >
                     <strong>{state.adminPageAlert.message}</strong>
-                    <button type="button" className="close" aria-label="Close" data-target="#adminPageAlertEl" data-toggle="collapse" aria-expanded="false" aria-controls="adminPageAlert">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <button type="button" className="btn-close" aria-label="Close" data-target="#adminPageAlertEl" data-toggle="collapse" aria-expanded="false" aria-controls="adminPageAlert"></button>
                 </div>
                 <div className="container-fluid d-flex align-items-center flex-column mt-2">
                     <div className="card col-8 col-md-4 align-middle text-center">
@@ -187,13 +185,11 @@ export default function AdminPage() {
                             <div className="modal-header">
                                 <h5 className="modal-title" id="adminPageConfirmLabel">{state.confirmTitle}</h5>
                                 <button type="button" 
-                                    className="close" 
+                                    className="btn-close" 
                                     onClick={handleConfirmNoClick}
                                     data-dismiss="modal" 
                                     arial-label="close"
-                                >
-                                    <span aria-hidden="true">&times;</span>
-                                </button>
+                                ></button>
                             </div>
                             <div className="modal-body">
                                 <p>{state.confirmMessage}</p>

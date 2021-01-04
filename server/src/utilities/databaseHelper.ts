@@ -4,14 +4,16 @@ import { v4 as uuidv4 } from 'uuid';
 
 import bcrypt from 'bcryptjs';
 
-import {createConnection, Connection, Repository, ObjectLiteral, SelectQueryBuilder} from 'typeorm';
+import {Brackets, createConnection, Connection, DeleteQueryBuilder, DeleteResult, Repository, ObjectLiteral, SelectQueryBuilder} from 'typeorm';
 import {User} from '../entity/User';
 import {ProfilePicture} from '../entity/ProfilePicture';
 import {UserJWT} from '../entity/UserJWT';
 import {DisplayName} from '../entity/DisplayName';
 import {Role} from '../entity/Role';
+import {UserConnection} from '../entity/UserConnection';
 import * as Constants from '../constants/constants';
 import { PasswordResetToken } from '../entity/PasswordResetToken';
+import { UserConnectionType } from '../entity/UserConnectionType';
 
 export default class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -22,6 +24,8 @@ export default class DatabaseHelper {
     #pfpRepository: Repository<ProfilePicture>;
     #passwordResetTokenRepository: Repository<PasswordResetToken>;
     #displayNameRepository: Repository<DisplayName>;
+    #userConnectionRepository: Repository<UserConnection>;
+    #userConnectionTypeRepository: Repository<UserConnectionType>;
 
     constructor() {
         if (DatabaseHelper.instance) {
@@ -101,6 +105,22 @@ export default class DatabaseHelper {
         return this.#displayNameRepository;
     }
 
+    private getUserConnectionRepository() {
+        if (!this.#userConnectionRepository) {
+            this.#userConnectionRepository = this.#connection.getRepository(UserConnection);
+        }
+
+        return this.#userConnectionRepository;
+    }
+
+    private getUserConnectionTypeRepository() {
+        if (!this.#userConnectionTypeRepository) {
+            this.#userConnectionTypeRepository = this.#connection.getRepository(UserConnectionType);
+        }
+
+        return this.#userConnectionTypeRepository;
+    }
+
     async getAllUsers(): Promise<User[]> {
         let userRepository: Repository<User> = this.getUserRepository();
 
@@ -133,6 +153,26 @@ export default class DatabaseHelper {
         }
         
         return false;
+    }
+
+    async getUserIdForUniqueId(uniqueID: string): Promise<number | undefined> {
+        let userRepository: Repository<User> = this.getUserRepository();
+
+        try
+        {
+            let {id}: {id: number} = await userRepository.createQueryBuilder('u')
+                .select('u.id', 'id')
+                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .getRawOne();
+
+            return id;
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with unique id ${uniqueID}: ${err.message}`);
+        }
+
+        return undefined;
     }
 
     async getUserWithId(id: string): Promise<User | undefined> {
@@ -246,7 +286,7 @@ export default class DatabaseHelper {
                 let currentDate: Date = new Date(Date.now());
 
                 let activeTokens: PasswordResetToken[] = await passwordResetTokenRepository.createQueryBuilder('rpt')
-                    .innerJoinAndSelect('rpt.registeredUser', 'user')
+                    .innerJoin('rpt.registeredUser', 'user')
                     .where('user.id = rpt.registeredUserId AND rpt.expirationDate > :currentDate', {currentDate})
                     .getMany();
                 
@@ -287,7 +327,7 @@ export default class DatabaseHelper {
 
             let passwordResetTokenRepository: Repository<PasswordResetToken> = this.getPasswordResetTokenRepository();
             let foundToken: PasswordResetToken | undefined = await passwordResetTokenRepository.createQueryBuilder('rpt')
-                .innerJoinAndSelect('rpt.registeredUser', 'user')
+                .innerJoin('rpt.registeredUser', 'user')
                 .where('rpt.token = :token AND user.email = :email', {token, email})
                 .getOne();
 
@@ -341,7 +381,11 @@ export default class DatabaseHelper {
 
         try
         {
-            registeredUser = await userRepository.findOne({uniqueID}, {relations: ['profilePictures']});
+            registeredUser = await userRepository.createQueryBuilder('u')
+                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .innerJoinAndSelect('u.profilePictures', 'pfp')
+                .orderBy('pfp.id', 'DESC')
+                .getOne();
         }
         catch (err)
         {
@@ -349,11 +393,7 @@ export default class DatabaseHelper {
         }
         
         if (registeredUser && registeredUser.profilePictures.length > 0) {
-            // To guarantee we get the latest one, we could sort the array first
-            // registeredUser.profilePictures.sort((a, b) => { return b.id - a.id});
-
-            // However, it should just query them in ascending order by default, so we can just take the last one and save on some performance
-            let profilePicture: ProfilePicture = registeredUser.profilePictures[registeredUser.profilePictures.length - 1];
+            let profilePicture: ProfilePicture = registeredUser.profilePictures[0];
             
             return originalSize ? profilePicture.fileName : profilePicture.smallFileName;
         }
@@ -454,9 +494,8 @@ export default class DatabaseHelper {
 
         try
         {
-            //registeredUser = await userRepository.findOne({uniqueID: uniqueID}, {relations: ['activeJWTs']});
             registeredUser = await userRepository.createQueryBuilder('user')
-            .innerJoinAndSelect('user.activeJWTs', 'jwt')
+            .innerJoin('user.activeJWTs', 'jwt')
             .where('jwt.jti = :jti AND jwt.isValid = 1 AND jwt.expirationDate > now()', {jti})
             .getOne();
         }
@@ -645,9 +684,9 @@ export default class DatabaseHelper {
 
             // Create a new display name
             const { nextIndex } = await displayNameRepository.createQueryBuilder('dn')
-            .select('IFNULL(MAX(dn.displayNameIndex), 0) + 1', 'nextIndex')
-            .where('dn.displayName = :displayName', {displayName})
-            .getRawOne();
+                .select('IFNULL(MAX(dn.displayNameIndex), 0) + 1', 'nextIndex')
+                .where('dn.displayName = :displayName', {displayName})
+                .getRawOne();
 
             let newDisplayName: DisplayName = new DisplayName();
 
@@ -683,7 +722,7 @@ export default class DatabaseHelper {
             }
             else {
                 displayNameRecord = await displayNameRepository.createQueryBuilder('dn')
-                    .innerJoinAndSelect('dn.registeredUser', 'u', `u.uniqueID = :uniqueID`, {uniqueID})
+                    .innerJoin('dn.registeredUser', 'u', `u.uniqueID = :uniqueID`, {uniqueID})
                     .where('dn.displayName = :displayName', {displayName})
                     .getOne();
                 
@@ -703,25 +742,50 @@ export default class DatabaseHelper {
         return {success: false, message: `Error validating Display Name ${displayName} for user with unique ID ${uniqueID}, check log.`};
     }
 
-    async getUserDetails(uniqueID: string): Promise<WebsiteBoilerplate.UserDetails | null> {
+    async getUserDetails(currentId: string | undefined, uniqueID: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.UserDetails | null> {
         try {
+            let getConnectionTypes = currentId && currentId !== uniqueID;
+
             let userRepository: Repository<User> = this.getUserRepository();
-            let user: User | undefined = await userRepository.createQueryBuilder('u')
+            let selectQB: SelectQueryBuilder<User> = userRepository.createQueryBuilder('u')
                 .leftJoinAndSelect('u.displayNames', 'dn', 'dn.isActive = 1')
                 .leftJoinAndSelect('u.profilePictures', 'pfp')
                 .leftJoinAndSelect('u.roles', 'role')
                 .where('u.uniqueID = :uniqueID', {uniqueID})
-                .getOne();
+                .orderBy('pfp.id', 'DESC');
+
+            if (getConnectionTypes) {
+                let currentUserId: number | undefined = await this.getUserIdForUniqueId(currentId!);
+
+                if (currentUserId) {
+                    selectQB = selectQB.leftJoinAndSelect('u.incomingConnections', 'ic', 'ic.requestedUserId = :currentUserId', {currentUserId})
+                        .leftJoinAndSelect('ic.connectionTypes', 'ct');
+                }
+            }
+
+            let user: User | undefined = await selectQB.getOne();
             
             if (user) {
                 let userDetails: WebsiteBoilerplate.UserDetails = {
-                    email: user.email,
                     displayName: (user.displayNames[0] ? user.displayNames[0].displayName : ''),
                     displayNameIndex: (user.displayNames[0] ? user.displayNames[0].displayNameIndex : -1),
                     pfp: (user.profilePictures[0] ? `i/u/${uniqueID}/${user.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz'),
                     roles: (user.roles.map(role => role.roleName)),
                     uniqueID
                 };
+
+                if (includeEmail) {
+                    userDetails.email = user.email;
+                }
+
+                if (getConnectionTypes && user.incomingConnections.length > 0) {
+                    let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = user.incomingConnections[0].connectionTypes.reduce((previousValue, connectionType) => ({
+                        ...previousValue,
+                        [connectionType.displayName]: true
+                    }), {});
+
+                    userDetails.connectionTypes = connectionTypes;
+                }
 
                 return userDetails;
             }
@@ -753,12 +817,19 @@ export default class DatabaseHelper {
         return false;
     }
 
-    async searchUsers(displayNameFilter: string, displayNameIndexFilter: number, pageNumber: number): Promise<WebsiteBoilerplate.UserSearchResults | null> {
+    async searchUsers(userID: string, displayNameFilter: string, displayNameIndexFilter: number, pageNumber: number, excludeConnections: Boolean): Promise<WebsiteBoilerplate.UserSearchResults | null> {
         try {
             let displayNameRepository: Repository<DisplayName> = this.getDisplayNameRepository();
+            // Could add an isActive to pfp so I wouldn't have to do the join top 1 condition, would make the code more flexible
             let selectQB: SelectQueryBuilder<DisplayName> = displayNameRepository.createQueryBuilder('dn')
-                .innerJoinAndSelect('dn.registeredUser', 'u')
-                .leftJoinAndSelect('u.profilePictures', 'pfp')
+                .select('dn.id') /* This is necessary due to a bug with TypeORM trying to do an alias for getting the first x results */
+                    .addSelect('dn.displayName', 'dn_display_name')
+                    .addSelect('dn.displayNameIndex', 'dn_display_name_index')
+                    .addSelect('u.uniqueID', 'u_unique_id')
+                    .addSelect('pfp.mimeType', 'pfp_mime_type')
+                    .addSelect('pfp.smallFileName', 'pfp_small_file_name')
+                .innerJoin('dn.registeredUser', 'u')
+                    .leftJoin('u.profilePictures', 'pfp', '`pfp`.`id` = (select id FROM profile_picture where profile_picture.registered_user_id = u.id order by profile_picture.id desc limit 1)')
                 .where('dn.isActive = 1');
             
             if (displayNameFilter) {
@@ -768,6 +839,21 @@ export default class DatabaseHelper {
             if (displayNameIndexFilter >= 0) {
                 selectQB = selectQB.andWhere('convert(dn.displayNameIndex, char) like :displayNameIndex', {displayNameIndex: `${displayNameIndexFilter}%`})
             }
+
+            if (excludeConnections) {
+                selectQB = selectQB.leftJoin('u.outgoingConnections', 'oc')
+                .leftJoin('u.incomingConnections', 'ic')
+                .leftJoin('ic.requestedUser', 'ru')
+                .andWhere('u.uniqueID != :userID', {userID})
+                .andWhere(new Brackets(qb => {
+                    qb.where('ru.uniqueID is null')
+                        .orWhere('ru.uniqueID != :userID', {userID})
+                }))
+                .andWhere('oc.id is null');
+            }
+
+            selectQB = selectQB.orderBy('dn.displayName', 'ASC')
+                .addOrderBy('dn.displayNameIndex', 'ASC');
 
             let [displayNames, total]: [DisplayName[], number] = await selectQB.skip(pageNumber * Constants.DB_USER_FETCH_PAGE_SIZE).take(Constants.DB_USER_FETCH_PAGE_SIZE).getManyAndCount();
             let results: WebsiteBoilerplate.UserSearchResults = {
@@ -790,5 +876,287 @@ export default class DatabaseHelper {
         }
 
         return null;        
+    }
+
+    async getOutgoingConnections(uniqueID: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
+        try {
+            let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.createQueryBuilder('u')
+                .innerJoinAndSelect('u.outgoingConnections', 'oc')
+                .innerJoinAndSelect('oc.connectedUser', 'cu')
+                .leftJoinAndSelect('cu.displayNames', 'dn', 'dn.isActive = 1')
+                .leftJoinAndSelect('cu.profilePictures', 'pfp')
+                .leftJoinAndSelect('oc.connectionTypes', 'uct')
+                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .getOne();
+            
+            if (user) {
+                return user.outgoingConnections.reduce((previousValue, connection) => {
+                    let connectedUser: User = connection.connectedUser;
+
+                    let userConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = connection.connectionTypes.reduce((previousValue, connectionType) => ({
+                        ...previousValue,
+                        [connectionType.displayName]: true
+                    }), {});
+
+
+                    return {
+                        ...previousValue,
+                        [connectedUser.uniqueID]: {
+                            displayName: (connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
+                            displayNameIndex: (connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
+                            pfpSmall: (connectedUser.profilePictures[0] ? `i/u/${uniqueID}/${connectedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                            isMutual: connection.isMutual,
+                            connectionTypes: {...connectionTypes, ...userConnectionTypes}
+                        }
+                    }
+                }, {});
+            }
+        }
+        catch (err) {
+            console.error(`Error looking up connections for uniqueID ${uniqueID}:\n${err.message}`);
+        }
+
+        return {};
+    }
+
+    async getIncomingConnections(uniqueID: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
+        try {
+            let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.createQueryBuilder('u')
+                .innerJoinAndSelect('u.incomingConnections', 'ic')
+                .innerJoinAndSelect('ic.requestedUser', 'ru')
+                .leftJoinAndSelect('ru.displayNames', 'dn', 'dn.isActive = 1')
+                .leftJoinAndSelect('ru.profilePictures', 'pfp')
+                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .getOne();
+            
+            if (user) {
+                return user.incomingConnections.reduce((previousValue, connection) => {
+                    let requestedUser: User = connection.requestedUser;
+
+                    return {
+                        ...previousValue,
+                        [requestedUser.uniqueID]: {
+                            displayName: (requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
+                            displayNameIndex: (requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
+                            pfpSmall: (requestedUser.profilePictures[0] ? `i/u/${uniqueID}/${requestedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                            isMutual: connection.isMutual,
+                            connectionTypes: {}
+                        }
+                    }
+                }, {});
+            }
+        }
+        catch (err) {
+            console.error(`Error looking up connections for uniqueID ${uniqueID}:\n${err.message}`);
+        }
+
+        return {};
+    }
+
+    async getConnectionTypeDict(): Promise<WebsiteBoilerplate.UserConnectionTypeDictionary> {
+        try {
+            let connectionTypeRepository: Repository<UserConnectionType> = this.getUserConnectionTypeRepository();
+
+            let connectionTypes: UserConnectionType[] = await connectionTypeRepository.createQueryBuilder('uct')
+                .cache(Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000)
+                .getMany();
+
+            let connectionTypesDict: WebsiteBoilerplate.UserConnectionTypeDictionary = connectionTypes.reduce((previousValue, currentValue) => {
+                return {
+                    ...previousValue,
+                    [currentValue.displayName]: false
+                }
+            }, {});
+
+            return connectionTypesDict;
+        }
+        catch (err) {
+            console.error(`Error looking up connection types:\n${err.message}`);
+        }
+
+        return {};
+    }
+
+    async getConnectionTypes(): Promise<UserConnectionType[]> {
+        try {
+            let connectionTypeRepository: Repository<UserConnectionType> = this.getUserConnectionTypeRepository();
+
+            let connectionTypes: UserConnectionType[] = await connectionTypeRepository.createQueryBuilder('uct')
+                .cache(Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000)
+                .getMany();
+
+            return connectionTypes;
+        }
+        catch (err) {
+            console.error(`Error looking up connection types:\n${err.message}`);
+        }
+
+        return [];
+    }
+
+    async removeUserConnection(currentUserUniqueId: string, connectedUserUniqueId: string): Promise<Boolean> {
+        let userConnectionRepository: Repository<UserConnection> = this.getUserConnectionRepository();
+        let currentUser: User | undefined = await this.getUserWithId(currentUserUniqueId);
+        let connectedUser: User | undefined = await this.getUserWithId(connectedUserUniqueId);
+
+        if (currentUser && connectedUser) {
+            try
+            {
+                let userConnection: UserConnection | undefined = await userConnectionRepository.createQueryBuilder()
+                    .where('requested_user_id = :currentUserId AND connected_user_id = :connectedUserId', {
+                        currentUserId: currentUser.id,
+                        connectedUserId: connectedUser.id
+                    })
+                    .getOne();
+                
+                if (userConnection) {
+                    // The column names do not get converted, nor do aliases get used when doing deletes like this
+                    let deleteQB: DeleteQueryBuilder<UserConnection> = userConnectionRepository.createQueryBuilder()
+                        .delete()
+                        .from(UserConnection)
+                        .where('id = :id', {
+                            id: userConnection.id
+                        });
+
+                    let result: DeleteResult = await deleteQB.execute();
+
+                    console.log(`${result.affected ? result.affected : 0} rows affected by User Connection Delete`);
+
+                    if (result.affected && result.affected > 0) {
+                        let inverseConnection: UserConnection | undefined = await userConnectionRepository.createQueryBuilder()
+                            .where('requested_user_id = :connectedUserId AND connected_user_id = :currentUserId', {
+                                connectedUserId: connectedUser.id,
+                                currentUserId: currentUser.id
+                            })
+                            .getOne();
+                      
+                        if (inverseConnection) {
+                            inverseConnection.isMutual = false;
+                            userConnectionRepository.save(inverseConnection);
+                        }
+                    }
+                }
+                
+                return true;
+            }
+            catch (err) {
+                console.error(`Error removing connection:\n${err.message}`);
+            }
+        }
+
+        return false;
+    }
+
+    async updateUserConnection(uniqueID: string, outgoingConnection: WebsiteBoilerplate.UserConnectionDetails): Promise<Boolean> {
+        // Need to improve the variable names in this method and probably create some additional variables for cleanup
+        let allConnectionTypes: UserConnectionType[] = await this.getConnectionTypes();
+        let userRepository: Repository<User> = this.getUserRepository();
+        let userConnectionRepository: Repository<UserConnection> = this.getUserConnectionRepository();
+        let connectedUserUniqueID: string = Object.keys(outgoingConnection)[0];
+        let connectedUser: User | undefined = await this.getUserWithId(connectedUserUniqueID);
+
+        if (connectedUser) {
+            let currentUser: User | undefined = await userRepository.createQueryBuilder('u')
+                .leftJoinAndSelect('u.outgoingConnections', 'uc', 'uc.connectedUserId = :connectedUserId', {connectedUserId: connectedUser.id})
+                .leftJoinAndSelect('uc.connectionTypes', 'ct')
+                .leftJoinAndSelect('uc.connectedUser', 'cu')
+                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .getOne();
+
+            if (currentUser) {
+                let incomingConnection: UserConnection | undefined = await userConnectionRepository.createQueryBuilder('uc')
+                    .where('uc.requestedUserId = :connectedUserId AND uc.connectedUserId = :currentUserId', {
+                        connectedUserId: connectedUser.id,
+                        currentUserId: currentUser.id
+                    })
+                    .getOne();
+
+                let outgoingConnections: UserConnection[] = currentUser.outgoingConnections;
+                let changesMade: Boolean = false;
+
+                if (outgoingConnections.length > 0) { // This is an existing connection, modify the types if necessary
+                    let { connectionTypes } : { connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary} = outgoingConnection[connectedUserUniqueID];
+                    let connectionTypeCount: number = currentUser.outgoingConnections[0].connectionTypes.length;
+                    let atLeastOneConnectionType: Boolean = false;
+
+                    // Remove any connections that are no longer selected
+                    currentUser.outgoingConnections[0].connectionTypes = currentUser.outgoingConnections[0].connectionTypes.filter(connectionType => connectionTypes[connectionType.displayName]);
+
+                    if (connectionTypeCount != currentUser.outgoingConnections[0].connectionTypes.length) {
+                        changesMade = true;
+                    }
+
+                    let currentConnectionTypes: UserConnectionType[] = currentUser.outgoingConnections[0].connectionTypes;
+
+                    Object.keys(connectionTypes).forEach((key: string) => {
+                        let isSelected: Boolean = connectionTypes[key];
+
+                        if (isSelected) {
+                            if (!currentConnectionTypes.find(elem => elem.displayName === key)) {
+                                // If it's selected and they don't currently have that type, it needs to be added
+                                let connectionTypeRecord: UserConnectionType | undefined = allConnectionTypes.find(elem => elem.displayName === key);
+
+                                if (connectionTypeRecord) {
+                                    currentUser!.outgoingConnections[0].connectionTypes.push(connectionTypeRecord);
+                                    changesMade = true;
+                                }
+                            }
+
+                            atLeastOneConnectionType = true;
+                        }
+                    });
+
+                    if (atLeastOneConnectionType && incomingConnection) {
+                        currentUser.outgoingConnections[0].isMutual = true;
+                    }
+                    else if (!atLeastOneConnectionType) {
+                        currentUser.outgoingConnections[0].isMutual = false;
+                    }
+                }
+                else {
+                    let newConnection: UserConnection = new UserConnection();
+
+                    newConnection.requestedUser = currentUser;
+                    newConnection.connectedUser = connectedUser;
+
+                    let newConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = outgoingConnection[connectedUserUniqueID].connectionTypes;
+
+                    if (Object.keys(newConnectionTypes).length) {
+                        newConnection.isMutual = incomingConnection ? true : false;
+                        newConnection.connectionTypes = new Array<UserConnectionType>();
+                        allConnectionTypes.forEach(connectionType => {
+                            if (newConnectionTypes[connectionType.displayName]) {
+                                newConnection.connectionTypes.push(connectionType);
+                            }
+                        });
+                    }
+                    else {
+                        newConnection.isMutual = false;
+                    }
+
+                    currentUser.outgoingConnections.push(newConnection);
+                    changesMade = true;
+                }
+
+                if (changesMade) {
+                    let connectionsToSave: UserConnection[] = [currentUser.outgoingConnections[0]];
+
+                    if (incomingConnection) {
+                        if (incomingConnection.isMutual != currentUser.outgoingConnections[0].isMutual) {
+                            incomingConnection.isMutual = currentUser.outgoingConnections[0].isMutual;
+                            connectionsToSave.push(incomingConnection);
+                        }
+                    }
+                    
+                    await userConnectionRepository.save(connectionsToSave);
+                }
+            }
+        }
+
+        return false;
     }
 };

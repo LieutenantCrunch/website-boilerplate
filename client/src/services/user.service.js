@@ -52,12 +52,13 @@ export default class UserService {
         return userDetails?.roles ? userDetails.roles.includes(roleName) : false;
     }
 
-    static async searchDisplayNameAndIndex(value, pageNumber) {
+    static async searchDisplayNameAndIndex(value, pageNumber, excludeConnections) {
         if (this.userServiceCancel !== undefined) {
             this.userServiceCancel();
         }
 
-        let cacheIndex = `${value}${pageNumber}`.toLocaleUpperCase();
+        let cacheIndex = `${value}${pageNumber}${excludeConnections || false}`.toLocaleUpperCase();
+
         if (this.resultsCache[cacheIndex] && !this.resultsCache[cacheIndex].isStale()) {
             return this.resultsCache[cacheIndex].results;
         }
@@ -71,10 +72,10 @@ export default class UserService {
             var queryParameters;
 
             if (displayNameFilter && displayNameIndexFilter) {
-                queryParameters = {displayNameFilter, displayNameIndexFilter, pageNumber};
+                queryParameters = {displayNameFilter, displayNameIndexFilter, pageNumber, excludeConnections};
             }
             else {
-                queryParameters = {displayNameFilter, pageNumber};
+                queryParameters = {displayNameFilter, pageNumber, excludeConnections};
             }
 
             let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
@@ -118,6 +119,82 @@ export default class UserService {
 
             return {success: false, message: `An exception occurred while making the api request for verifying the display name ${displayName} for the user with unique id: ${userUniqueID}\n${err.message}`};
         }
+    }
+
+    static async getIncomingConnections(uniqueID) {
+        try {
+            let queryString = encodeURI(`uniqueID=${uniqueID}`);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getIncomingConnections?${queryString}`);
+
+            if (response.data && response.data.success) {
+                return response.data.connections;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting connections for user ${uniqueID}:\n${err.message}`);
+        }
+
+        return null;
+    }
+
+    static async getOutgoingConnections(uniqueID) {
+        try {
+            let queryString = encodeURI(`uniqueID=${uniqueID}`);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getOutgoingConnections?${queryString}`);
+
+            if (response.data && response.data.success) {
+                return response.data.connections;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting connections for user ${uniqueID}:\n${err.message}`);
+        }
+
+        return null;
+    }
+
+    static async getConnectionTypeDict() {
+        try {
+            let response = await axiosApi.get(Constants.API_PATH_USERS + '/getConnectionTypeDict');
+
+            if (response.data && response.data.success) {
+                return response.data.connectionTypeDict;
+            }
+            else {
+                console.error(`Failed to get connection type dictionary`);
+            }
+        }
+        catch (err) {
+            console.error(`Error getting connection type dictionary:\n${err.message}`);
+        }
+
+        return {};
+    }
+
+    static async updateOutgoingConnection(outgoingConnection) {
+        try {
+            let payload = {outgoingConnection};
+            axiosApi.post(Constants.API_PATH_USERS + '/updateConnection', payload);
+        }
+        catch (err) {
+            console.error(`Error updating connection:\n${err.message}`);
+        }
+    }
+
+    static async removeOutgoingConnection(outgoingConnection) {
+        try {
+            let connectedUserUniqueId = outgoingConnection.id;
+            let payload = {connectedUserUniqueId};
+            
+            let response = await axiosApi.post(Constants.API_PATH_USERS + '/removeConnection', payload);
+
+            return response;
+        }
+        catch (err) {
+            console.error(`Error removing connection:\n${err.message}`);
+        }
+
+        return {};
     }
 };
 

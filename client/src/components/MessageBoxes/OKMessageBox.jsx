@@ -10,9 +10,7 @@ function OKMessageBox(props) {
                 <div className="modal-content">
                     <div className="modal-header">
                         <h5 className="modal-title" id={messageBoxLabelId}>{props.caption}</h5>
-                        <button type="button" className="close" data-dismiss="modal" aria-label="close" onClick={props.okCallback}>
-                            <span aria-hidden="true">&times;</span>
-                        </button>
+                        <button type="button" className="btn-close" data-dismiss="modal" aria-label="close" onClick={props.okCallback}></button>
                     </div>
                     <div className="modal-body">
                         <p>{props.message}</p>

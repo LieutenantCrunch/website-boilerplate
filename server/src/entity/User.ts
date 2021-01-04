@@ -1,4 +1,5 @@
 import {Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToMany} from 'typeorm';
+import { UserConnection } from './UserConnection';
 import { ProfilePicture } from './ProfilePicture';
 import { UserJWT } from './UserJWT';
 import { PasswordResetToken } from './PasswordResetToken';
@@ -51,4 +52,10 @@ export class User {
 
     @ManyToMany(type => Role, role => role.users)
     roles: Role[];
+
+    @OneToMany(type => UserConnection, connection => connection.requestedUser, {onDelete: 'CASCADE'})
+    outgoingConnections: UserConnection[];
+
+    @OneToMany(type => UserConnection, connection => connection.connectedUser)
+    incomingConnections: UserConnection[];
 }

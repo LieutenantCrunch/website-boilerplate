@@ -1,11 +1,12 @@
 declare namespace WebsiteBoilerplate {
     export interface UserDetails {
-        email: string,
+        email?: string,
         displayName: string,
         displayNameIndex: number,
         pfp: string,
         roles: string[],
-        uniqueID: string
+        uniqueID: string,
+        connectionTypes?: UserConnectionTypeDictionary
     }
 
     export interface UserSearchResults {
@@ -17,5 +18,19 @@ declare namespace WebsiteBoilerplate {
             uniqueID: string,
             pfpSmall: string
         }[]
+    }
+
+    export interface UserConnectionTypeDictionary {
+        [id: string]: boolean
+    }
+
+    export interface UserConnectionDetails {
+        [id: string]: {
+            displayName: string,
+            displayNameIndex: number,
+            pfp: string
+            isMutual: Boolean,
+            connectionTypes: UserConnectionTypeDictionary
+        }
     }
 }

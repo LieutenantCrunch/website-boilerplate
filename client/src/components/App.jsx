@@ -14,6 +14,7 @@ import RegistrationForm from './RegistrationForm/RegistrationForm';
 import Welcome from './Welcome';
 import SettingsPage from './SettingsPage';
 import ResetPassword from './ResetPassword';
+import SideMenu from './SideMenu/SideMenu';
 
 import UserService from '../services/user.service';
 import UtilityService from '../services/utility.service';
@@ -24,7 +25,10 @@ export default function App() {
     const [statusMessage, setStatusMessage] = useState({type: 'info', message: null});
     const [userInfo, setUserInfo] = Hooks.useStateWithLocalStorage('userInfo', null);
     const [appConstants, setAppConstants] = useState({displayNameChangeDays: 30});
-    const [userDetails, setUserDetails] = useState({email: '', displayName: '', displayNameIndex: -1, pfp: ''});
+    const [userDetails, setUserDetails] = useState({email: '', displayName: '', displayNameIndex: -1, pfp: '', roles: [], uniqueID: ''});
+    const [appState, updateAppState] = useState({
+        connectionTypeDict: {}
+    })
 
     const checkForValidSession = () => {
         if (!userInfo) {
@@ -52,7 +56,22 @@ export default function App() {
                 ...constants
             });
         }, () => {});
-    }, [userInfo]);
+
+        fetchConnectionTypeDict();
+    }, []);
+
+    const fetchConnectionTypeDict = async () => {
+        if (Object.keys(appState.connectionTypeDict).length === 0) {
+            let connectionTypeDict = await UserService.getConnectionTypeDict();
+            
+            updateAppState(prevState => ({
+                ...prevState,
+                connectionTypeDict
+            }));
+
+            return connectionTypeDict;
+        }
+    };
 
     return(
         <div className="App">
@@ -110,6 +129,11 @@ export default function App() {
                     </Switch>
                 </div>
             </Router>
+            {
+                checkForValidSession()
+                ? <SideMenu userDetails={userDetails} fetchConnectionTypeDict={fetchConnectionTypeDict} appState={appState} />
+                : <></>
+            }
         </div>
     );
 };
