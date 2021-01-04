@@ -878,7 +878,7 @@ export default class DatabaseHelper {
         return null;        
     }
 
-    async getUserConnections(uniqueID: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
+    async getOutgoingConnections(uniqueID: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
         try {
             let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
             let userRepository: Repository<User> = this.getUserRepository();
@@ -909,6 +909,42 @@ export default class DatabaseHelper {
                             pfpSmall: (connectedUser.profilePictures[0] ? `i/u/${uniqueID}/${connectedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
                             isMutual: connection.isMutual,
                             connectionTypes: {...connectionTypes, ...userConnectionTypes}
+                        }
+                    }
+                }, {});
+            }
+        }
+        catch (err) {
+            console.error(`Error looking up connections for uniqueID ${uniqueID}:\n${err.message}`);
+        }
+
+        return {};
+    }
+
+    async getIncomingConnections(uniqueID: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
+        try {
+            let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
+            let userRepository: Repository<User> = this.getUserRepository();
+            let user: User | undefined = await userRepository.createQueryBuilder('u')
+                .innerJoinAndSelect('u.incomingConnections', 'ic')
+                .innerJoinAndSelect('ic.requestedUser', 'ru')
+                .leftJoinAndSelect('ru.displayNames', 'dn', 'dn.isActive = 1')
+                .leftJoinAndSelect('ru.profilePictures', 'pfp')
+                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .getOne();
+            
+            if (user) {
+                return user.incomingConnections.reduce((previousValue, connection) => {
+                    let requestedUser: User = connection.requestedUser;
+
+                    return {
+                        ...previousValue,
+                        [requestedUser.uniqueID]: {
+                            displayName: (requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
+                            displayNameIndex: (requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
+                            pfpSmall: (requestedUser.profilePictures[0] ? `i/u/${uniqueID}/${requestedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                            isMutual: connection.isMutual,
+                            connectionTypes: {}
                         }
                     }
                 }, {});

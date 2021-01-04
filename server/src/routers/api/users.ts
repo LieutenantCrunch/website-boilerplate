@@ -115,11 +115,25 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         }
 
         return res.status(200).json({success: false, results: []});
-    case 'getConnections':
+    case 'getOutgoingConnections':
         try {
             if (req.query.uniqueID) {
                 let uniqueID: string = req.query.uniqueID.toString();
-                let connections: WebsiteBoilerplate.UserConnectionDetails = await databaseHelper.getUserConnections(uniqueID);
+                let connections: WebsiteBoilerplate.UserConnectionDetails = await databaseHelper.getOutgoingConnections(uniqueID);
+
+                return res.status(200).json({success: true, connections});
+            }
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return res.status(200).json({success: false, connections: {}});
+    case 'getIncomingConnections':
+        try {
+            if (req.query.uniqueID) {
+                let uniqueID: string = req.query.uniqueID.toString();
+                let connections: WebsiteBoilerplate.UserConnectionDetails = await databaseHelper.getIncomingConnections(uniqueID);
 
                 return res.status(200).json({success: true, connections});
             }

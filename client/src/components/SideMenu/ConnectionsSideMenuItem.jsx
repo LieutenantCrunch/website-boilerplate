@@ -1,33 +1,17 @@
-import React, {useEffect, useState, useRef} from 'react';
+import React, {useState, useRef} from 'react';
 import classNames from 'classnames';
 import UserService from '../../services/user.service';
 import ConnectionPreviewDialog from '../Dialogs/ConnectionPreview';
+import ConnectionListItem from './ConnectionListItem';
 import AddConnectionDialog from '../Dialogs/AddConnection';
 import YesNoMessageBox from '../MessageBoxes/YesNoMessageBox';
-import {isMobile} from 'react-device-detect';
-
-import Tooltip from '@material-ui/core/Tooltip';
-import Zoom from '@material-ui/core/Zoom';
-import { withStyles } from '@material-ui/core/styles';
-
-const HtmlTooltip = withStyles((theme) => ({
-    tooltip: {
-      backgroundColor: 'rgb(153,217,234)',
-      border: '1px solid rgb(0,162,232)',
-      color: 'rgb(0,0,0)',
-      fontWeight: 'bold',
-      margin: '6px 0',
-      opacity: 0.9
-    },
-    arrow: {
-        color: 'rgb(0,162,232)'
-    }
-  }))(Tooltip);
 
 export default function ConnectionsSideMenuItem(props) {
     const [state, updateState] = useState({
         expanded: false,
-        connections: {},
+        incomingExpanded: false,
+        outgoingConnections: {},
+        incomingConnections: {},
         selectedConnection: null,
         selectedConnectionUpdated: false,
         removeMessageTitle: 'Remove Connection Confirmation',
@@ -53,10 +37,16 @@ export default function ConnectionsSideMenuItem(props) {
         return yesNoMessageBox;
     };
 
-    const getConnections = async () => {
-        let connections = await UserService.getConnections(props.userDetails.uniqueID);
+    const getOutgoingConnections = async () => {
+        let outgoingConnections = await UserService.getOutgoingConnections(props.userDetails.uniqueID);
 
-        return connections;
+        return outgoingConnections;
+    };
+
+    const getIncomingConnections = async () => {
+        let incomingConnections = await UserService.getIncomingConnections(props.userDetails.uniqueID);
+
+        return incomingConnections;
     };
 
     const updateSelectedConnection = (selectedConnection) => {
@@ -70,14 +60,27 @@ export default function ConnectionsSideMenuItem(props) {
         }));
     }
 
-    const toggleExpanded = async () => {
-        if (!state.expanded) {
-            let connections = await getConnections();
+    const toggleExpanded = async (event) => {
+        if (event.target && event.target.className.startsWith('sideMenuItem')) {
+            if (!state.expanded) {
+                let outgoingConnections = await getOutgoingConnections();
 
-            updateState(prevState => ({...prevState, expanded: true, connections}));
+                updateState(prevState => ({...prevState, expanded: true, outgoingConnections}));
+            }
+            else {
+                updateState(prevState => ({...prevState, expanded: false}));
+            }
+        }
+    }
+
+    const toggleIncomingExpanded = async (event) => {
+        if (!state.incomingExpanded) {
+            let incomingConnections = await getIncomingConnections();
+
+            updateState(prevState => ({...prevState, incomingExpanded: true, incomingConnections}));
         }
         else {
-            updateState(prevState => ({...prevState, expanded: false}));
+            updateState(prevState => ({...prevState, incomingExpanded: false}));
         }
     }
 
@@ -90,7 +93,7 @@ export default function ConnectionsSideMenuItem(props) {
 
         let selectedConnection = {
             id: clickedButton.dataset.connection,
-            details: state.connections[clickedButton.dataset.connection]
+            details: state.outgoingConnections[clickedButton.dataset.connection]
         };
         
         updateState(prevState => ({...prevState, selectedConnection, selectedConnectionUpdated: false}));
@@ -101,7 +104,7 @@ export default function ConnectionsSideMenuItem(props) {
 
         let selectedConnection = {
             id: clickedButton.dataset.connection,
-            details: state.connections[clickedButton.dataset.connection]
+            details: state.outgoingConnections[clickedButton.dataset.connection]
         };
         
         updateState(prevState => ({
@@ -124,8 +127,8 @@ export default function ConnectionsSideMenuItem(props) {
 
         updateState(prevState => ({
             ...prevState,
-            connections: {
-                ...prevState.connections,
+            outgoingConnections: {
+                ...prevState.outgoingConnections,
                 [prevState.selectedConnection.id]: {
                     ...prevState.selectedConnection.details
                 }
@@ -142,13 +145,13 @@ export default function ConnectionsSideMenuItem(props) {
         let { data } = await UserService.removeOutgoingConnection({id: state.selectedConnection.id});
 
         if (data?.success) {
-            let connections = {...state.connections};
-            delete connections[state.selectedConnection.id];
+            let outgoingConnections = {...state.outgoingConnections};
+            delete outgoingConnections[state.selectedConnection.id];
 
             updateState(prevState => ({
                 ...prevState,
                 selectedConnection: null,
-                connections
+                outgoingConnections
             }));
         }
         else {
@@ -180,7 +183,7 @@ export default function ConnectionsSideMenuItem(props) {
                         margin: 0,
                         opacity: 1
                     }} />
-                    <button type="button" className="btn btn-sm btn-outline-primary border-0 w-100 text-left" data-toggle="modal" data-target="#addConnection">
+                    <button type="button" className="btn btn-sm btn-outline-primary border-0 w-100 text-left shadow-none" data-toggle="modal" data-target="#addConnection">
                         <strong>Add New...</strong>
                     </button>
                     <hr style={{
@@ -193,40 +196,48 @@ export default function ConnectionsSideMenuItem(props) {
                     }} />
                     <ul className="sideMenuItemList">
                         {
-                            Object.keys(state.connections).length > 0
-                            ? Object.entries(state.connections).map(([uniqueID, details]) => {
-                                return (
-                                    <li className="sideMenuItemListItem" key={uniqueID}>
-                                        <div style={{width: '15%', padding: '1%'}}>
-                                            <img src={details.pfpSmall} className="border border-secondary rounded-circle w-100" />
-                                        </div>
-                                        <div className="sideMenuItemListItemText" style={{overflow: 'hidden'}}>
-                                            <HtmlTooltip title={
-                                                    <>
-                                                        {details.displayName}<small>#{details.displayNameIndex}</small>
-                                                    </>
-                                                }
-                                                TransitionComponent={Zoom}
-                                                enterDelay={500}
-                                                arrow
-                                                interactive
-                                            >
-                                                <button type="button" className={classNames('btn btn-outline-primary border-0 w-100 text-left', {'btn-sm': !isMobile})} data-toggle="modal" data-target="#connectionDetails" data-connection={uniqueID} onClick={handleConnectionClick}>
-                                                    {details.displayName}<small className="text-muted">#{details.displayNameIndex}</small>
-                                                </button>
-                                            </HtmlTooltip>
-                                        </div>
-                                        <div className="sideMenuItemListItemIcon" style={{display: details.isMutual ? '' : 'none'}}>
-                                            <small>🤝</small>
-                                        </div>
-                                        <div className="sideMenuItemListItemRemove">
-                                            <button type="button" className="btn btn-close" arial-label="remove" style={{boxSizing: 'border-box'}} data-connection={uniqueID} onClick={handleRemoveConnectionClick}></button>
-                                        </div>
-                                    </li>
-                                );
-                            })
+                            Object.keys(state.outgoingConnections).length > 0
+                            ? Object.entries(state.outgoingConnections).map(([uniqueID, details]) => (
+                                    <ConnectionListItem key={uniqueID} uniqueID={uniqueID} details={details} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
+                                )
+                            )
                             : <></>
                         }
+                        <li style={{
+                            borderWidth: '2px 0',
+                            borderStyle: 'solid none',
+                            borderColor: 'rgb(204, 204, 204)'
+                        }}>
+                            <button type="button" className={
+                                    classNames("btn btn-sm btn-outline-primary border-0 w-100 text-left shadow-none dropdown-toggle", {'show': state.incomingExpanded})
+                                }
+                                onClick={toggleIncomingExpanded}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                }}
+                            >
+                                <span style={{flexGrow: 1}}>
+                                    Incoming
+                                </span>
+                            </button>
+                        </li>
+                        <li>
+                            <div className={classNames('sideSubMenuItem', {'sideSubMenuItemExpanded': state.incomingExpanded})}>
+                                <ul className="list-group" style={{paddingLeft: 0}}>
+                                    {
+                                        Object.keys(state.incomingConnections).length > 0
+                                        ? Object.entries(state.incomingConnections).map(([uniqueID, details]) => (
+                                                <ConnectionListItem key={uniqueID} uniqueID={uniqueID} details={details} handleConnectionClick={handleConnectionClick} />
+                                            )
+                                        )
+                                        : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>
+                                            None
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </li>
                     </ul>
                 </div>
             </div>

@@ -329,6 +329,16 @@ body {
     opacity: 1;
 }
 
+.sideSubMenuItem {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .5s ease-in-out;
+}
+
+.sideSubMenuItemExpanded {
+    max-height: 1000px;
+}
+
 @media only screen and (max-width: 576px) {
     @keyframes expandSideMenuItem {
         0% {
