@@ -44,7 +44,7 @@ module.exports = {
     },
     output: {
         path: path.resolve(__dirname, '../server/dist/js'),
-        filename: '[name].[hash].js'
+        filename: '[name].[contenthash].js'
     },
     devtool: 'source-map',
     plugins: [
