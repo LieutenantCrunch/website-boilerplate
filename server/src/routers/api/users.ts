@@ -1,10 +1,8 @@
 import express, {Request, Response, Router, NextFunction} from 'express';
 
-import DatabaseHelper from '../../utilities/databaseHelper';
+import { databaseHelper } from '../../utilities/databaseHelper';
 import AuthHelper from '../../utilities/authHelper';
 import {apiUserPFPRouter} from './users/pfp';
-
-const databaseHelper: DatabaseHelper = new DatabaseHelper();
 
 const apiUserRouter = express.Router();
 
@@ -77,12 +75,12 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
                 }
             }
 
-            if (req.query.uniqueID) {
+            if (req.query.uniqueId) {
                 if (databaseHelper === undefined || databaseHelper === null) {
                     res.send('No database connection found');
                 }
 
-                let userDetails: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getUserDetails(currentId, req.query.uniqueID.toString(), hasEmailRole);
+                let userDetails: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getUserDetails(currentId, req.query.uniqueId.toString(), hasEmailRole);
 
                 if (userDetails) {
                     return res.status(200).json({success: true, userDetails});
@@ -117,9 +115,9 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         return res.status(200).json({success: false, results: []});
     case 'getOutgoingConnections':
         try {
-            if (req.query.uniqueID) {
-                let uniqueID: string = req.query.uniqueID.toString();
-                let connections: WebsiteBoilerplate.UserConnectionDetails = await databaseHelper.getOutgoingConnections(uniqueID);
+            if (req.query.uniqueId) {
+                let uniqueId: string = req.query.uniqueId.toString();
+                let connections: WebsiteBoilerplate.UserConnectionDetails = await databaseHelper.getOutgoingConnections(uniqueId);
 
                 return res.status(200).json({success: true, connections});
             }
@@ -131,9 +129,9 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         return res.status(200).json({success: false, connections: {}});
     case 'getIncomingConnections':
         try {
-            if (req.query.uniqueID) {
-                let uniqueID: string = req.query.uniqueID.toString();
-                let connections: WebsiteBoilerplate.UserConnectionDetails = await databaseHelper.getIncomingConnections(uniqueID);
+            if (req.query.uniqueId) {
+                let uniqueId: string = req.query.uniqueId.toString();
+                let connections: WebsiteBoilerplate.UserConnectionDetails = await databaseHelper.getIncomingConnections(uniqueId);
 
                 return res.status(200).json({success: true, connections});
             }
@@ -179,11 +177,11 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
         break;
     case 'verifyDisplayName':
         try {
-            let uniqueID = req.userId;
+            let uniqueId = req.userId;
             let { userUniqueID, displayName } = req.body;
 
-            if (uniqueID && userUniqueID && displayName) {
-                if (await databaseHelper.checkUserForRole(uniqueID, 'Administrator')) {
+            if (uniqueId && userUniqueID && displayName) {
+                if (await databaseHelper.checkUserForRole(uniqueId, 'Administrator')) {
                     let results: {success: Boolean, message: string} = await databaseHelper.verifyUserDisplayName(userUniqueID, displayName);
 
                     return res.status(200).json(results);
@@ -199,11 +197,11 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
         break;
     case 'updateConnection':
         try {
-            let uniqueID = req.userId;
+            let uniqueId = req.userId;
             let { outgoingConnection } = req.body;
 
-            if (uniqueID && outgoingConnection) {
-                let result: Boolean = await databaseHelper.updateUserConnection(uniqueID, outgoingConnection);
+            if (uniqueId && outgoingConnection) {
+                let result: Boolean = await databaseHelper.updateUserConnection(uniqueId, outgoingConnection);
 
                 return res.status(200).json({success: result, message: ''});
             }
@@ -217,11 +215,11 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
         break;
     case 'removeConnection':
             try {
-                let uniqueID = req.userId;
+                let uniqueId = req.userId;
                 let { connectedUserUniqueId } = req.body;
     
-                if (uniqueID && connectedUserUniqueId) {
-                    let result: Boolean = await databaseHelper.removeUserConnection(uniqueID, connectedUserUniqueId);
+                if (uniqueId && connectedUserUniqueId) {
+                    let result: Boolean = await databaseHelper.removeUserConnection(uniqueId, connectedUserUniqueId);
     
                     return res.status(200).json({success: result, message: ''});
                 }

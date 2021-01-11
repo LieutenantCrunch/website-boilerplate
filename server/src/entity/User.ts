@@ -33,7 +33,7 @@ export class User {
         type: 'varchar',
         name: 'unique_id'
     })
-    uniqueID: string;
+    uniqueId: string;
 
     @OneToMany(type => ProfilePicture, profilePicture => profilePicture.registeredUser, {onDelete: 'CASCADE'})
     profilePictures: ProfilePicture[];

@@ -4,9 +4,7 @@ const jwt = require('jsonwebtoken'); // Need to do this so TypeScript doesn't th
 import fs from 'fs';
 import {promisify} from 'util';
 
-import DatabaseHelper from './databaseHelper';
-
-const databaseHelper: DatabaseHelper = new DatabaseHelper();
+import { databaseHelper } from './databaseHelper';
 
 export default class AuthHelper {
     private static jwtSecret: string = '';
@@ -87,10 +85,10 @@ export default class AuthHelper {
     }
 
     static async verifyAdmin(req: Request, res: Response, next: NextFunction) {
-        let uniqueID: string | undefined = req.userId;
+        let uniqueId: string | undefined = req.userId;
 
-        if (uniqueID) {
-            let hasAdminRole: Boolean = await databaseHelper.checkUserForRole(uniqueID, 'Administrator');
+        if (uniqueId) {
+            let hasAdminRole: Boolean = await databaseHelper.checkUserForRole(uniqueId, 'Administrator');
 
             if (hasAdminRole) {
                 next();

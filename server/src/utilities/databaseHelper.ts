@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 
 import {Brackets, createConnection, Connection, DeleteQueryBuilder, DeleteResult, Repository, ObjectLiteral, SelectQueryBuilder} from 'typeorm';
+
 import {User} from '../entity/User';
 import {ProfilePicture} from '../entity/ProfilePicture';
 import {UserJWT} from '../entity/UserJWT';
@@ -15,10 +16,16 @@ import * as Constants from '../constants/constants';
 import { PasswordResetToken } from '../entity/PasswordResetToken';
 import { UserConnectionType } from '../entity/UserConnectionType';
 
-export default class DatabaseHelper {
+import { db } from '../models/_index';
+import { DbInterface } from '../typings/DbInterface';
+import { UserInstance } from '../models/User';
+import { ProfilePictureInstance } from '../models/ProfilePicture';
+
+class DatabaseHelper {
     private static instance: DatabaseHelper;
 
     #connection: Connection;
+    #sequelizeConn: DbInterface;
     #userRepository: Repository<User>;
     #userJWTRepository: Repository<UserJWT>;
     #pfpRepository: Repository<ProfilePicture>;
@@ -38,6 +45,17 @@ export default class DatabaseHelper {
             if (readFileError) {
                 console.error(readFileError);
             }
+
+            this.#sequelizeConn = db;
+
+            this.#sequelizeConn.sequelize.authenticate()
+            .then(() => {
+                console.log(`Successfully connected to database via Sequelize.`);
+            })
+            .catch((err: Error) =>
+            {
+                console.error(`Unable to connect to the database: ${err.message}`);
+            });
     
             createConnection({
                 type: 'mysql',
@@ -65,7 +83,7 @@ export default class DatabaseHelper {
         });
     };
 
-    private getUserRepository() {
+    private getUserRepository(): Repository<User> {
         if (!this.#userRepository) {
             this.#userRepository = this.#connection.getRepository(User);
         }
@@ -155,21 +173,21 @@ export default class DatabaseHelper {
         return false;
     }
 
-    async getUserIdForUniqueId(uniqueID: string): Promise<number | undefined> {
+    async getUserIdForUniqueId(uniqueId: string): Promise<number | undefined> {
         let userRepository: Repository<User> = this.getUserRepository();
 
         try
         {
             let {id}: {id: number} = await userRepository.createQueryBuilder('u')
                 .select('u.id', 'id')
-                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .where('u.uniqueId = :uniqueId', {uniqueId})
                 .getRawOne();
 
             return id;
         }
         catch (err)
         {
-            console.error(`Error looking up user with unique id ${uniqueID}: ${err.message}`);
+            console.error(`Error looking up user with unique id ${uniqueId}: ${err.message}`);
         }
 
         return undefined;
@@ -180,7 +198,7 @@ export default class DatabaseHelper {
 
         try
         {
-            return await userRepository.findOne({uniqueID: id});
+            return await userRepository.findOne({uniqueId: id});
         }
         catch (err)
         {
@@ -200,15 +218,15 @@ export default class DatabaseHelper {
             let userRepository: Repository<User> = this.getUserRepository();
             let salt: string = await bcrypt.genSalt(10);
             let passwordHash: string = await bcrypt.hash(password, salt);
-            let uniqueID: string = uuidv4();
+            let uniqueId: string = uuidv4();
             let newUser: User = new User();
 
-            newUser = {...newUser, email, passwordHash, uniqueID};
+            newUser = {...newUser, email, passwordHash, uniqueId};
 
             try
             {
                 let registeredUser: User = await userRepository.save(newUser);
-                let results: {success: Boolean, displayNameIndex?: number, message?: string} = await this.setUserDisplayName(uniqueID, displayName);
+                let results: {success: Boolean, displayNameIndex?: number, message?: string} = await this.setUserDisplayName(uniqueId, displayName);
             }
             catch(err)
             {
@@ -216,7 +234,7 @@ export default class DatabaseHelper {
                 return {id: null, success: false};
             }
 
-            return {id: uniqueID, success: true};
+            return {id: uniqueId, success: true};
         }
         catch (err)
         {
@@ -251,15 +269,17 @@ export default class DatabaseHelper {
     async validateCredentials(email: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
         {
-            let userRepository: Repository<User> = this.getUserRepository();
-            let foundUsers: User[] = await userRepository.find({email});
+            let s_registeredUser: UserInstance | null = await db.User.findOne({
+                where: {
+                    email
+                }
+            });
 
-            if (foundUsers.length === 1) {
-                let user: User = foundUsers[0];
-                let passwordHash: string = user.passwordHash;
-                let isValid = await bcrypt.compare(password, passwordHash);
+            if (s_registeredUser) {
+                let s_passwordHash: string = s_registeredUser.passwordHash;
+                let isValid = await bcrypt.compare(password, s_passwordHash);
 
-                return {id: user.uniqueID, success: isValid};
+                return {id: s_registeredUser.uniqueId, success: isValid};
             }
 
             return {id: null, success: false};;
@@ -269,6 +289,28 @@ export default class DatabaseHelper {
             console.error(err.message);
             return {id: null, success: false};
         }
+
+        /* TypeORM
+        try
+        {
+            let userRepository: Repository<User> = this.getUserRepository();
+            let foundUsers: User[] = await userRepository.find({email});
+
+            if (foundUsers.length === 1) {
+                let user: User = foundUsers[0];
+                let passwordHash: string = user.passwordHash;
+                let isValid = await bcrypt.compare(password, passwordHash);
+
+                return {id: user.uniqueId, success: isValid};
+            }
+
+            return {id: null, success: false};;
+        }
+        catch (err)
+        {
+            console.error(err.message);
+            return {id: null, success: false};
+        }*/
     }
 
     async generatePasswordResetToken(email: string): Promise<{token: string | null, errorCode: number}> {
@@ -323,8 +365,6 @@ export default class DatabaseHelper {
     async validatePasswordResetToken(token: string, email: string): Promise<Boolean> {
         try
         {
-            const userRepository: Repository<User> = this.getUserRepository();
-
             let passwordResetTokenRepository: Repository<PasswordResetToken> = this.getPasswordResetTokenRepository();
             let foundToken: PasswordResetToken | undefined = await passwordResetTokenRepository.createQueryBuilder('rpt')
                 .innerJoin('rpt.registeredUser', 'user')
@@ -375,33 +415,59 @@ export default class DatabaseHelper {
         return {success: false};
     }
 
-    async getPFPFileNameForUserId(uniqueID: string, originalSize?: Boolean): Promise<string | null> {
+    async getPFPFileNameForUserId(uniqueId: string, originalSize?: Boolean): Promise<string | null> {
+        try
+        {
+            let s_registeredUser: UserInstance | null = await this.#sequelizeConn.User.findOne({
+                where: {
+                    uniqueId
+                }
+            });
+
+            if (s_registeredUser) {
+                let s_registeredUserPfps: ProfilePictureInstance[] = await s_registeredUser.getProfilePictures({
+                    order: [['id', 'DESC']]
+                });
+
+                if (s_registeredUserPfps.length > 0) {
+                    let s_registeredUserPfp: ProfilePictureInstance = s_registeredUserPfps[0];
+
+                    return originalSize ? s_registeredUserPfp.fileName : s_registeredUserPfp.smallFileName;
+                }
+            }
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with id ${uniqueId}: ${err.message}`);
+        }
+
+        /* TypeORM
         let userRepository: Repository<User> = this.getUserRepository();
         let registeredUser: User | undefined = undefined;
 
         try
         {
             registeredUser = await userRepository.createQueryBuilder('u')
-                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .where('u.uniqueId = :uniqueId', {uniqueId})
                 .innerJoinAndSelect('u.profilePictures', 'pfp')
                 .orderBy('pfp.id', 'DESC')
                 .getOne();
         }
         catch (err)
         {
-            console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
+            console.error(`Error looking up user with id ${uniqueId}: ${err.message}`);
         }
         
         if (registeredUser && registeredUser.profilePictures.length > 0) {
             let profilePicture: ProfilePicture = registeredUser.profilePictures[0];
             
             return originalSize ? profilePicture.fileName : profilePicture.smallFileName;
-        }
+        }*/
 
         return null;
     }
 
-    async addJWTToUser(uniqueID: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
+    async addJWTToUser(uniqueId: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
@@ -409,11 +475,11 @@ export default class DatabaseHelper {
 
             try
             {
-                registeredUser = await userRepository.findOne({uniqueID}, {relations: ['activeJWTs']});
+                registeredUser = await userRepository.findOne({uniqueId}, {relations: ['activeJWTs']});
             }
             catch (err)
             {
-                console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
+                console.error(`Error looking up user with id ${uniqueId}: ${err.message}`);
             }
             
             if (registeredUser) {
@@ -437,13 +503,13 @@ export default class DatabaseHelper {
         }
         catch (err)
         {
-            console.error(`Error adding new JWT to user ${uniqueID}: ${err.message}`);
+            console.error(`Error adding new JWT to user ${uniqueId}: ${err.message}`);
         }
 
         return {success: false};
     }
 
-    async extendJWTForUser(uniqueID: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
+    async extendJWTForUser(uniqueId: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
@@ -458,7 +524,7 @@ export default class DatabaseHelper {
             }
             catch (err)
             {
-                console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
+                console.error(`Error looking up user with id ${uniqueId}: ${err.message}`);
             }
             
             if (registeredUser) {
@@ -482,13 +548,13 @@ export default class DatabaseHelper {
         }
         catch (err)
         {
-            console.error(`Error extending JWT for user ${uniqueID}: ${err.message}`);
+            console.error(`Error extending JWT for user ${uniqueId}: ${err.message}`);
         }
 
         return {success: false};
     }
 
-    async validateJWTForUserId(uniqueID: string, jti: string): Promise<Boolean> {
+    async validateJWTForUserId(uniqueId: string, jti: string): Promise<Boolean> {
         let userRepository: Repository<User> = this.getUserRepository();
         let registeredUser: User | undefined = undefined;
 
@@ -501,7 +567,7 @@ export default class DatabaseHelper {
         }
         catch (err)
         {
-            console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
+            console.error(`Error looking up user with id ${uniqueId}: ${err.message}`);
         }
         
         if (registeredUser) {
@@ -511,7 +577,7 @@ export default class DatabaseHelper {
         return false;
     }
 
-    async invalidateJWTsForUser(uniqueID: string, mode: number = Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, jti?: string): Promise<{success: Boolean}> {
+    async invalidateJWTsForUser(uniqueId: string, mode: number = Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, jti?: string): Promise<{success: Boolean}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
@@ -544,7 +610,7 @@ export default class DatabaseHelper {
             }
             catch (err)
             {
-                console.error(`Error looking up user with id ${uniqueID}: ${err.message}`);
+                console.error(`Error looking up user with id ${uniqueId}: ${err.message}`);
             }
             
             if (registeredUser) {
@@ -572,26 +638,26 @@ export default class DatabaseHelper {
         return {success: false};
     }
 
-    async getUserEmail(uniqueID: string): Promise<string | null> {
+    async getUserEmail(uniqueId: string): Promise<string | null> {
         try {
             let userRepository: Repository<User> = this.getUserRepository();
-            let user: User | undefined = await userRepository.findOne({uniqueID});
+            let user: User | undefined = await userRepository.findOne({uniqueId});
 
             if (user) {
                 return user.email;
             }
         }
         catch (err) {
-            console.error(`Error getting email for user ${uniqueID}:\n${err.message}`);
+            console.error(`Error getting email for user ${uniqueId}:\n${err.message}`);
         }
 
         return null;
     }
 
-    async setUserEmail(uniqueID: string, email: string): Promise<{success: Boolean, message?: string}> {
+    async setUserEmail(uniqueId: string, email: string): Promise<{success: Boolean, message?: string}> {
         try {
             let userRepository: Repository<User> = this.getUserRepository();
-            let user: User | undefined = await userRepository.findOne({uniqueID});
+            let user: User | undefined = await userRepository.findOne({uniqueId});
 
             if (user) {
                 user.email = email;
@@ -603,16 +669,16 @@ export default class DatabaseHelper {
             return {success: false, message: `User not found.`};
         }
         catch (err) {
-            return {success: false, message: `Error changing email for user ${uniqueID}:\n${err.message}`};
+            return {success: false, message: `Error changing email for user ${uniqueId}:\n${err.message}`};
         }
     }
 
-    async getUserDisplayName(uniqueID: string): Promise<string | null> {
+    async getUserDisplayName(uniqueId: string): Promise<string | null> {
         try {
             let userRepository: Repository<User> = this.getUserRepository();
             let user: User | undefined = await userRepository.createQueryBuilder('u')
                 .innerJoinAndSelect('u.displayNames', 'dn')
-                .where('u.uniqueID = :uniqueID AND dn.isActive = 1', {uniqueID})
+                .where('u.uniqueId = :uniqueId AND dn.isActive = 1', {uniqueId})
                 .getOne();
 
             if (user) {
@@ -620,17 +686,17 @@ export default class DatabaseHelper {
             }
         }
         catch (err) {
-            console.error(`Error getting display name for user ${uniqueID}:\n${err.message}`);
+            console.error(`Error getting display name for user ${uniqueId}:\n${err.message}`);
         }
 
         return null;
     }
 
-    async setUserDisplayName(uniqueID: string, displayName: string): Promise<{success: Boolean, displayNameIndex?: number, message?: string}> {
+    async setUserDisplayName(uniqueId: string, displayName: string): Promise<{success: Boolean, displayNameIndex?: number, message?: string}> {
         try
         {
             let userRepository: Repository<User> = this.getUserRepository();
-            let registeredUser: User | undefined = await userRepository.findOne({uniqueID});
+            let registeredUser: User | undefined = await userRepository.findOne({uniqueId});
 
             if (!registeredUser) {
                 return {success: false, message: `No user found for when trying to change the display name`};
@@ -708,7 +774,7 @@ export default class DatabaseHelper {
         }
     }
 
-    async verifyUserDisplayName(uniqueID: string, displayName: string): Promise<{success: Boolean, message: string}> {
+    async verifyUserDisplayName(uniqueId: string, displayName: string): Promise<{success: Boolean, message: string}> {
         try {
             let displayNameRepository: Repository<DisplayName> = this.getDisplayNameRepository();
 
@@ -722,7 +788,7 @@ export default class DatabaseHelper {
             }
             else {
                 displayNameRecord = await displayNameRepository.createQueryBuilder('dn')
-                    .innerJoin('dn.registeredUser', 'u', `u.uniqueID = :uniqueID`, {uniqueID})
+                    .innerJoin('dn.registeredUser', 'u', `u.uniqueId = :uniqueId`, {uniqueId})
                     .where('dn.displayName = :displayName', {displayName})
                     .getOne();
                 
@@ -739,19 +805,19 @@ export default class DatabaseHelper {
             console.error(err.message);
         }
 
-        return {success: false, message: `Error validating Display Name ${displayName} for user with unique ID ${uniqueID}, check log.`};
+        return {success: false, message: `Error validating Display Name ${displayName} for user with unique ID ${uniqueId}, check log.`};
     }
 
-    async getUserDetails(currentId: string | undefined, uniqueID: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.UserDetails | null> {
+    async getUserDetails(currentId: string | undefined, uniqueId: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.UserDetails | null> {
         try {
-            let getConnectionTypes = currentId && currentId !== uniqueID;
+            let getConnectionTypes = currentId && currentId !== uniqueId;
 
             let userRepository: Repository<User> = this.getUserRepository();
             let selectQB: SelectQueryBuilder<User> = userRepository.createQueryBuilder('u')
                 .leftJoinAndSelect('u.displayNames', 'dn', 'dn.isActive = 1')
                 .leftJoinAndSelect('u.profilePictures', 'pfp')
                 .leftJoinAndSelect('u.roles', 'role')
-                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .where('u.uniqueId = :uniqueId', {uniqueId})
                 .orderBy('pfp.id', 'DESC');
 
             if (getConnectionTypes) {
@@ -769,9 +835,9 @@ export default class DatabaseHelper {
                 let userDetails: WebsiteBoilerplate.UserDetails = {
                     displayName: (user.displayNames[0] ? user.displayNames[0].displayName : ''),
                     displayNameIndex: (user.displayNames[0] ? user.displayNames[0].displayNameIndex : -1),
-                    pfp: (user.profilePictures[0] ? `i/u/${uniqueID}/${user.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz'),
+                    pfp: (user.profilePictures[0] ? `i/u/${uniqueId}/${user.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz'),
                     roles: (user.roles.map(role => role.roleName)),
-                    uniqueID
+                    uniqueId
                 };
 
                 if (includeEmail) {
@@ -791,16 +857,16 @@ export default class DatabaseHelper {
             }
         }
         catch (err) {
-            console.error(`Error looking up details for user ${uniqueID}:\n${err.message}`);
+            console.error(`Error looking up details for user ${uniqueId}:\n${err.message}`);
         }
 
         return null;
     }
 
-    async checkUserForRole(uniqueID: string, roleName: string): Promise<Boolean> {
+    async checkUserForRole(uniqueId: string, roleName: string): Promise<Boolean> {
         try {
             let userRepository: Repository<User> = this.getUserRepository();
-            let user: User | undefined = await userRepository.findOne({uniqueID}, {relations: ['roles']});
+            let user: User | undefined = await userRepository.findOne({uniqueId}, {relations: ['roles']});
 
             if (user) {
                 let roles: Role[] = user.roles;
@@ -811,7 +877,7 @@ export default class DatabaseHelper {
             }
         }
         catch (err) {
-            console.error(`Error checking role (${roleName}) for user ${uniqueID}:\n${err.message}`);
+            console.error(`Error checking role (${roleName}) for user ${uniqueId}:\n${err.message}`);
         }
 
         return false;
@@ -825,7 +891,7 @@ export default class DatabaseHelper {
                 .select('dn.id') /* This is necessary due to a bug with TypeORM trying to do an alias for getting the first x results */
                     .addSelect('dn.displayName', 'dn_display_name')
                     .addSelect('dn.displayNameIndex', 'dn_display_name_index')
-                    .addSelect('u.uniqueID', 'u_unique_id')
+                    .addSelect('u.uniqueId', 'u_unique_id')
                     .addSelect('pfp.mimeType', 'pfp_mime_type')
                     .addSelect('pfp.smallFileName', 'pfp_small_file_name')
                 .innerJoin('dn.registeredUser', 'u')
@@ -844,10 +910,10 @@ export default class DatabaseHelper {
                 selectQB = selectQB.leftJoin('u.outgoingConnections', 'oc')
                 .leftJoin('u.incomingConnections', 'ic')
                 .leftJoin('ic.requestedUser', 'ru')
-                .andWhere('u.uniqueID != :userID', {userID})
+                .andWhere('u.uniqueId != :userID', {userID})
                 .andWhere(new Brackets(qb => {
-                    qb.where('ru.uniqueID is null')
-                        .orWhere('ru.uniqueID != :userID', {userID})
+                    qb.where('ru.uniqueId is null')
+                        .orWhere('ru.uniqueId != :userID', {userID})
                 }))
                 .andWhere('oc.id is null');
             }
@@ -863,8 +929,8 @@ export default class DatabaseHelper {
                     return {
                         displayName: displayName.displayName, 
                         displayNameIndex: displayName.displayNameIndex, 
-                        uniqueID: displayName.registeredUser.uniqueID,
-                        pfpSmall: (displayName.registeredUser.profilePictures[0] ? `i/u/${displayName.registeredUser.uniqueID}/${displayName.registeredUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                        uniqueId: displayName.registeredUser.uniqueId,
+                        pfpSmall: (displayName.registeredUser.profilePictures[0] ? `i/u/${displayName.registeredUser.uniqueId}/${displayName.registeredUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
                     };
                 })
             };
@@ -878,7 +944,7 @@ export default class DatabaseHelper {
         return null;        
     }
 
-    async getOutgoingConnections(uniqueID: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
+    async getOutgoingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
         try {
             let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
             let userRepository: Repository<User> = this.getUserRepository();
@@ -888,7 +954,7 @@ export default class DatabaseHelper {
                 .leftJoinAndSelect('cu.displayNames', 'dn', 'dn.isActive = 1')
                 .leftJoinAndSelect('cu.profilePictures', 'pfp')
                 .leftJoinAndSelect('oc.connectionTypes', 'uct')
-                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .where('u.uniqueId = :uniqueId', {uniqueId})
                 .getOne();
             
             if (user) {
@@ -903,10 +969,10 @@ export default class DatabaseHelper {
 
                     return {
                         ...previousValue,
-                        [connectedUser.uniqueID]: {
+                        [connectedUser.uniqueId]: {
                             displayName: (connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
                             displayNameIndex: (connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
-                            pfpSmall: (connectedUser.profilePictures[0] ? `i/u/${uniqueID}/${connectedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                            pfpSmall: (connectedUser.profilePictures[0] ? `i/u/${uniqueId}/${connectedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
                             isMutual: connection.isMutual,
                             connectionTypes: {...connectionTypes, ...userConnectionTypes}
                         }
@@ -915,13 +981,13 @@ export default class DatabaseHelper {
             }
         }
         catch (err) {
-            console.error(`Error looking up connections for uniqueID ${uniqueID}:\n${err.message}`);
+            console.error(`Error looking up connections for uniqueId ${uniqueId}:\n${err.message}`);
         }
 
         return {};
     }
 
-    async getIncomingConnections(uniqueID: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
+    async getIncomingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
         try {
             let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
             let userRepository: Repository<User> = this.getUserRepository();
@@ -930,7 +996,7 @@ export default class DatabaseHelper {
                 .innerJoinAndSelect('ic.requestedUser', 'ru')
                 .leftJoinAndSelect('ru.displayNames', 'dn', 'dn.isActive = 1')
                 .leftJoinAndSelect('ru.profilePictures', 'pfp')
-                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .where('u.uniqueId = :uniqueId', {uniqueId})
                 .getOne();
             
             if (user) {
@@ -939,10 +1005,10 @@ export default class DatabaseHelper {
 
                     return {
                         ...previousValue,
-                        [requestedUser.uniqueID]: {
+                        [requestedUser.uniqueId]: {
                             displayName: (requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
                             displayNameIndex: (requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
-                            pfpSmall: (requestedUser.profilePictures[0] ? `i/u/${uniqueID}/${requestedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                            pfpSmall: (requestedUser.profilePictures[0] ? `i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
                             isMutual: connection.isMutual,
                             connectionTypes: {}
                         }
@@ -951,7 +1017,7 @@ export default class DatabaseHelper {
             }
         }
         catch (err) {
-            console.error(`Error looking up connections for uniqueID ${uniqueID}:\n${err.message}`);
+            console.error(`Error looking up connections for uniqueId ${uniqueId}:\n${err.message}`);
         }
 
         return {};
@@ -1051,7 +1117,7 @@ export default class DatabaseHelper {
         return false;
     }
 
-    async updateUserConnection(uniqueID: string, outgoingConnection: WebsiteBoilerplate.UserConnectionDetails): Promise<Boolean> {
+    async updateUserConnection(uniqueId: string, outgoingConnection: WebsiteBoilerplate.UserConnectionDetails): Promise<Boolean> {
         // Need to improve the variable names in this method and probably create some additional variables for cleanup
         let allConnectionTypes: UserConnectionType[] = await this.getConnectionTypes();
         let userRepository: Repository<User> = this.getUserRepository();
@@ -1064,7 +1130,7 @@ export default class DatabaseHelper {
                 .leftJoinAndSelect('u.outgoingConnections', 'uc', 'uc.connectedUserId = :connectedUserId', {connectedUserId: connectedUser.id})
                 .leftJoinAndSelect('uc.connectionTypes', 'ct')
                 .leftJoinAndSelect('uc.connectedUser', 'cu')
-                .where('u.uniqueID = :uniqueID', {uniqueID})
+                .where('u.uniqueId = :uniqueId', {uniqueId})
                 .getOne();
 
             if (currentUser) {
@@ -1160,3 +1226,5 @@ export default class DatabaseHelper {
         return false;
     }
 };
+
+export let databaseHelper: DatabaseHelper = new DatabaseHelper();
