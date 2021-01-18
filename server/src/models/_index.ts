@@ -58,6 +58,12 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         }
     });
 
+    Object.values(db.Views).forEach((model: any) => {
+        if (model.associate) {
+            model.associate(db.sequelize.models);
+        }
+    });
+
     return db;
 };
 

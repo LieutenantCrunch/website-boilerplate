@@ -1,13 +1,16 @@
 import { BelongsToGetAssociationMixin, BelongsToManyGetAssociationsMixin, DataTypes, Model, ModelCtor, Sequelize } from 'sequelize';
 import { SequelizeAttributes } from '../../typings/SequelizeAttributes';
 import { UserInstance } from '../User';
-import { UserConnectionTypeInstance } from '../UserConnectionType';
+import { UserConnectionInstance } from '../UserConnection';
 
 export interface UserConnectionViewAttributes {
-    id: number,
-    requestedUserId: number,
-    connectedUserId: number,
-    isMutual: Boolean
+    id: number;
+    requestedUserId: number;
+    connectedUserId: number;
+    isMutual: Boolean;
+    requestedUser?: UserInstance;
+    connectedUser?: UserInstance;
+    userConnection?: UserConnectionInstance;
 };
 
 export interface UserConnectionViewInstance extends Model<UserConnectionViewAttributes>, UserConnectionViewAttributes {
@@ -15,7 +18,7 @@ export interface UserConnectionViewInstance extends Model<UserConnectionViewAttr
     getRequestedUser: BelongsToGetAssociationMixin<UserInstance>;
     getConnectedUser: BelongsToGetAssociationMixin<UserInstance>;
 
-    getConnectionTypes: BelongsToManyGetAssociationsMixin<UserConnectionTypeInstance>;
+    getUserConnection: BelongsToGetAssociationMixin<UserConnectionInstance>;
 };
 
 export const UserConnectionViewFactory = (sequelize: Sequelize): ModelCtor<UserConnectionViewInstance> => {
@@ -61,9 +64,12 @@ export const UserConnectionViewFactory = (sequelize: Sequelize): ModelCtor<UserC
             }
         });
         
-        UserConnectionView.belongsToMany(models.UserConnectionType, {
-            as: 'connectionTypes', 
-            through: models.UserConnectionTypeJunction
+        UserConnectionView.belongsTo(models.UserConnection, {
+            as: 'userConnection', 
+            foreignKey: {
+                name: 'id',
+                field: 'id'
+            }
         });
     };
 

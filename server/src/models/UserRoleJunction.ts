@@ -34,31 +34,3 @@ export const UserRoleJunctionFactory = (sequelize: Sequelize): ModelCtor<UserRol
 
     return UserRoleJunction;
 };
-
-/*export class UserRoleJunction extends Model {
-    static associate (models: typeof sequelize.models): void {
-    }
-};
-
-UserRoleJunction.init({
-    registeredUserId: {
-        type: DataTypes.INTEGER,
-        field: 'registered_user_id',
-        references: {
-            model: User,
-            key: 'id'
-        }
-    },
-    registeredUserRoleId: {
-        type: DataTypes.INTEGER,
-        field: 'registered_user_role_id',
-        references: {
-            model: Role,
-            key: 'id'
-        }
-    }
-},{
-    sequelize,
-    modelName: 'registered_user_role_junction',
-    timestamps: false
-});*/

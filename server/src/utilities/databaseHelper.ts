@@ -1728,69 +1728,96 @@ class DatabaseHelper {
     async getOutgoingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
         try {
             let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
-            
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
-                where: {
-                    uniqueId
-                },
-                include: [
-                    {
-                        model: db.UserConnection,
-                        as: 'outgoingConnections',
-                        required: true,
-                        include: [
-                            {
-                                model: db.User,
-                                as: 'connectedUser',
-                                required: true,
-                                include: [
-                                    {
-                                        model: db.DisplayName,
-                                        as: 'displayNames',
-                                        where: {
-                                            isActive: 1
-                                        }
-                                    },
-                                    {
-                                        model: db.ProfilePicture,
-                                        as: 'profilePictures',
-                                        order: [['id', 'DESC']]
-                                    }
-                                ]
-                            },
-                            {
-                                model: db.UserConnectionType,
-                                as: 'connectionTypes'
-                            }
-                        ]
+
+            let s_registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+
+            if (s_registeredUserId !== undefined) {
+                let outgoingConnectionsView: UserConnectionViewInstance[] | null = await db.Views.UserConnectionView.findAll({
+                    where: {
+                        requestedUserId: s_registeredUserId
                     },
-                ]
-            });
-            
-            if (s_registeredUser && s_registeredUser.outgoingConnections) {
-                return s_registeredUser.outgoingConnections.reduce((previousValue, connection) => {
-                    let connectedUser: UserInstance | undefined = connection.connectedUser;
-
-                    let userConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = {};
-                    
-                    if (connection.connectionTypes) {
-                        userConnectionTypes = connection.connectionTypes.reduce((previousValue, connectionType) => ({
-                            ...previousValue,
-                            [connectionType.displayName]: true
-                        }), {});
-                    }
-
-                    return {
-                        ...previousValue,
-                        [connectedUser!.uniqueId]: {
-                            displayName: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayName : ''),
-                            displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
-                            pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
-                            isMutual: connection.isMutual,
-                            connectionTypes: {...connectionTypes, ...userConnectionTypes}
+                    attributes: [
+                        'isMutual'
+                    ],
+                    include: [
+                        {
+                            model: db.UserConnection,
+                            as: 'userConnection',
+                            required: true,
+                            include: [
+                                {
+                                    model: db.User,
+                                    as: 'connectedUser',
+                                    attributes: [
+                                        'uniqueId'
+                                    ],
+                                    required: true,
+                                    include: [
+                                        {
+                                            model: db.DisplayName,
+                                            as: 'displayNames',
+                                            where: {
+                                                isActive: 1
+                                            },
+                                            attributes: [
+                                                'displayName',
+                                                'displayNameIndex'
+                                            ],
+                                            required: false
+                                        },
+                                        {
+                                            model: db.ProfilePicture,
+                                            as: 'profilePictures',
+                                            attributes: [
+                                                'smallFileName'
+                                            ],
+                                            order: [['id', 'DESC']],
+                                            required: false
+                                        }
+                                    ]
+                                },
+                                {
+                                    model: db.UserConnectionType,
+                                    as: 'connectionTypes',
+                                    required: false,
+                                    attributes: [
+                                        'displayName'
+                                    ],
+                                    through: {
+                                        attributes: []
+                                    }
+                                }
+                            ]
                         }
-                    }
-                }, {});
+                    ]
+                });
+
+                if (outgoingConnectionsView && outgoingConnectionsView.length > 0) {
+                    return outgoingConnectionsView.reduce((previousValue, connectionView) => {
+                        let connection: UserConnectionInstance = connectionView.userConnection!;
+                        let connectedUser: UserInstance | undefined = connection.connectedUser;
+    
+                        let userConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = {};
+                        
+                        if (connection.connectionTypes) {
+                            userConnectionTypes = connection.connectionTypes.reduce((previousValue, connectionType) => ({
+                                ...previousValue,
+                                [connectionType.displayName]: true
+                            }), {});
+                        }
+    
+                        return {
+                            ...previousValue,
+                            [connectedUser!.uniqueId]: {
+                                displayName: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayName : ''),
+                                displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
+                                pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                                isMutual: connectionView.isMutual,
+                                connectionTypes: {...connectionTypes, ...userConnectionTypes}
+                            }
+                        }
+                    }, {});
+                }
             }
         }
         catch (err) {
@@ -1842,57 +1869,86 @@ class DatabaseHelper {
 
     async getIncomingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
         try {
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
-                where: {
-                    uniqueId
-                },
-                include: [
-                    {
-                        model: db.UserConnection,
-                        as: 'incomingConnections',
-                        required: true,
-                        include: [
-                            {
-                                model: db.User,
-                                as: 'requestedUser',
-                                required: true,
-                                include: [
-                                    {
-                                        model: db.DisplayName,
-                                        as: 'displayNames',
-                                        required: false,
-                                        where: {
-                                            isActive: 1
-                                        }
-                                    },
-                                    {
-                                        model: db.ProfilePicture,
-                                        as: 'profilePictures',
-                                        required: false,
-                                        order: ['id', 'DESC']
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ]
-            });
-            
-            if (s_registeredUser && s_registeredUser.incomingConnections) {
-                return s_registeredUser.incomingConnections.reduce((previousValue, connection) => {
-                    let requestedUser: UserInstance = connection.requestedUser!;
+            let s_registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
 
-                    return {
-                        ...previousValue,
-                        [requestedUser.uniqueId]: {
-                            displayName: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
-                            displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
-                            pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
-                            isMutual: connection.isMutual,
-                            connectionTypes: {}
+            if (s_registeredUserId !== undefined) {
+                let incomingConnectionsView: UserConnectionViewInstance[] | null = await db.Views.UserConnectionView.findAll({
+                    where: {
+                        connectedUserId: s_registeredUserId
+                    },
+                    attributes: [
+                        'isMutual'
+                    ],
+                    include: [
+                        {
+                            model: db.UserConnection,
+                            as: 'userConnection',
+                            required: true,
+                            include: [
+                                {
+                                    model: db.User,
+                                    as: 'requestedUser',
+                                    attributes: [
+                                        'uniqueId'
+                                    ],
+                                    required: true,
+                                    include: [
+                                        {
+                                            model: db.DisplayName,
+                                            as: 'displayNames',
+                                            where: {
+                                                isActive: 1
+                                            },
+                                            attributes: [
+                                                'displayName',
+                                                'displayNameIndex'
+                                            ],
+                                            required: false
+                                        },
+                                        {
+                                            model: db.ProfilePicture,
+                                            as: 'profilePictures',
+                                            attributes: [
+                                                'smallFileName'
+                                            ],
+                                            order: [['id', 'DESC']],
+                                            required: false
+                                        }
+                                    ]
+                                },
+                                {
+                                    model: db.UserConnectionType,
+                                    as: 'connectionTypes',
+                                    required: false,
+                                    attributes: [
+                                        'displayName'
+                                    ],
+                                    through: {
+                                        attributes: []
+                                    }
+                                }
+                            ]
                         }
-                    }
-                }, {});
+                    ]
+                });
+
+                if (incomingConnectionsView && incomingConnectionsView.length > 0) {
+                    return incomingConnectionsView.reduce((previousValue, connectionView) => {
+                        let connection: UserConnectionInstance = connectionView.userConnection!;
+                        let requestedUser: UserInstance = connection.requestedUser!;
+    
+                        return {
+                            ...previousValue,
+                            [requestedUser.uniqueId]: {
+                                displayName: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
+                                displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
+                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                                isMutual: connectionView.isMutual,
+                                connectionTypes: {}
+                            }
+                        }
+                    }, {});
+                }
             }
         }
         catch (err) {

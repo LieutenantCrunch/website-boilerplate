@@ -48,28 +48,3 @@ export const RoleFactory = (sequelize: Sequelize): ModelCtor<RoleInstance> => {
 
     return Role;
 };
-
-/*export class Role extends Model {
-    static associate (models: typeof sequelize.models): void {
-        Role.belongsToMany(models.User, {
-            as: 'users',
-            through: models.UserRoleJunction
-        });
-    }
-};
-
-Role.init({
-    id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        primaryKey: true
-    },
-    roleName: {
-        type: DataTypes.STRING(100),
-        field: 'role_name'
-    }
-},{
-    sequelize,
-    modelName: 'registered_user_role',
-    timestamps: false
-});*/

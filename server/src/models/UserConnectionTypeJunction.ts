@@ -34,31 +34,3 @@ export const UserConnectionTypeJunctionFactory = (sequelize: Sequelize): ModelCt
 
     return UserConnectionTypeJunction;
 };
-
-/*export class UserConnectionTypeJunction extends Model {
-    static associate (models: typeof sequelize.models): void {
-    }
-};
-
-UserConnectionTypeJunction.init({
-    registeredUserConnectionTypeId: {
-        type: DataTypes.INTEGER,
-        field: 'registered_user_connection_type_id',
-        references: {
-            model: UserConnectionType,
-            key: 'id'
-        }
-    },
-    registeredUserConnectionId: {
-        type: DataTypes.INTEGER,
-        field: 'registered_user_connection_id',
-        references: {
-            model: UserConnection,
-            key: 'id'
-        }
-    }
-},{
-    sequelize,
-    modelName: 'registered_user_connection_type_junction',
-    timestamps: false
-});*/

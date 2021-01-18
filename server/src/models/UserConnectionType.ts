@@ -43,29 +43,3 @@ export const UserConnectionTypeFactory = (sequelize: Sequelize): ModelCtor<UserC
 
     return UserConnectionType;
 };
-
-/*export class UserConnectionType extends Model {
-    static associate (models: typeof sequelize.models): void {
-        UserConnectionType.belongsToMany(models.UserConnection, {
-            as: 'connections',
-            through: models.UserConnectionTypeJunction
-        });
-    }
-};
-
-UserConnectionType.init({
-    id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        primaryKey: true
-    },
-    displayName: {
-        type: DataTypes.STRING(100),
-        field: 'display_name',
-        unique: true
-    }
-},{
-    sequelize,
-    modelName: 'registered_user_connection_type',
-    timestamps: false
-});*/

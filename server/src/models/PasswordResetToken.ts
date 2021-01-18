@@ -55,37 +55,3 @@ export const PasswordResetTokenFactory = (sequelize: Sequelize): ModelCtor<Passw
 
     return PasswordResetToken;
 };
-
-/*export class PasswordResetToken extends Model {
-    static associate (models: typeof sequelize.models): void {
-        PasswordResetToken.hasOne(models.User, {
-            as: 'registeredUser',
-            sourceKey: 'registered_user_id'
-        });
-    }
-};
-
-PasswordResetToken.init({
-    id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        primaryKey: true
-    },
-    registeredUserId: {
-        type: DataTypes.INTEGER,
-        field: 'registered_user_id'
-    },
-    expirationDate: {
-        type: DataTypes.DATE,
-        field: 'expiration_date'
-    },
-    token: {
-        type: DataTypes.STRING(36),
-        field: 'token'
-    }
-},{
-    sequelize,
-    modelName: 'password_reset_token',
-    timestamps: false
-});
-*/

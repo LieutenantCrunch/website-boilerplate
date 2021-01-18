@@ -8,7 +8,6 @@ export interface UserConnectionAttributes {
     id?: number;
     requestedUserId: number;
     connectedUserId: number;
-    isMutual?: Boolean;
     requestedUser?: UserInstance;
     connectedUser?: UserInstance;
     connectionTypes?: UserConnectionTypeInstance[];
@@ -42,10 +41,6 @@ export const UserConnectionFactory = (sequelize: Sequelize): ModelCtor<UserConne
         connectedUserId: {
             type: DataTypes.INTEGER,
             field: 'connected_user_id'
-        },
-        isMutual: {
-            type: DataTypes.TINYINT,
-            field: 'is_mutual'
         }
     };
 
@@ -83,46 +78,3 @@ export const UserConnectionFactory = (sequelize: Sequelize): ModelCtor<UserConne
 
     return UserConnection;
 };
-
-/*export class UserConnection extends Model {
-    static associate (models: typeof sequelize.models): void {
-        UserConnection.hasOne(models.User, {
-            as: 'requestedUser',
-            sourceKey: 'registered_user_id'
-        });
-        
-        UserConnection.hasOne(models.User, {
-            as: 'connectedUser',
-            sourceKey: 'connected_user_id'
-        });
-        
-        UserConnection.belongsToMany(models.UserConnectionType, {
-            as: 'connectionTypes', 
-            through: models.UserConnectionTypeJunction
-        });
-    }
-};
-
-UserConnection.init({
-    id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        primaryKey: true
-    },
-    requestedUserId: {
-        type: DataTypes.INTEGER,
-        field: 'requested_user_id'
-    },
-    connectedUserId: {
-        type: DataTypes.INTEGER,
-        field: 'connected_user_id'
-    },
-    isMutual: {
-        type: DataTypes.TINYINT,
-        field: 'is_mutual'
-    }
-},{
-    sequelize,
-    modelName: 'registered_user_connection',
-    timestamps: false
-});*/
