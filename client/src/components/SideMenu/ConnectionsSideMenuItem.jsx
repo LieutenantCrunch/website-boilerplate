@@ -38,13 +38,13 @@ export default function ConnectionsSideMenuItem(props) {
     };
 
     const getOutgoingConnections = async () => {
-        let outgoingConnections = await UserService.getOutgoingConnections(props.userDetails.uniqueID);
+        let outgoingConnections = await UserService.getOutgoingConnections(props.userDetails.uniqueId);
 
         return outgoingConnections;
     };
 
     const getIncomingConnections = async () => {
-        let incomingConnections = await UserService.getIncomingConnections(props.userDetails.uniqueID);
+        let incomingConnections = await UserService.getIncomingConnections(props.userDetails.uniqueId);
 
         return incomingConnections;
     };
@@ -197,8 +197,8 @@ export default function ConnectionsSideMenuItem(props) {
                     <ul className="sideMenuItemList">
                         {
                             Object.keys(state.outgoingConnections).length > 0
-                            ? Object.entries(state.outgoingConnections).map(([uniqueID, details]) => (
-                                    <ConnectionListItem key={uniqueID} uniqueID={uniqueID} details={details} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
+                            ? Object.entries(state.outgoingConnections).map(([uniqueId, details]) => (
+                                    <ConnectionListItem key={uniqueId} uniqueId={uniqueId} details={details} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
                                 )
                             )
                             : <></>
@@ -227,8 +227,8 @@ export default function ConnectionsSideMenuItem(props) {
                                 <ul className="list-group" style={{paddingLeft: 0}}>
                                     {
                                         Object.keys(state.incomingConnections).length > 0
-                                        ? Object.entries(state.incomingConnections).map(([uniqueID, details]) => (
-                                                <ConnectionListItem key={uniqueID} uniqueID={uniqueID} details={details} handleConnectionClick={handleConnectionClick} />
+                                        ? Object.entries(state.incomingConnections).map(([uniqueId, details]) => (
+                                                <ConnectionListItem key={uniqueId} uniqueId={uniqueId} details={details} handleConnectionClick={handleConnectionClick} />
                                             )
                                         )
                                         : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>

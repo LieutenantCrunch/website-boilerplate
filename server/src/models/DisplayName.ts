@@ -1,21 +1,22 @@
 import { BelongsToGetAssociationMixin } from 'sequelize';
 import { DataTypes, Model, ModelCtor, Optional, Sequelize } from 'sequelize';
 import { SequelizeAttributes } from '../typings/SequelizeAttributes';
-import { UserInstance } from './User';
+import { UserAttributes, UserInstance } from './User';
 
 export interface DisplayNameAttributes {
-    id?: number,
-    registeredUserId: number,
-    displayName: string,
-    displayNameIndex: number,
-    activationDate: Date,
-    isActive: Boolean
+    id?: number;
+    registeredUserId: number;
+    displayName: string;
+    displayNameIndex: number;
+    activationDate: Date;
+    isActive: Boolean;
+    registeredUser?: UserInstance;
 };
 
 export interface DisplayNameCreationAttributes extends Optional<DisplayNameAttributes, 'id'> {};
 
 export interface DisplayNameInstance extends Model<DisplayNameAttributes, DisplayNameCreationAttributes>, DisplayNameAttributes {
-    getUser: BelongsToGetAssociationMixin<UserInstance>;
+    getRegisteredUser: BelongsToGetAssociationMixin<UserInstance>;
 };
 
 export const DisplayNameFactory = (sequelize: Sequelize): ModelCtor<DisplayNameInstance> => {
@@ -23,7 +24,8 @@ export const DisplayNameFactory = (sequelize: Sequelize): ModelCtor<DisplayNameI
         id: {
             type: DataTypes.INTEGER,
             allowNull: false,
-            primaryKey: true
+            primaryKey: true,
+            autoIncrement: true
         },
         registeredUserId: {
             type: DataTypes.INTEGER,

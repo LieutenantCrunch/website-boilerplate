@@ -4,7 +4,8 @@ import { UserInstance } from './User';
 
 export interface RoleAttributes {
     id?: number,
-    roleName: string
+    roleName: string,
+    users?: UserInstance[];
 };
 
 export interface RoleCreationAttributes extends Optional<RoleAttributes, 'id'> {};
@@ -20,7 +21,8 @@ export const RoleFactory = (sequelize: Sequelize): ModelCtor<RoleInstance> => {
         id: {
             type: DataTypes.INTEGER,
             allowNull: false,
-            primaryKey: true
+            primaryKey: true,
+            autoIncrement: true
         },
         roleName: {
             type: DataTypes.STRING(100),
@@ -36,7 +38,11 @@ export const RoleFactory = (sequelize: Sequelize): ModelCtor<RoleInstance> => {
     Role.associate = (models: {[key: string]: ModelCtor<Model<any, any>>}): void => {
         Role.belongsToMany(models.User, {
             as: 'users',
-            through: models.UserRoleJunction
+            through: models.UserRoleJunction,
+            foreignKey: {
+                name: 'registeredUserRoleId',
+                field: 'registered_user_role_id'
+            }
         });
     };
 

@@ -78,7 +78,7 @@ export default function AddConnectionDialog (props) {
             let selectedUserDetails = state.selectedUserDetails;
             selectedUserDetails.connectionTypes = state.connectionTypeDict;
 
-            UserService.updateOutgoingConnection({ [state.selectedUserDetails.uniqueID]: state.selectedUserDetails });
+            UserService.updateOutgoingConnection({ [state.selectedUserDetails.uniqueId]: state.selectedUserDetails });
 
             updateState(prevState => ({
                 ...prevState,

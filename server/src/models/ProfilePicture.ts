@@ -3,12 +3,13 @@ import { SequelizeAttributes } from '../typings/SequelizeAttributes';
 import { UserInstance } from './User';
 
 export interface ProfilePictureAttributes {
-    id?: number,
-    registeredUserId: number,
-    mimeType: string,
-    fileName: string,
-    originalFileName: string,
-    smallFileName: string
+    id?: number;
+    registeredUserId: number;
+    mimeType: string;
+    fileName: string;
+    originalFileName: string;
+    smallFileName: string;
+    user?: UserInstance;
 };
 
 export interface ProfilePictureCreationAttributes extends Optional<ProfilePictureAttributes, 'id'> {};
@@ -22,7 +23,8 @@ export const ProfilePictureFactory = (sequelize: Sequelize): ModelCtor<ProfilePi
         id: {
             type: DataTypes.INTEGER,
             allowNull: false,
-            primaryKey: true
+            primaryKey: true,
+            autoIncrement: true
         },
         registeredUserId: {
             type: DataTypes.INTEGER,

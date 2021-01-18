@@ -38,6 +38,8 @@ export default function AdminPage() {
             selectedUserDetails = await UserService.getUserDetails(selectedUserId);
         }
 
+        console.log(`selectedUserDetails: ${selectedUserDetails}`);
+
         setState(prevState => {
             return {...prevState, selectedUserDetails};
         });
@@ -46,7 +48,7 @@ export default function AdminPage() {
     const verifyDisplayName = async (event) => {
         // Make call to api
         // Update selectedUserDetails if success
-        let results = await UserService.verifyDisplayName(state.selectedUserDetails.uniqueID, state.selectedUserDetails.displayName);
+        let results = await UserService.verifyDisplayName(state.selectedUserDetails.uniqueId, state.selectedUserDetails.displayName);
 
         if (results.success) {
             setState(prevState => {
@@ -153,7 +155,7 @@ export default function AdminPage() {
                                         ? state.selectedUserDetails?.roles.map(role => {
                                             return <li key={role}>{role}</li>
                                         })
-                                        : <li className="font-italic">None</li>
+                                        : <li key="None" className="font-italic">None</li>
                                     }
                                 </ul>
                             </div>

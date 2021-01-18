@@ -3,12 +3,14 @@ import { SequelizeAttributes } from '../typings/SequelizeAttributes';
 import { UserInstance } from './User';
 
 export interface UserJWTAttributes {
-    id?: number,
-    registeredUserId?: number,
-    jti: string,
-    expirationDate: Date,
-    isValid: Boolean,
-    formerRegisteredUserId?: number
+    id?: number;
+    registeredUserId?: number;
+    jti: string;
+    expirationDate: Date;
+    isValid: Boolean;
+    formerRegisteredUserId?: number;
+    registeredUser?: UserInstance[];
+    formerRegisteredUser?: UserInstance[];
 };
 
 export interface UserJWTCreationAttributes extends Optional<UserJWTAttributes, 'id'>
@@ -25,7 +27,8 @@ export const UserJWTFactory = (sequelize: Sequelize): ModelCtor<UserJWTInstance>
         id: {
             type: DataTypes.INTEGER,
             allowNull: false,
-            primaryKey: true
+            primaryKey: true,
+            autoIncrement: true
         },
         registeredUserId: {
             type: DataTypes.INTEGER,
@@ -50,7 +53,7 @@ export const UserJWTFactory = (sequelize: Sequelize): ModelCtor<UserJWTInstance>
     };
 
     const UserJWT = sequelize.define<UserJWTInstance, UserJWTAttributes>('UserJWT', attributes,{
-        tableName: 'profile_picture'
+        tableName: 'user_jwt'
     });
 
     // @ts-ignore

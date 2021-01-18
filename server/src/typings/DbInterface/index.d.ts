@@ -10,6 +10,7 @@ import { UserConnectionTypeInstance } from '../../models/UserConnectionType';
 import { UserConnectionTypeJunctionInstance } from '../../models/UserConnectionTypeJunction';
 import { UserJWTInstance } from '../../models/UserJWT';
 import { UserRoleJunctionInstance } from '../../models/UserRoleJunction';
+import { UserConnectionViewInstance } from '../../models/views/UserConnectionView';
 
 export interface DbInterface {
   sequelize: Sequelize;
@@ -23,4 +24,7 @@ export interface DbInterface {
   UserConnectionTypeJunction: ModelCtor<UserConnectionTypeJunctionInstance>;
   UserJWT: ModelCtor<UserJWTInstance>;
   UserRoleJunction: ModelCtor<UserRoleJunctionInstance>;
+  Views: {
+    UserConnectionView: ModelCtor<UserConnectionViewInstance>;
+  }
 }

@@ -25,7 +25,7 @@ export default function App() {
     const [statusMessage, setStatusMessage] = useState({type: 'info', message: null});
     const [userInfo, setUserInfo] = Hooks.useStateWithLocalStorage('userInfo', null);
     const [appConstants, setAppConstants] = useState({displayNameChangeDays: 30});
-    const [userDetails, setUserDetails] = useState({email: '', displayName: '', displayNameIndex: -1, pfp: '', roles: [], uniqueID: ''});
+    const [userDetails, setUserDetails] = useState({email: '', displayName: '', displayNameIndex: -1, pfp: '', roles: [], uniqueId: ''});
     const [appState, updateAppState] = useState({
         connectionTypeDict: {}
     })
@@ -48,6 +48,7 @@ export default function App() {
         // Else make sure the userDetails are populated
         if (checkForValidSession()) {
             UserService.getCurrentDetails(setUserDetails);
+            fetchConnectionTypeDict();
         }
 
         UtilityService.getConstants().then(constants => {
@@ -56,8 +57,6 @@ export default function App() {
                 ...constants
             });
         }, () => {});
-
-        fetchConnectionTypeDict();
     }, []);
 
     const fetchConnectionTypeDict = async () => {

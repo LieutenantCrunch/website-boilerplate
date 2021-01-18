@@ -1,17 +1,25 @@
-import { DataTypes, Model, ModelCtor, Optional, Sequelize, HasManyGetAssociationsMixin, HasManyAddAssociationMixin, HasManyRemoveAssociationMixin, BelongsToManyGetAssociationsMixin, BelongsToManyAddAssociationMixin, BelongsToManyAddAssociationsMixin, BelongsToManyRemoveAssociationMixin, BelongsToManyRemoveAssociationsMixin } from 'sequelize';
+import { DataTypes, Model, ModelCtor, Optional, Sequelize, HasManyGetAssociationsMixin, HasManyAddAssociationMixin, HasManyRemoveAssociationMixin, BelongsToManyGetAssociationsMixin, BelongsToManyAddAssociationMixin, BelongsToManyAddAssociationsMixin, BelongsToManyRemoveAssociationMixin, BelongsToManyRemoveAssociationsMixin, HasManyCreateAssociationMixin, HasManyRemoveAssociationsMixin, HasManyAddAssociationsMixin } from 'sequelize';
 import { SequelizeAttributes } from '../typings/SequelizeAttributes';
-import { DisplayNameInstance } from './DisplayName';
-import { PasswordResetTokenInstance } from './PasswordResetToken';
-import { ProfilePictureInstance } from './ProfilePicture';
-import { RoleInstance } from './Role';
-import { UserConnectionInstance } from './UserConnection';
-import { UserJWTInstance } from './UserJWT';
+import { DisplayNameAttributes, DisplayNameInstance } from './DisplayName';
+import { PasswordResetTokenAttributes, PasswordResetTokenInstance } from './PasswordResetToken';
+import { ProfilePictureAttributes, ProfilePictureInstance } from './ProfilePicture';
+import { RoleAttributes, RoleInstance } from './Role';
+import { UserConnectionAttributes, UserConnectionInstance } from './UserConnection';
+import { UserJWTAttributes, UserJWTInstance } from './UserJWT';
 
 export interface UserAttributes {
-    id?: number,
-    email: string,
-    passwordHash: string,
-    uniqueId: string
+    id?: number;
+    email: string;
+    passwordHash: string;
+    uniqueId: string;
+    profilePictures?: ProfilePictureInstance[];
+    activeJWTs?: UserJWTInstance[];
+    inactiveJWTs?: UserJWTInstance[];
+    passwordResetTokens?: PasswordResetTokenInstance[];
+    displayNames?: DisplayNameInstance[];
+    roles?: RoleInstance[];
+    outgoingConnections?: UserConnectionInstance[];
+    incomingConnections?: UserConnectionInstance[];
 };
 
 export interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {};
@@ -19,16 +27,22 @@ export interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {
 export interface UserInstance extends Model<UserAttributes, UserCreationAttributes>, UserAttributes {
     getProfilePictures: HasManyGetAssociationsMixin<ProfilePictureInstance>;
     addProfilePicture: HasManyAddAssociationMixin<ProfilePictureInstance, ProfilePictureInstance['id']>;
+    createProfilePicture: HasManyCreateAssociationMixin<ProfilePictureInstance>;
 
-    getActiveUserJWTs: HasManyGetAssociationsMixin<UserJWTInstance>;
-    addActiveUserJWT: HasManyAddAssociationMixin<UserJWTInstance, UserJWTInstance['id']>
-    removeActiveUserJWT: HasManyRemoveAssociationMixin<UserInstance, UserJWTInstance['id']>
+    getActiveJWTs: HasManyGetAssociationsMixin<UserJWTInstance>;
+    addActiveJWT: HasManyAddAssociationMixin<UserJWTInstance, UserJWTInstance['id']>;
+    addActiveJWTs: HasManyAddAssociationsMixin<UserJWTInstance, UserJWTInstance['id']>;
+    createActiveJWT: HasManyCreateAssociationMixin<UserJWTInstance>;
+    removeActiveJWT: HasManyRemoveAssociationMixin<UserJWTInstance, UserJWTInstance['id']>;
+    removeActiveJWTs: HasManyRemoveAssociationsMixin<UserJWTInstance, UserJWTInstance['id']>;
 
-    getInactiveUserJWTs: HasManyGetAssociationsMixin<UserJWTInstance>;
-    addInactiveUserJWT: HasManyAddAssociationMixin<UserJWTInstance, UserJWTInstance['id']>
+    getInactiveJWTs: HasManyGetAssociationsMixin<UserJWTInstance>;
+    addInactiveJWT: HasManyAddAssociationMixin<UserJWTInstance, UserJWTInstance['id']>;
+    addInactiveJWTs: HasManyAddAssociationsMixin<UserJWTInstance, UserJWTInstance['id']>;
 
     getPasswordResetTokens: HasManyGetAssociationsMixin<PasswordResetTokenInstance>;
     addPasswordResetToken: HasManyAddAssociationMixin<PasswordResetTokenInstance, PasswordResetTokenInstance['id']>;
+    createPasswordResetToken: HasManyCreateAssociationMixin<PasswordResetTokenInstance>;
 
     getDisplayNames: HasManyGetAssociationsMixin<DisplayNameInstance>;
     addDisplayName: HasManyAddAssociationMixin<DisplayNameInstance, DisplayNameInstance['id']>;
@@ -51,7 +65,8 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
         id: {
             type: DataTypes.INTEGER,
             allowNull: false,
-            primaryKey: true
+            primaryKey: true,
+            autoIncrement: true
         },
         email: {
             type: DataTypes.STRING(100),
@@ -116,7 +131,11 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
         
         User.belongsToMany(models.Role, {
             as: 'roles',
-            through: models.UserRoleJunction
+            through: models.UserRoleJunction,
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
+            }
         });
         
         User.hasMany(models.UserConnection, {

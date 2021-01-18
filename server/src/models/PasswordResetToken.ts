@@ -3,10 +3,11 @@ import { SequelizeAttributes } from '../typings/SequelizeAttributes';
 import { UserInstance } from './User';
 
 export interface PasswordResetTokenAttributes {
-    id?: number,
-    registeredUserId: number,
-    expirationDate: Date,
-    token: string
+    id?: number;
+    registeredUserId: number;
+    expirationDate: Date;
+    token: string;
+    user?: UserInstance;
 };
 
 export interface PasswordResetTokenCreationAttributes extends Optional<PasswordResetTokenAttributes, 'id'> {};
@@ -20,7 +21,8 @@ export const PasswordResetTokenFactory = (sequelize: Sequelize): ModelCtor<Passw
         id: {
             type: DataTypes.INTEGER,
             allowNull: false,
-            primaryKey: true
+            primaryKey: true,
+            autoIncrement: true
         },
         registeredUserId: {
             type: DataTypes.INTEGER,

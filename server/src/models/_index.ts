@@ -12,6 +12,9 @@ import { UserConnectionTypeJunctionFactory } from '../models/UserConnectionTypeJ
 import { UserJWTFactory } from '../models/UserJWT';
 import { UserRoleJunctionFactory } from '../models/UserRoleJunction';
 
+// Views
+import { UserConnectionViewFactory } from '../models/views/UserConnectionView';
+
 const dbconfig = require('../../private/dbconfig.json');
 const currentConfig = dbconfig['dev'];
 
@@ -43,7 +46,10 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         UserConnectionType: UserConnectionTypeFactory(sequelize),
         UserConnectionTypeJunction: UserConnectionTypeJunctionFactory(sequelize),
         UserJWT: UserJWTFactory(sequelize),
-        UserRoleJunction: UserRoleJunctionFactory(sequelize)
+        UserRoleJunction: UserRoleJunctionFactory(sequelize),
+        Views: {
+            UserConnectionView: UserConnectionViewFactory(sequelize)
+        }
     };
 
     Object.values(db).forEach((model: any) => {

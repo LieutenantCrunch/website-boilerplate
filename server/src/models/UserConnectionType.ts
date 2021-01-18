@@ -15,7 +15,8 @@ export const UserConnectionTypeFactory = (sequelize: Sequelize): ModelCtor<UserC
         id: {
             type: DataTypes.INTEGER,
             allowNull: false,
-            primaryKey: true
+            primaryKey: true,
+            autoIncrement: true
         },
         displayName: {
             type: DataTypes.STRING(100),
@@ -32,7 +33,11 @@ export const UserConnectionTypeFactory = (sequelize: Sequelize): ModelCtor<UserC
     UserConnectionType.associate = (models: {[key: string]: ModelCtor<Model<any, any>>}): void => {
         UserConnectionType.belongsToMany(models.UserConnection, {
             as: 'connections',
-            through: models.UserConnectionTypeJunction
+            through: models.UserConnectionTypeJunction,
+            foreignKey: {
+                name: 'registeredUserConnectionTypeId',
+                field: 'registered_user_connection_type_id'
+            }
         });
     };
 

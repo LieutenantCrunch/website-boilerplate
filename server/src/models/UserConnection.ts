@@ -5,10 +5,13 @@ import { UserInstance } from './User';
 import { UserConnectionTypeInstance } from './UserConnectionType';
 
 export interface UserConnectionAttributes {
-    id?: number,
-    requestedUserId: number,
-    connectedUserId: number,
-    isMutual: Boolean
+    id?: number;
+    requestedUserId: number;
+    connectedUserId: number;
+    isMutual?: Boolean;
+    requestedUser?: UserInstance;
+    connectedUser?: UserInstance;
+    connectionTypes?: UserConnectionTypeInstance[];
 };
 
 export interface UserConnectionCreationAttributes extends Optional<UserConnectionAttributes, 'id'> {};
@@ -29,7 +32,8 @@ export const UserConnectionFactory = (sequelize: Sequelize): ModelCtor<UserConne
         id: {
             type: DataTypes.INTEGER,
             allowNull: false,
-            primaryKey: true
+            primaryKey: true,
+            autoIncrement: true
         },
         requestedUserId: {
             type: DataTypes.INTEGER,
@@ -69,7 +73,11 @@ export const UserConnectionFactory = (sequelize: Sequelize): ModelCtor<UserConne
         
         UserConnection.belongsToMany(models.UserConnectionType, {
             as: 'connectionTypes', 
-            through: models.UserConnectionTypeJunction
+            through: models.UserConnectionTypeJunction,
+            foreignKey: {
+                name: 'registeredUserConnectionId',
+                field: 'registered_user_connection_id'
+            }
         });
     };
 
