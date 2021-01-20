@@ -48,13 +48,13 @@ class DatabaseHelper {
     async userExistsForEmail(email: string): Promise<Boolean> {
         try
         {
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     email
                 }
             });
 
-            if (s_registeredUser) {
+            if (registeredUser) {
                 return true;
             }
         }
@@ -69,14 +69,14 @@ class DatabaseHelper {
     async getUserIdForUniqueId(uniqueId: string): Promise<number | undefined> {
         try
         {
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
                 }
             });
 
-            if (s_registeredUser) {
-                return s_registeredUser.id;
+            if (registeredUser) {
+                return registeredUser.id;
             }
         }
         catch (err)
@@ -87,16 +87,16 @@ class DatabaseHelper {
         return undefined;
     }
 
-    async gets_UserWithUniqueId(uniqueId: string): Promise<UserInstance | null> {
+    async getUserWithUniqueId(uniqueId: string): Promise<UserInstance | null> {
         try
         {
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
                 }
             });
 
-            return s_registeredUser;
+            return registeredUser;
         }
         catch (err)
         {
@@ -117,13 +117,13 @@ class DatabaseHelper {
             let passwordHash: string = await bcrypt.hash(password, salt);
             let uniqueId: string = uuidv4();
 
-            let s_registeredUser: UserInstance | null = await db.User.create({
+            let registeredUser: UserInstance | null = await db.User.create({
                 email,
                 passwordHash,
                 uniqueId
             });
 
-            if (s_registeredUser) {
+            if (registeredUser) {
                 let results: {success: Boolean, displayNameIndex?: number, message?: string} = await this.setUserDisplayName(uniqueId, displayName);
 
                 return {id: uniqueId, success: true};
@@ -142,15 +142,15 @@ class DatabaseHelper {
         {
             let salt: string = await bcrypt.genSalt(10);
             let hash: string = await bcrypt.hash(password, salt);
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     email
                 }
             });
 
-            if (s_registeredUser) {
-                s_registeredUser.passwordHash = hash;
-                await s_registeredUser.save();
+            if (registeredUser) {
+                registeredUser.passwordHash = hash;
+                await registeredUser.save();
 
                 return true;
             }
@@ -166,17 +166,17 @@ class DatabaseHelper {
     async validateCredentials(email: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
         {
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     email
                 }
             });
 
-            if (s_registeredUser) {
-                let s_passwordHash: string = s_registeredUser.passwordHash;
-                let isValid = await bcrypt.compare(password, s_passwordHash);
+            if (registeredUser) {
+                let passwordHash: string = registeredUser.passwordHash;
+                let isValid = await bcrypt.compare(password, passwordHash);
 
-                return {id: s_registeredUser.uniqueId, success: isValid};
+                return {id: registeredUser.uniqueId, success: isValid};
             }
 
             return {id: null, success: false};;
@@ -194,7 +194,7 @@ class DatabaseHelper {
 
         try
         {
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     email
                 },
@@ -210,13 +210,13 @@ class DatabaseHelper {
                 }
             });
 
-            if (s_registeredUser) {
-                if (s_registeredUser.passwordResetTokens && s_registeredUser.passwordResetTokens.length < Constants.RPT_MAX_ACTIVE_TOKENS) {
+            if (registeredUser) {
+                if (registeredUser.passwordResetTokens && registeredUser.passwordResetTokens.length < Constants.RPT_MAX_ACTIVE_TOKENS) {
                     token = uuidv4();
 
                     let expirationDate: Date = new Date(Date.now()).addMinutes(Constants.RPT_EXPIRATION_MINUTES);
 
-                    let s_newResetToken: PasswordResetTokenInstance = await s_registeredUser.createPasswordResetToken({
+                    let newResetToken: PasswordResetTokenInstance = await registeredUser.createPasswordResetToken({
                         token,
                         expirationDate
                     });
@@ -243,7 +243,7 @@ class DatabaseHelper {
     async validatePasswordResetToken(token: string, email: string): Promise<Boolean> {
         try
         {
-            let s_resetToken: PasswordResetTokenInstance | null = await db.PasswordResetToken.findOne({
+            let resetToken: PasswordResetTokenInstance | null = await db.PasswordResetToken.findOne({
                 where: {
                     token
                 },
@@ -257,7 +257,7 @@ class DatabaseHelper {
                 }
             });
 
-            if (s_resetToken) {
+            if (resetToken) {
                 return true;
             }
         }
@@ -272,16 +272,16 @@ class DatabaseHelper {
     async addProfilePictureToUser(fileName: string, smallFileName: string, originalFileName: string, mimeType: string, userId: string): Promise<{success: Boolean}> {
         try
         {
-            let s_registeredUser: UserInstance | null = await this.gets_UserWithUniqueId(userId);
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(userId);
             
-            if (s_registeredUser) {
-                let s_newPFP: ProfilePictureInstance | null = await s_registeredUser.createProfilePicture({
+            if (registeredUser) {
+                let newPFP: ProfilePictureInstance | null = await registeredUser.createProfilePicture({
                     fileName,
                     smallFileName,
                     originalFileName
                 });
 
-                if (s_newPFP) {
+                if (newPFP) {
                     return {success: true};
                 }
             }
@@ -297,21 +297,21 @@ class DatabaseHelper {
     async getPFPFileNameForUserId(uniqueId: string, originalSize?: Boolean): Promise<string | null> {
         try
         {
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
                 }
             });
 
-            if (s_registeredUser) {
-                let s_registeredUserPfps: ProfilePictureInstance[] = await s_registeredUser.getProfilePictures({
+            if (registeredUser) {
+                let registeredUserPfps: ProfilePictureInstance[] = await registeredUser.getProfilePictures({
                     order: [['id', 'DESC']]
                 });
 
-                if (s_registeredUserPfps.length > 0) {
-                    let s_registeredUserPfp: ProfilePictureInstance = s_registeredUserPfps[0];
+                if (registeredUserPfps.length > 0) {
+                    let registeredUserPfp: ProfilePictureInstance = registeredUserPfps[0];
 
-                    return originalSize ? s_registeredUserPfp.fileName : s_registeredUserPfp.smallFileName;
+                    return originalSize ? registeredUserPfp.fileName : registeredUserPfp.smallFileName;
                 }
             }
         }
@@ -326,15 +326,15 @@ class DatabaseHelper {
     async addJWTToUser(uniqueId: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
         try
         {
-            let s_registeredUser: UserInstance | null = await this.gets_UserWithUniqueId(uniqueId);
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(uniqueId);
             
-            if (s_registeredUser) {
-                let s_newJWT: UserJWTInstance | null = await s_registeredUser.createActiveJWT({
+            if (registeredUser) {
+                let newJWT: UserJWTInstance | null = await registeredUser.createActiveJWT({
                     ...jwtInfo,
                     isValid: true
                 });
 
-                if (s_newJWT) {
+                if (newJWT) {
                     return {success: true};
                 }
             }
@@ -350,7 +350,7 @@ class DatabaseHelper {
     async extendJWTForUser(uniqueId: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
         try
         {
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
                 },
@@ -364,11 +364,11 @@ class DatabaseHelper {
                 }
             });
             
-            if (s_registeredUser && s_registeredUser.activeJWTs) {
-                let s_activeJWT: UserJWTInstance = s_registeredUser.activeJWTs[0];
+            if (registeredUser && registeredUser.activeJWTs) {
+                let activeJWT: UserJWTInstance = registeredUser.activeJWTs[0];
                 
-                s_activeJWT.expirationDate = jwtInfo.expirationDate;
-                s_activeJWT.save();
+                activeJWT.expirationDate = jwtInfo.expirationDate;
+                activeJWT.save();
 
                 return {success: true};
             }
@@ -384,14 +384,14 @@ class DatabaseHelper {
     async validateJWTForUserId(uniqueId: string, jti: string): Promise<Boolean> {
         try
         {
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
                 }
             });
 
-            if (s_registeredUser) {
-                let s_activeJWTs: UserJWTInstance[] = await s_registeredUser.getActiveJWTs({
+            if (registeredUser) {
+                let activeJWTs: UserJWTInstance[] = await registeredUser.getActiveJWTs({
                     where: {
                         jti,
                         isValid: 1,
@@ -401,7 +401,7 @@ class DatabaseHelper {
                     }
                 });
 
-                if (s_activeJWTs.length > 0) {
+                if (activeJWTs.length > 0) {
                     return true;
                 }
             }
@@ -441,7 +441,7 @@ class DatabaseHelper {
                     break;
             }
 
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
                 },
@@ -459,9 +459,9 @@ class DatabaseHelper {
                 }
             });
 
-            if (s_registeredUser && s_registeredUser.activeJWTs) {
-                let s_JWTs: UserJWTInstance[] = s_registeredUser.activeJWTs;
-                let idArray: number[] = s_JWTs.map(s_JWT => s_JWT.id!);
+            if (registeredUser && registeredUser.activeJWTs) {
+                let activeJWTs: UserJWTInstance[] = registeredUser.activeJWTs;
+                let idArray: number[] = activeJWTs.map(activeJWT => activeJWT.id!);
 
                 await db.UserJWT.update(
                     {
@@ -474,8 +474,8 @@ class DatabaseHelper {
                     }
                 );
 
-                await s_registeredUser!.removeActiveJWTs(s_JWTs);
-                await s_registeredUser!.addInactiveJWTs(s_JWTs);
+                await registeredUser!.removeActiveJWTs(activeJWTs);
+                await registeredUser!.addInactiveJWTs(activeJWTs);
 
                 return {success: true};
             }
@@ -491,14 +491,14 @@ class DatabaseHelper {
     async getUserEmail(uniqueId: string): Promise<string | null> {
         try
         {   
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
                 }
             });
 
-            if (s_registeredUser) {
-                return s_registeredUser.email;
+            if (registeredUser) {
+                return registeredUser.email;
             }
         }
         catch (err)
@@ -511,11 +511,11 @@ class DatabaseHelper {
 
     async setUserEmail(uniqueId: string, email: string): Promise<{success: Boolean, message?: string}> {
         try {
-            let s_registeredUser: UserInstance | null = await this.gets_UserWithUniqueId(uniqueId);
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(uniqueId);
 
-            if (s_registeredUser) {
-                s_registeredUser.email = email;
-                await s_registeredUser.save();
+            if (registeredUser) {
+                registeredUser.email = email;
+                await registeredUser.save();
 
                 return {success: true};
             }
@@ -529,17 +529,17 @@ class DatabaseHelper {
 
     async getUserDisplayName(uniqueId: string): Promise<string | null> {
         try {
-            let s_registeredUser: UserInstance | null = await this.gets_UserWithUniqueId(uniqueId);
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(uniqueId);
 
-            if (s_registeredUser) {
-                let s_displayNames: DisplayNameInstance[] = await s_registeredUser.getDisplayNames({
+            if (registeredUser) {
+                let displayNames: DisplayNameInstance[] = await registeredUser.getDisplayNames({
                     where: {
                         isActive: true
                     }
                 });
 
-                if (s_displayNames.length > 0) {
-                    return s_displayNames[0].displayName;
+                if (displayNames.length > 0) {
+                    return displayNames[0].displayName;
                 }
             }
         }
@@ -553,23 +553,23 @@ class DatabaseHelper {
     async setUserDisplayName(uniqueId: string, displayName: string): Promise<{success: Boolean, displayNameIndex?: number, message?: string}> {
         try
         {
-            let s_registeredUser: UserInstance | null = await this.gets_UserWithUniqueId(uniqueId);
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(uniqueId);
 
-            if (!s_registeredUser) {
+            if (!registeredUser) {
                 return {success: false, message: `No user found for when trying to change the display name`};
             }
 
-            let s_displayNames: DisplayNameInstance[] = await s_registeredUser.getDisplayNames({
+            let displayNames: DisplayNameInstance[] = await registeredUser.getDisplayNames({
                 order: [['activationDate', 'DESC']]
             });
 
             let currentDate: Date = new Date(Date.now());
 
             // If they have existing display names
-            if (s_displayNames.length > 0) {
-                let s_currentDisplayName: DisplayNameInstance | undefined = s_displayNames.find(entry => entry.isActive);
-                let s_matchingDisplayName: DisplayNameInstance | undefined = s_displayNames.find(entry => entry.displayName === displayName);
-                let mostRecentChange: Date = s_displayNames[0].activationDate;
+            if (displayNames.length > 0) {
+                let currentDisplayName: DisplayNameInstance | undefined = displayNames.find(entry => entry.isActive);
+                let matchingDisplayName: DisplayNameInstance | undefined = displayNames.find(entry => entry.displayName === displayName);
+                let mostRecentChange: Date = displayNames[0].activationDate;
 
                 // Check if they haven't changed their name in at least the configured amount of days
 
@@ -579,25 +579,25 @@ class DatabaseHelper {
                     return {success: false, message: `It hasn't been ${Constants.DISPLAY_NAME_CHANGE_DAYS} day${Constants.DISPLAY_NAME_CHANGE_DAYS === 1 ? '' : 's'} since the last time you changed your display name. You can change your display name again on ${nextAvailableChange.toLocaleString()}.`};
                 }
 
-                if (s_currentDisplayName) {
-                    if (s_currentDisplayName === s_matchingDisplayName) {
+                if (currentDisplayName) {
+                    if (currentDisplayName === matchingDisplayName) {
                         // No need to make any changes, they already have the specified display name, return without doing anything else
-                        return {success: true, displayNameIndex: s_matchingDisplayName.displayNameIndex, message: 'Your display name has been changed successfully.'};
+                        return {success: true, displayNameIndex: matchingDisplayName.displayNameIndex, message: 'Your display name has been changed successfully.'};
                     }
                     else {
                         // Deactivate the current display name
-                        s_currentDisplayName.isActive = false;
-                        s_currentDisplayName.save();
+                        currentDisplayName.isActive = false;
+                        currentDisplayName.save();
                     }
                 }
 
-                if (s_matchingDisplayName) {
+                if (matchingDisplayName) {
                     // Reactivate the former display name and return without creating a new display name
-                    s_matchingDisplayName.isActive = true;
-                    s_matchingDisplayName.activationDate = currentDate;
-                    s_matchingDisplayName.save();
+                    matchingDisplayName.isActive = true;
+                    matchingDisplayName.activationDate = currentDate;
+                    matchingDisplayName.save();
 
-                    return {success: true, displayNameIndex: s_matchingDisplayName.displayNameIndex, message: 'Your display name has been changed successfully.'};
+                    return {success: true, displayNameIndex: matchingDisplayName.displayNameIndex, message: 'Your display name has been changed successfully.'};
                 }
             }
 
@@ -611,7 +611,7 @@ class DatabaseHelper {
             const nextIndex: number = (isNaN(currentMax) ? 0 : currentMax) + 1;
 
             let newDisplayName: DisplayNameInstance = await db.DisplayName.create({
-                registeredUserId: s_registeredUser.id!,
+                registeredUserId: registeredUser.id!,
                 displayName,
                 displayNameIndex: nextIndex,
                 activationDate: currentDate,
@@ -632,18 +632,18 @@ class DatabaseHelper {
         try 
         {
             // Make sure the display name is not already verified
-            let s_displayName: DisplayNameInstance | null = await db.DisplayName.findOne({
+            let verifiedDisplayName: DisplayNameInstance | null = await db.DisplayName.findOne({
                 where: {
                     displayName,
                     displayNameIndex: 0
                 }
             });
            
-            if (s_displayName) {
+            if (verifiedDisplayName) {
                 return {success: false, message: 'That display name has already been verified.'};
             }
             else {
-                s_displayName = await db.DisplayName.findOne({
+                verifiedDisplayName = await db.DisplayName.findOne({
                     where: {
                         displayName
                     },
@@ -657,10 +657,10 @@ class DatabaseHelper {
                     }
                 });
                 
-                if (s_displayName) {
-                    s_displayName.displayNameIndex = 0;
+                if (verifiedDisplayName) {
+                    verifiedDisplayName.displayNameIndex = 0;
 
-                    s_displayName.save();
+                    verifiedDisplayName.save();
 
                     return {success: true, message: ''};
                 }
@@ -678,7 +678,7 @@ class DatabaseHelper {
         try {
             let getConnectionTypes = currentUniqueId && currentUniqueId !== uniqueId;
 
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
                 },
@@ -698,24 +698,24 @@ class DatabaseHelper {
                 ]
             });
   
-            if (s_registeredUser) {
+            if (registeredUser) {
                 let userDetails: WebsiteBoilerplate.UserDetails = {
-                    displayName: (s_registeredUser.displayNames && s_registeredUser.displayNames[0] ? s_registeredUser.displayNames[0].displayName : ''),
-                    displayNameIndex: (s_registeredUser.displayNames && s_registeredUser.displayNames[0] ? s_registeredUser.displayNames[0].displayNameIndex : -1),
-                    pfp: (s_registeredUser.profilePictures && s_registeredUser.profilePictures[0] ? `i/u/${uniqueId}/${s_registeredUser.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz'),
-                    roles: (s_registeredUser.roles ? s_registeredUser.roles.map(role => role.roleName) : []),
+                    displayName: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayName : ''),
+                    displayNameIndex: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayNameIndex : -1),
+                    pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `i/u/${uniqueId}/${registeredUser.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz'),
+                    roles: (registeredUser.roles ? registeredUser.roles.map(role => role.roleName) : []),
                     uniqueId
                 };
 
                 if (includeEmail) {
-                    userDetails.email = s_registeredUser.email;
+                    userDetails.email = registeredUser.email;
                 }
 
                 if (getConnectionTypes) {
                     let currentUserId: number | undefined = await this.getUserIdForUniqueId(currentUniqueId!);
 
                     if (currentUserId) {
-                        let s_incomingConnections: UserConnectionInstance[] = await s_registeredUser.getIncomingConnections({
+                        let incomingConnections: UserConnectionInstance[] = await registeredUser.getIncomingConnections({
                             where: {
                                 requestedUserId: currentUserId
                             },
@@ -725,11 +725,11 @@ class DatabaseHelper {
                             }
                         });
 
-                        if (s_incomingConnections.length > 0) {
+                        if (incomingConnections.length > 0) {
                             let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary;
 
-                            if (s_incomingConnections[0].connectionTypes) {
-                                connectionTypes = s_incomingConnections[0].connectionTypes.reduce((previousValue, connectionType) => ({
+                            if (incomingConnections[0].connectionTypes) {
+                                connectionTypes = incomingConnections[0].connectionTypes.reduce((previousValue, connectionType) => ({
                                     ...previousValue,
                                     [connectionType.displayName]: true
                                 }), {});
@@ -756,7 +756,7 @@ class DatabaseHelper {
     async checkUserForRole(uniqueId: string, roleName: string): Promise<Boolean> {
         try
         {
-            let s_registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
                 },
@@ -770,7 +770,7 @@ class DatabaseHelper {
                 }
             });
 
-            if (s_registeredUser) {
+            if (registeredUser) {
                 return true;
             }
         }
@@ -926,12 +926,12 @@ class DatabaseHelper {
         try {
             let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
 
-            let s_registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
 
-            if (s_registeredUserId !== undefined) {
+            if (registeredUserId !== undefined) {
                 let outgoingConnectionsView: UserConnectionViewInstance[] | null = await db.Views.UserConnectionView.findAll({
                     where: {
-                        requestedUserId: s_registeredUserId
+                        requestedUserId: registeredUserId
                     },
                     attributes: [
                         'isMutual'
@@ -1026,12 +1026,12 @@ class DatabaseHelper {
 
     async getIncomingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
         try {
-            let s_registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
 
-            if (s_registeredUserId !== undefined) {
+            if (registeredUserId !== undefined) {
                 let incomingConnectionsView: UserConnectionViewInstance[] | null = await db.Views.UserConnectionView.findAll({
                     where: {
-                        connectedUserId: s_registeredUserId
+                        connectedUserId: registeredUserId
                     },
                     attributes: [
                         'isMutual'
@@ -1120,9 +1120,9 @@ class DatabaseHelper {
             let connectionTypesDict: WebsiteBoilerplate.UserConnectionTypeDictionary | undefined = this.nodeCache.get(Constants.CACHE_KEY_CONNECTION_TYPES_DICT);
 
             if (!connectionTypesDict) {
-                let s_connectionTypes: UserConnectionTypeInstance[] = await this.gets_ConnectionTypes();
+                let connectionTypes: UserConnectionTypeInstance[] = await this.getConnectionTypes();
 
-                connectionTypesDict = s_connectionTypes.reduce((previousValue, currentValue) => {
+                connectionTypesDict = connectionTypes.reduce((previousValue, currentValue) => {
                     return {
                         ...previousValue,
                         [currentValue.displayName]: false
@@ -1141,13 +1141,13 @@ class DatabaseHelper {
         return {};
     }
 
-    async gets_ConnectionTypes(): Promise<UserConnectionTypeInstance[]> {
+    async getConnectionTypes(): Promise<UserConnectionTypeInstance[]> {
         try {
-            let s_userConnectionTypes: UserConnectionTypeInstance[] | null = await db.UserConnectionType.findAll();
+            let userConnectionTypes: UserConnectionTypeInstance[] | null = await db.UserConnectionType.findAll();
 
-            if (s_userConnectionTypes)
+            if (userConnectionTypes)
             {
-                return s_userConnectionTypes;
+                return userConnectionTypes;
             }
         }
         catch (err) {
@@ -1160,19 +1160,19 @@ class DatabaseHelper {
     async removeUserConnection(currentUserUniqueId: string, connectedUserUniqueId: string): Promise<Boolean> {
         try
         {
-            let s_currentUser: UserInstance | null = await this.gets_UserWithUniqueId(currentUserUniqueId);
-            let s_connectedUser: UserInstance | null = await this.gets_UserWithUniqueId(connectedUserUniqueId);
+            let currentUser: UserInstance | null = await this.getUserWithUniqueId(currentUserUniqueId);
+            let connectedUser: UserInstance | null = await this.getUserWithUniqueId(connectedUserUniqueId);
 
-            if (s_currentUser && s_connectedUser) {
-                let s_userConnection: UserConnectionInstance | null = await db.UserConnection.findOne({
+            if (currentUser && connectedUser) {
+                let userConnection: UserConnectionInstance | null = await db.UserConnection.findOne({
                     where: {
-                        requestedUserId: s_currentUser.id!,
-                        connectedUserId: s_connectedUser.id!
+                        requestedUserId: currentUser.id!,
+                        connectedUserId: connectedUser.id!
                     }
                 });
                 
-                if (s_userConnection) {
-                    await s_userConnection.destroy();
+                if (userConnection) {
+                    await userConnection.destroy();
                 }
                 
                 return true;
@@ -1188,11 +1188,11 @@ class DatabaseHelper {
     async updateUserConnection(uniqueId: string, outgoingConnectionUpdates: WebsiteBoilerplate.UserConnectionDetails): Promise<Boolean> {
         try
         {
-            let s_connectedUserUniqueId: string = Object.keys(outgoingConnectionUpdates)[0];
-            let s_connectedUser: UserInstance | null = await this.gets_UserWithUniqueId(s_connectedUserUniqueId);
+            let connectedUserUniqueId: string = Object.keys(outgoingConnectionUpdates)[0];
+            let connectedUser: UserInstance | null = await this.getUserWithUniqueId(connectedUserUniqueId);
 
-            if (s_connectedUser) {
-                let s_currentUser: UserInstance | null = await db.User.findOne({
+            if (connectedUser) {
+                let currentUser: UserInstance | null = await db.User.findOne({
                     where: {
                         uniqueId
                     },
@@ -1202,7 +1202,7 @@ class DatabaseHelper {
                             as: 'outgoingConnections',
                             required: false,
                             where: {
-                                connectedUserId: s_connectedUser.id!
+                                connectedUserId: connectedUser.id!
                             },
                             include: [
                                 {
@@ -1220,10 +1220,10 @@ class DatabaseHelper {
                     ]
                 });
 
-                if (s_currentUser && s_currentUser.outgoingConnections) {
-                    let outgoingConnections: UserConnectionInstance[] = s_currentUser.outgoingConnections;
-                    let s_allConnectionTypes: UserConnectionTypeInstance[] = await this.gets_ConnectionTypes();
-                    let { connectionTypes } : { connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary} = outgoingConnectionUpdates[s_connectedUserUniqueId];
+                if (currentUser && currentUser.outgoingConnections) {
+                    let outgoingConnections: UserConnectionInstance[] = currentUser.outgoingConnections;
+                    let allConnectionTypes: UserConnectionTypeInstance[] = await this.getConnectionTypes();
+                    let { connectionTypes } : { connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary} = outgoingConnectionUpdates[connectedUserUniqueId];
 
                     if (outgoingConnections.length > 0) { // This is an existing connection, modify the types if necessary
                         let existingConnection: UserConnectionInstance = outgoingConnections[0];
@@ -1246,7 +1246,7 @@ class DatabaseHelper {
                             if (isSelected) {
                                 if (!oldConnectionTypes!.find(elem => elem.displayName === key)) {
                                     // If it's selected and they don't currently have that type, it needs to be added
-                                    let connectionTypeRecord: UserConnectionTypeInstance | undefined = s_allConnectionTypes.find(elem => elem.displayName === key);
+                                    let connectionTypeRecord: UserConnectionTypeInstance | undefined = allConnectionTypes.find(elem => elem.displayName === key);
 
                                     if (connectionTypeRecord) {
                                         addConnectionTypes.push(connectionTypeRecord);
@@ -1262,16 +1262,16 @@ class DatabaseHelper {
                         return true;
                     }
                     else {
-                        let s_newConnection: UserConnectionInstance = await db.UserConnection.create({
-                            requestedUserId: s_currentUser.id!,
-                            connectedUserId: s_connectedUser.id!
+                        let newConnection: UserConnectionInstance = await db.UserConnection.create({
+                            requestedUserId: currentUser.id!,
+                            connectedUserId: connectedUser.id!
                         });
 
                         if (Object.keys(connectionTypes).length) {
-                            let addConnectionTypes: UserConnectionTypeInstance[] = s_allConnectionTypes.filter(connectionType => connectionTypes[connectionType.displayName]);
+                            let addConnectionTypes: UserConnectionTypeInstance[] = allConnectionTypes.filter(connectionType => connectionTypes[connectionType.displayName]);
 
                             if (addConnectionTypes.length > 0) {
-                                await s_newConnection.addConnectionTypes(addConnectionTypes);
+                                await newConnection.addConnectionTypes(addConnectionTypes);
                             }
                         }
 
