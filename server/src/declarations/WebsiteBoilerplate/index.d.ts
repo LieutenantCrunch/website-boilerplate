@@ -5,7 +5,7 @@ declare namespace WebsiteBoilerplate {
         displayNameIndex: number,
         pfp: string,
         roles: string[],
-        uniqueID: string,
+        uniqueId: string,
         connectionTypes?: UserConnectionTypeDictionary
     }
 
@@ -15,7 +15,7 @@ declare namespace WebsiteBoilerplate {
         users: {
             displayName: string,
             displayNameIndex: number,
-            uniqueID: string,
+            uniqueId: string,
             pfpSmall: string
         }[]
     }

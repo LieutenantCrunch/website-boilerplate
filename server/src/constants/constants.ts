@@ -10,6 +10,8 @@ export const RPT_MAX_ACTIVE_TOKENS: number = 5; // The maximum allowable number 
 export const DISPLAY_NAME_CHANGE_DAYS: number = 30; // The number of days a user must wait between display name changes
 export const CONNECTION_TYPES_CACHE_HOURS: number = 6; // The number of hours connection types will be cached for since they won't change very often
 
+export const CACHE_KEY_CONNECTION_TYPES_DICT: string = 'db.connectionTypesDict'; // The connection types dictionary used by databaseHelper
+
 export const DB_USER_FETCH_PAGE_SIZE: number = 5; // The number of users to fetch at one time
 
 export const INVALIDATE_TOKEN_MODE = {

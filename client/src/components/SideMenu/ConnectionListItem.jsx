@@ -29,7 +29,7 @@ export default function ConnectionListItem(props) {
                     arrow
                     interactive
                 >
-                    <button type="button" className={classNames('btn btn-outline-primary border-0 w-100 text-left', {'btn-sm': !isMobile})} data-toggle="modal" data-target="#connectionDetails" data-connection={props.uniqueID} onClick={props.handleConnectionClick}>
+                    <button type="button" className={classNames('btn btn-outline-primary border-0 w-100 text-left', {'btn-sm': !isMobile})} data-toggle="modal" data-target="#connectionDetails" data-connection={props.uniqueId} onClick={props.handleConnectionClick}>
                         {props.details.displayName}<small className="text-muted">#{props.details.displayNameIndex}</small>
                     </button>
                 </HtmlTooltip>
@@ -38,7 +38,7 @@ export default function ConnectionListItem(props) {
                 <small>🤝</small>
             </div>
             <div className="sideMenuItemListItemRemove" style={{display: props.handleRemoveConnectionClick ? '' : 'none'}}>
-                <button type="button" className="btn btn-close" arial-label="remove" style={{boxSizing: 'border-box'}} data-connection={props.uniqueID} onClick={handleRemoveClick}></button>
+                <button type="button" className="btn btn-close" arial-label="remove" style={{boxSizing: 'border-box'}} data-connection={props.uniqueId} onClick={handleRemoveClick}></button>
             </div>
         </li>
     );

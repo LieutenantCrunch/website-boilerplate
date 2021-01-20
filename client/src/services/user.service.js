@@ -32,9 +32,9 @@ export default class UserService {
         }
     }
 
-    static async getUserDetails(uniqueID) {
+    static async getUserDetails(uniqueId) {
         try {
-            let queryString = encodeURI(`uniqueID=${uniqueID}`);
+            let queryString = encodeURI(`uniqueId=${uniqueId}`);
             let response = await axiosApi.get(Constants.API_PATH_USERS + `/getUserDetails?${queryString}`);
 
             if (response.data && response.data.success) {
@@ -42,7 +42,7 @@ export default class UserService {
             }
         }
         catch (err) {
-            console.error(`Error getting user details for ${uniqueID}:\n${err.message}`);
+            console.error(`Error getting user details for ${uniqueId}:\n${err.message}`);
         }
 
         return null;
@@ -121,9 +121,9 @@ export default class UserService {
         }
     }
 
-    static async getIncomingConnections(uniqueID) {
+    static async getIncomingConnections(uniqueId) {
         try {
-            let queryString = encodeURI(`uniqueID=${uniqueID}`);
+            let queryString = encodeURI(`uniqueId=${uniqueId}`);
             let response = await axiosApi.get(Constants.API_PATH_USERS + `/getIncomingConnections?${queryString}`);
 
             if (response.data && response.data.success) {
@@ -131,15 +131,15 @@ export default class UserService {
             }
         }
         catch (err) {
-            console.error(`Error getting connections for user ${uniqueID}:\n${err.message}`);
+            console.error(`Error getting connections for user ${uniqueId}:\n${err.message}`);
         }
 
         return null;
     }
 
-    static async getOutgoingConnections(uniqueID) {
+    static async getOutgoingConnections(uniqueId) {
         try {
-            let queryString = encodeURI(`uniqueID=${uniqueID}`);
+            let queryString = encodeURI(`uniqueId=${uniqueId}`);
             let response = await axiosApi.get(Constants.API_PATH_USERS + `/getOutgoingConnections?${queryString}`);
 
             if (response.data && response.data.success) {
@@ -147,7 +147,7 @@ export default class UserService {
             }
         }
         catch (err) {
-            console.error(`Error getting connections for user ${uniqueID}:\n${err.message}`);
+            console.error(`Error getting connections for user ${uniqueId}:\n${err.message}`);
         }
 
         return null;

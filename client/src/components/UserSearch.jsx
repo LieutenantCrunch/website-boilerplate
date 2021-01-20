@@ -124,8 +124,8 @@ const UserSearch = forwardRef((props, ref) => {
                         let displayName = user.displayName;
                         let displayNameIndex = user.displayNameIndex;
 
-                        //tempArray.push(<li key={user.uniqueID} className={classNames('list-group-item', {'active': firstMatch})}>{displayName}</li>);
-                        tempArray.push({displayName, displayNameIndex, key: user.uniqueID, pfpSmall: user.pfpSmall});
+                        //tempArray.push(<li key={user.uniqueId} className={classNames('list-group-item', {'active': firstMatch})}>{displayName}</li>);
+                        tempArray.push({displayName, displayNameIndex, key: user.uniqueId, pfpSmall: user.pfpSmall});
 
                         if (firstMatch) {
                             updateInputsFromDisplayName(displayName, displayNameIndex);
@@ -358,7 +358,7 @@ const UserSearch = forwardRef((props, ref) => {
                     );
                 })
             }
-            <li className={classNames('list-group-item', 'text-center', 'p-0', {'d-none': !moreResultsAvailable()})}>
+            <li key="More Results" className={classNames('list-group-item', 'text-center', 'p-0', {'d-none': !moreResultsAvailable()})}>
                 <button className="btn btn-link btn-sm text-nowrap text-truncate shadow-none" 
                     type="button"
                     onClick={handleMoreResultsClick}

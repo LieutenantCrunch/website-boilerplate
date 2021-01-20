@@ -5,10 +5,8 @@ import sharp, { OutputInfo, Sharp } from 'sharp';
 import {promisify} from 'util';
 
 import AuthHelper from '../../../utilities/authHelper';
-import DatabaseHelper from '../../../utilities/databaseHelper';
+import { databaseHelper } from '../../../utilities/databaseHelper';
 import PFPUploadHelper from '../../../utilities/pfpUploadHelper';
-
-const databaseHelper: DatabaseHelper = new DatabaseHelper();
 
 const apiUserPFPRouter = express.Router();
 

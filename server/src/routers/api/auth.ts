@@ -3,13 +3,12 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 
 import AuthHelper from '../../utilities/authHelper';
-import DatabaseHelper from '../../utilities/databaseHelper';
+import { databaseHelper } from '../../utilities/databaseHelper';
 import * as Constants from '../../constants/constants';
 
 import '../../extensions/date.extensions';
 import EmailHelper from '../../utilities/emailHelper';
 
-const databaseHelper: DatabaseHelper = new DatabaseHelper();
 const emailHelper: EmailHelper = new EmailHelper();
 
 const apiAuthRouter: Router = express.Router();
