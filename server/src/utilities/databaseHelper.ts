@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 
 import * as Constants from '../constants/constants';
+import NodeCache from 'node-cache';
 
 import { Op } from 'sequelize';
 import { db } from '../models/_index';
@@ -19,6 +20,7 @@ import { PasswordResetTokenInstance } from '../models/PasswordResetToken';
 
 class DatabaseHelper {
     private static instance: DatabaseHelper;
+    private nodeCache: NodeCache = new NodeCache();
 
     constructor() {
         if (DatabaseHelper.instance) {
@@ -1114,16 +1116,21 @@ class DatabaseHelper {
     }
 
     async getConnectionTypeDict(): Promise<WebsiteBoilerplate.UserConnectionTypeDictionary> {
-        //##TODO: Cache Results .cache(Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000)
         try {
-            let s_connectionTypes: UserConnectionTypeInstance[] = await this.gets_ConnectionTypes();
+            let connectionTypesDict: WebsiteBoilerplate.UserConnectionTypeDictionary | undefined = this.nodeCache.get(Constants.CACHE_KEY_CONNECTION_TYPES_DICT);
 
-            let connectionTypesDict: WebsiteBoilerplate.UserConnectionTypeDictionary = s_connectionTypes.reduce((previousValue, currentValue) => {
-                return {
-                    ...previousValue,
-                    [currentValue.displayName]: false
-                }
-            }, {});
+            if (!connectionTypesDict) {
+                let s_connectionTypes: UserConnectionTypeInstance[] = await this.gets_ConnectionTypes();
+
+                connectionTypesDict = s_connectionTypes.reduce((previousValue, currentValue) => {
+                    return {
+                        ...previousValue,
+                        [currentValue.displayName]: false
+                    }
+                }, {});
+
+                this.nodeCache.set(Constants.CACHE_KEY_CONNECTION_TYPES_DICT, connectionTypesDict, Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000);
+            }
 
             return connectionTypesDict;
         }
@@ -1135,7 +1142,6 @@ class DatabaseHelper {
     }
 
     async gets_ConnectionTypes(): Promise<UserConnectionTypeInstance[]> {
-        //##TODO: Cache Results .cache(Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000)
         try {
             let s_userConnectionTypes: UserConnectionTypeInstance[] | null = await db.UserConnectionType.findAll();
 

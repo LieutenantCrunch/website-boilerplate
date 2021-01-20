@@ -1,4 +1,7 @@
+import * as Constants from '../constants/constants';
+
 import { Sequelize } from 'sequelize';
+import SequelizeSimpleCache from 'sequelize-simple-cache';
 import { DbInterface } from '../typings/DbInterface';
 
 import { DisplayNameFactory } from '../models/DisplayName';
@@ -34,6 +37,9 @@ const sequelizeConfig = {
 
 const createModels = (sequelizeConfig: any): DbInterface => {
     const sequelize = new Sequelize(sequelizeConfig);
+    const cache: SequelizeSimpleCache = new SequelizeSimpleCache({
+        UserConnectionType: { ttl: Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000 }
+    });
 
     const db: DbInterface = {
         sequelize,
@@ -43,7 +49,7 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         Role: RoleFactory(sequelize),
         User: UserFactory(sequelize),
         UserConnection: UserConnectionFactory(sequelize),
-        UserConnectionType: UserConnectionTypeFactory(sequelize),
+        UserConnectionType: cache.init(UserConnectionTypeFactory(sequelize)),
         UserConnectionTypeJunction: UserConnectionTypeJunctionFactory(sequelize),
         UserJWT: UserJWTFactory(sequelize),
         UserRoleJunction: UserRoleJunctionFactory(sequelize),
