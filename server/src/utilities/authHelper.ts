@@ -91,11 +91,20 @@ export default class AuthHelper {
             let hasAdminRole: Boolean = await databaseHelper.checkUserForRole(uniqueId, 'Administrator');
 
             if (hasAdminRole) {
-                next();
-            }
-            else {
-                res.redirect('/');
+                return next();
             }
         }
+        
+        return res.redirect('/');
+    }
+
+    static async verifyNotBlocked(req: Request, res: Response, next: NextFunction) {
+        let uniqueId: string | undefined = req.userId;
+
+        if (uniqueId) {
+            //let isNotBlocked: Boolean = await databaseHelper.checkUserForBlock(uniqueId, );
+        }
+
+        return next();
     }
 };

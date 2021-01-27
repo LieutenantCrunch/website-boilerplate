@@ -15,7 +15,16 @@ apiRouter.get('/:methodName', async (req: Request, res: Response) => {
     {
     case 'getConstants':
         res.status(200).json({
-            displayNameChangeDays: Constants.DISPLAY_NAME_CHANGE_DAYS
+            DisplayNameChangeDays: Constants.DISPLAY_NAME_CHANGE_DAYS,
+            ProfileNameRegexDetails: {
+                Pattern: Constants.PROFILE_NAME_REGEX_PATTERN,
+                Flags: Constants.PROFILE_NAME_REGEX_FLAGS
+            },
+            URLs: {
+                BASE_URL: Constants.BASE_URL,
+                BASE_API_URL: Constants.BASE_API_URL,
+                BASE_USERS_URL: Constants.BASE_USERS_URL
+            }
         });
         break;
     default:

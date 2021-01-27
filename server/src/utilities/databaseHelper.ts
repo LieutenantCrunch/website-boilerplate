@@ -66,6 +66,27 @@ class DatabaseHelper {
         return false;
     }
 
+    async userExistsForProfileName(profileName: string): Promise<Boolean> {
+        try
+        {
+            let registeredUser: UserInstance | null = await db.User.findOne({
+                where: {
+                    profileName: profileName.toLowerCase()
+                }
+            });
+
+            if (registeredUser) {
+                return true;
+            }
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with profile name ${profileName}:\n${err.message}`);
+        }
+
+        return false;
+    }
+
     async getUserIdForUniqueId(uniqueId: string): Promise<number | undefined> {
         try
         {
@@ -106,10 +127,13 @@ class DatabaseHelper {
         return null;
     }
 
-    async registerNewUser(email: string, displayName: string, password: string): Promise<{id: string | null, success: Boolean}> {
+    async registerNewUser(email: string, displayName: string, profileName: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
         {
-            if (!displayName || displayName.indexOf('#') > -1) {
+            if (!displayName || displayName.length > 100 || displayName.indexOf('#') > -1) {
+                return {id: null, success: false};
+            }
+            else if (!profileName || profileName.length > 20 || !Constants.PROFILE_NAME_REGEX.test(profileName)) {
                 return {id: null, success: false};
             }
 
@@ -120,13 +144,14 @@ class DatabaseHelper {
             let registeredUser: UserInstance | null = await db.User.create({
                 email,
                 passwordHash,
-                uniqueId
+                uniqueId,
+                profileName: profileName.toLowerCase()
             });
 
             if (registeredUser) {
                 let results: {success: Boolean, displayNameIndex?: number, message?: string} = await this.setUserDisplayName(uniqueId, displayName);
 
-                return {id: uniqueId, success: true};
+                return {id: uniqueId, success: results.success};
             }
         }
         catch (err)
@@ -557,6 +582,10 @@ class DatabaseHelper {
 
             if (!registeredUser) {
                 return {success: false, message: `No user found for when trying to change the display name`};
+            }
+
+            if (displayName.indexOf('#') > -1) {
+                return {success: false, message: `Display name does not meet requirements.`};
             }
 
             let displayNames: DisplayNameInstance[] = await registeredUser.getDisplayNames({

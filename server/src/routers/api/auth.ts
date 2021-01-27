@@ -41,11 +41,15 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
                 res.status(200).json({success: false, message: 'You must provide a display name.'})
                 canContinue = false;
             }
+            else if (canContinue && !req.body.profileName) {
+                res.status(200).json({success: false, message: 'You must provide a profile name.'})
+                canContinue = false;
+            }
 
             if (canContinue) {
                 if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
                     // TODO: Validate password strength
-                    let registerResults: {id: string | null, success: Boolean} = await databaseHelper.registerNewUser(req.body.email, req.body.displayName, req.body.password);
+                    let registerResults: {id: string | null, success: Boolean} = await databaseHelper.registerNewUser(req.body.email, req.body.displayName, req.body.profileName, req.body.password);
                     
                     if (registerResults.success) {
                         res.status(200).json({success: true, message: 'Registration success! You can now log in.'});

@@ -196,7 +196,7 @@ export default function ConnectionsSideMenuItem(props) {
                     }} />
                     <ul className="sideMenuItemList">
                         {
-                            Object.keys(state.outgoingConnections).length > 0
+                            state.outgoingConnections && Object.keys(state.outgoingConnections).length > 0
                             ? Object.entries(state.outgoingConnections).map(([uniqueId, details]) => (
                                     <ConnectionListItem key={uniqueId} uniqueId={uniqueId} details={details} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
                                 )
@@ -226,7 +226,7 @@ export default function ConnectionsSideMenuItem(props) {
                             <div className={classNames('sideSubMenuItem', {'sideSubMenuItemExpanded': state.incomingExpanded})}>
                                 <ul className="list-group" style={{paddingLeft: 0}}>
                                     {
-                                        Object.keys(state.incomingConnections).length > 0
+                                        state.incomingConnections && Object.keys(state.incomingConnections).length > 0
                                         ? Object.entries(state.incomingConnections).map(([uniqueId, details]) => (
                                                 <ConnectionListItem key={uniqueId} uniqueId={uniqueId} details={details} handleConnectionClick={handleConnectionClick} />
                                             )

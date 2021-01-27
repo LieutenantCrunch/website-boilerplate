@@ -8,7 +8,7 @@ function Profile(props) {
     //let setUserDetails = props.setUserDetails;
 
     useEffect(() => {
-        props.setTitle('Profile')
+        props.setTitle('Profile');
     }, []);
 
     const setProfilePic = pfp => {

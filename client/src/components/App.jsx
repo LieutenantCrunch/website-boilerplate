@@ -15,6 +15,7 @@ import Welcome from './Welcome';
 import SettingsPage from './SettingsPage';
 import ResetPassword from './ResetPassword';
 import SideMenu from './SideMenu/SideMenu';
+import UserPage from './UserPage';
 
 import UserService from '../services/user.service';
 import UtilityService from '../services/utility.service';
@@ -24,7 +25,14 @@ export default function App() {
     const [title, setTitle] = useState(null);
     const [statusMessage, setStatusMessage] = useState({type: 'info', message: null});
     const [userInfo, setUserInfo] = Hooks.useStateWithLocalStorage('userInfo', null);
-    const [appConstants, setAppConstants] = useState({displayNameChangeDays: 30});
+    const [appConstants, setAppConstants] = useState({
+        DisplayNameChangeDays: 30, 
+        ProfileNameRegexDetails: {
+            Pattern: '^[\-\._~]*(?:[a-z0-9][\-\._~]*){3,}',
+            Flags: 'i'
+        },
+        ProfileNameRegex: /^[\-\._~]*(?:[a-z0-9][\-\._~]*){3,}/i
+    });
     const [userDetails, setUserDetails] = useState({email: '', displayName: '', displayNameIndex: -1, pfp: '', roles: [], uniqueId: ''});
     const [appState, updateAppState] = useState({
         connectionTypeDict: {}
@@ -52,6 +60,10 @@ export default function App() {
         }
 
         UtilityService.getConstants().then(constants => {
+            if (constants.ProfileNameRegexDetails) {
+                constants.ProfileNameRegex = new RegExp(constants.ProfileNameRegexDetails.Pattern, constants.ProfileNameRegexDetails.Flags);
+            }
+
             setAppConstants({
                 ...appConstants,
                 ...constants
@@ -78,11 +90,9 @@ export default function App() {
                 <Header title={title} userInfo={userInfo} setUserInfo={setUserInfo} userDetails={userDetails} />
                 <div className="container-fluid d-flex align-items-center flex-column">
                     <Switch>
-                        <Route path="/" exact={true}>
-                            <Welcome setTitle={setTitle} />
-                        </Route>
                         <Route path="/register" exact={true}>
                             <RegistrationForm 
+                                appConstants={appConstants}
                                 statusMessage={statusMessage}
                                 setTitle={setTitle} 
                                 setStatusMessage={setStatusMessage} 
@@ -90,6 +100,7 @@ export default function App() {
                         </Route>
                         <Route path="/login" exact={true}>
                             <LoginForm 
+                                appConstants={appConstants}
                                 statusMessage={statusMessage} 
                                 setTitle={setTitle} 
                                 setStatusMessage={setStatusMessage}
@@ -99,6 +110,7 @@ export default function App() {
                         </Route>
                         <Route path="/reset-password" exact={true}>
                             <ResetPassword 
+                                appConstants={appConstants}
                                 statusMessage={statusMessage} 
                                 setStatusMessage={setStatusMessage}
                                 setTitle={setTitle}
@@ -107,6 +119,7 @@ export default function App() {
                         <Route path="/profile" exact={true} render={() => {
                             return (checkForValidSession() ? 
                             <Profile 
+                                appConstants={appConstants}
                                 setTitle={setTitle}
                                 userDetails={userDetails}
                                 setUserDetails={setUserDetails}
@@ -116,15 +129,26 @@ export default function App() {
                         <Route path="/settings" exact={true} render={() => {
                             return (checkForValidSession() ? 
                             <SettingsPage 
+                                appConstants={appConstants}
                                 setStatusMessage={setStatusMessage}
                                 setTitle={setTitle}
                                 setUserInfo={setUserInfo}
-                                appConstants={appConstants}
                                 userDetails={userDetails}
                                 setUserDetails={setUserDetails}
                             /> : 
                             <Redirect to="/login" />)
                         }} />
+                        <Route path="/u" render={() => {
+                            return (checkForValidSession() ? 
+                            <UserPage 
+                                appConstants={appConstants}
+                                setTitle={setTitle}
+                            /> : 
+                            <Redirect to="/login" />)
+                        }} />
+                        <Route path="/" exact={true}>
+                            <Welcome setTitle={setTitle} />
+                        </Route>
                     </Switch>
                 </div>
             </Router>

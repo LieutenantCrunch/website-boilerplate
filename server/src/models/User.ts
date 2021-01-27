@@ -1,17 +1,18 @@
 import { DataTypes, Model, ModelCtor, Optional, Sequelize, HasManyGetAssociationsMixin, HasManyAddAssociationMixin, HasManyRemoveAssociationMixin, BelongsToManyGetAssociationsMixin, BelongsToManyAddAssociationMixin, BelongsToManyAddAssociationsMixin, BelongsToManyRemoveAssociationMixin, BelongsToManyRemoveAssociationsMixin, HasManyCreateAssociationMixin, HasManyRemoveAssociationsMixin, HasManyAddAssociationsMixin } from 'sequelize';
 import { SequelizeAttributes } from '../typings/SequelizeAttributes';
-import { DisplayNameAttributes, DisplayNameInstance } from './DisplayName';
-import { PasswordResetTokenAttributes, PasswordResetTokenInstance } from './PasswordResetToken';
-import { ProfilePictureAttributes, ProfilePictureInstance } from './ProfilePicture';
-import { RoleAttributes, RoleInstance } from './Role';
-import { UserConnectionAttributes, UserConnectionInstance } from './UserConnection';
-import { UserJWTAttributes, UserJWTInstance } from './UserJWT';
+import { DisplayNameInstance } from './DisplayName';
+import { PasswordResetTokenInstance } from './PasswordResetToken';
+import { ProfilePictureInstance } from './ProfilePicture';
+import { RoleInstance } from './Role';
+import { UserConnectionInstance } from './UserConnection';
+import { UserJWTInstance } from './UserJWT';
 
 export interface UserAttributes {
     id?: number;
     email: string;
     passwordHash: string;
     uniqueId: string;
+    profileName: string;
     profilePictures?: ProfilePictureInstance[];
     activeJWTs?: UserJWTInstance[];
     inactiveJWTs?: UserJWTInstance[];
@@ -79,6 +80,11 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
         uniqueId: {
             type: DataTypes.UUIDV4,
             field: 'unique_id',
+            unique: true
+        },
+        profileName: {
+            type: DataTypes.STRING(20),
+            field: 'profile_name',
             unique: true
         }
     };
