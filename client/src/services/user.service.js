@@ -48,6 +48,24 @@ export default class UserService {
         return null;
     }
 
+    static async getProfileInfo(profileName) {
+        try
+        {
+            let queryString = encodeURI(`profileName=${profileName}`);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getProfileInfo?${queryString}`);
+
+            if (response.data && response.data.success) {
+                return response.data.profileInfo;
+            }
+
+            throw new Error(`Failed to look up profile for ${profileName}${ response.data && response.data.message ? `:\n${response.data.message}` :'' }`);
+        }
+        catch (err)
+        {
+            throw new Error(`Error looking up profile for ${profileName}:\n${err.message}`);
+        }
+    }
+
     static checkForRole(userDetails, roleName) {
         return userDetails?.roles ? userDetails.roles.includes(roleName) : false;
     }

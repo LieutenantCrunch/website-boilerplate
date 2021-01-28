@@ -70,7 +70,7 @@ function ProfilePictureUpload (props) {
                     position: 'relative'
                 }}>
                     <div style={{
-                        backgroundImage: `url('${props.profilePic}')`,
+                        backgroundImage: `url('/${props.profilePic}')`,
                         backgroundPosition: 'center',
                         backgroundSize: 'cover',
                         bottom: 0,

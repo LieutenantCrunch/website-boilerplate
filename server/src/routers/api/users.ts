@@ -94,6 +94,36 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
             return res.status(200).json({success: false});
         }
         break;
+    case 'getProfileInfo':
+        try {
+            let hasEmailRole: Boolean = false;
+            let currentId: string | undefined = req.userId;
+
+            if (currentId) {
+                if (await databaseHelper.checkUserForRole(currentId, 'Administrator')) {
+                    hasEmailRole = true;
+                }
+            }
+
+            if (req.query.profileName) {
+                if (databaseHelper === undefined || databaseHelper === null) {
+                    res.send('No database connection found');
+                }
+
+                let profileInfo: WebsiteBoilerplate.ProfileInfo | null = await databaseHelper.getProfileInfo(currentId, req.query.profileName.toString(), hasEmailRole);
+
+                if (profileInfo) {
+                    return res.status(200).json({success: true, profileInfo});
+                }
+                else {
+                    return res.status(200).json({success: false, message: 'Could not find a user with that profile name'});
+                }
+            }
+        }
+        catch (err) {
+            return res.status(200).json({success: false, message: 'An error occurred while looking up the profile.'});
+        }
+        break;
     case 'search':
         try {
             if (req.query.displayNameFilter && req.userId) {

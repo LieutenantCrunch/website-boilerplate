@@ -87,6 +87,65 @@ class DatabaseHelper {
         return false;
     }
 
+    async getProfileInfo(currentUniqueId: string | undefined, profileName: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.ProfileInfo | null> {
+        try {
+            let registeredUser: UserInstance | null = await db.User.findOne({
+                where: {
+                    profileName: profileName.toLowerCase()
+                },
+                attributes: [
+                    'uniqueId'
+                ],
+                include: [
+                    {
+                        model: db.DisplayName,
+                        as: 'displayNames',
+                        where: {
+                            isActive: true
+                        },
+                        attributes: [
+                            'displayName',
+                            'displayNameIndex'
+                        ]
+                    },
+                    {
+                        model: db.ProfilePicture,
+                        as: 'profilePictures',
+                        required: false,
+                        on: {
+                            id: {
+                                [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `User`.`id` order by `profile_picture`.`id` desc limit 1)')
+                            }
+                        },
+                        attributes: [
+                            'smallFileName'
+                        ]
+                    }
+                ]
+            });
+
+            if (registeredUser) {
+                let displayNames: DisplayNameInstance[] | undefined = registeredUser.displayNames;
+                let displayName: DisplayNameInstance | null = displayNames && displayNames.length > 0 ? displayNames[0] : null;
+
+                let profilePictures: ProfilePictureInstance[] | undefined = registeredUser.profilePictures;
+                let profilePicture: ProfilePictureInstance | null = profilePictures && profilePictures.length > 0 ? profilePictures[0] : null;
+
+                return {
+                    displayName: displayName ? displayName.displayName : '',
+                    displayNameIndex: displayName ? displayName.displayNameIndex : -1,
+                    pfpSmall: profilePicture ? `i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : 'i/s/pfpDefault.svgz',
+                    uniqueId: registeredUser.uniqueId
+                };
+            }
+        }
+        catch (err) {
+            console.error(`Error looking up user with profile name ${profileName}: ${err.message}`);
+        }
+
+        return null;
+    }
+
     async getUserIdForUniqueId(uniqueId: string): Promise<number | undefined> {
         try
         {
