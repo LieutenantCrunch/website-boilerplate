@@ -1034,7 +1034,8 @@ class DatabaseHelper {
                                     model: db.User,
                                     as: 'connectedUser',
                                     attributes: [
-                                        'uniqueId'
+                                        'uniqueId',
+                                        'profileName'
                                     ],
                                     required: true,
                                     include: [
@@ -1098,7 +1099,8 @@ class DatabaseHelper {
                                 displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
                                 pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
                                 isMutual: connectionView.isMutual,
-                                connectionTypes: {...connectionTypes, ...userConnectionTypes}
+                                connectionTypes: {...connectionTypes, ...userConnectionTypes},
+                                profileName: connectedUser!.profileName
                             }
                         }
                     }, {});
@@ -1114,6 +1116,8 @@ class DatabaseHelper {
 
     async getIncomingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
         try {
+            let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
+
             let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
 
             if (registeredUserId !== undefined) {
@@ -1134,7 +1138,8 @@ class DatabaseHelper {
                                     model: db.User,
                                     as: 'requestedUser',
                                     attributes: [
-                                        'uniqueId'
+                                        'uniqueId',
+                                        'profileName'
                                     ],
                                     required: true,
                                     include: [
@@ -1173,6 +1178,24 @@ class DatabaseHelper {
                                     }
                                 }
                             ]
+                        },
+                        {
+                            model: db.UserConnection,
+                            as: 'mutualConnection',
+                            required: false,
+                            include: [
+                                {
+                                    model: db.UserConnectionType,
+                                    as: 'connectionTypes',
+                                    required: false,
+                                    attributes: [
+                                        'displayName'
+                                    ],
+                                    through: {
+                                        attributes: []
+                                    }
+                                }
+                            ]
                         }
                     ]
                 });
@@ -1181,7 +1204,17 @@ class DatabaseHelper {
                     return incomingConnectionsView.reduce((previousValue, connectionView) => {
                         let connection: UserConnectionInstance = connectionView.userConnection!;
                         let requestedUser: UserInstance = connection.requestedUser!;
-    
+
+                        let mutualConnection: UserConnectionInstance | undefined = connectionView.mutualConnection;
+                        let userConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = {};
+                        
+                        if (mutualConnection && mutualConnection.connectionTypes) {
+                            userConnectionTypes = mutualConnection.connectionTypes.reduce((previousValue, connectionType) => ({
+                                ...previousValue,
+                                [connectionType.displayName]: true
+                            }), {});
+                        }
+
                         return {
                             ...previousValue,
                             [requestedUser.uniqueId]: {
@@ -1189,7 +1222,8 @@ class DatabaseHelper {
                                 displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
                                 pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
                                 isMutual: connectionView.isMutual,
-                                connectionTypes: {}
+                                connectionTypes: {...connectionTypes, ...userConnectionTypes},
+                                profileName: requestedUser.profileName
                             }
                         }
                     }, {});

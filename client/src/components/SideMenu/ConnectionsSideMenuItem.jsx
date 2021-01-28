@@ -84,7 +84,7 @@ export default function ConnectionsSideMenuItem(props) {
         }
     }
 
-    const handleConnectionClick = (event) => {
+    const handleConnectionClick = (event, connectionDict) => {
         let clickedButton = event.target;
 
         if (clickedButton.tagName === 'SMALL') {
@@ -93,10 +93,18 @@ export default function ConnectionsSideMenuItem(props) {
 
         let selectedConnection = {
             id: clickedButton.dataset.connection,
-            details: state.outgoingConnections[clickedButton.dataset.connection]
+            details: connectionDict[clickedButton.dataset.connection]
         };
         
         updateState(prevState => ({...prevState, selectedConnection, selectedConnectionUpdated: false}));
+    };
+
+    const handleOutgoingConnectionClick = (event) => {
+        handleConnectionClick(event, state.outgoingConnections);
+    };
+
+    const handleIncomingConnectionClick = (event) => {
+        handleConnectionClick(event, state.incomingConnections);
     };
 
     const handleRemoveConnectionClick = (event) => {
@@ -125,19 +133,29 @@ export default function ConnectionsSideMenuItem(props) {
     const saveSelectedConnection = () => {
         let updateConnection = state.selectedConnectionUpdated;
 
-        updateState(prevState => ({
-            ...prevState,
-            outgoingConnections: {
-                ...prevState.outgoingConnections,
-                [prevState.selectedConnection.id]: {
-                    ...prevState.selectedConnection.details
-                }
-            },
-            selectedConnectionUpdated: false
-        }));
-
         if (updateConnection) {
+            // This is going to add the connection to the list of outgoing connections
+            // If it was an incoming connection and they updated it, this isn't necessarily ideal since maybe they turned off all connection types or wanted to remove the connection
+
+            updateState(prevState => ({
+                ...prevState,
+                outgoingConnections: {
+                    ...prevState.outgoingConnections,
+                    [prevState.selectedConnection.id]: {
+                        ...prevState.selectedConnection.details,
+                        isMutual: true
+                    }
+                },
+                selectedConnectionUpdated: false
+            }));
+
             UserService.updateOutgoingConnection({ [state.selectedConnection.id]: state.selectedConnection.details });
+        }
+        else {
+            updateState(prevState => ({
+                ...prevState,
+                selectedConnectionUpdated: false
+            }));
         }
     };
 
@@ -198,7 +216,7 @@ export default function ConnectionsSideMenuItem(props) {
                         {
                             state.outgoingConnections && Object.keys(state.outgoingConnections).length > 0
                             ? Object.entries(state.outgoingConnections).map(([uniqueId, details]) => (
-                                    <ConnectionListItem key={uniqueId} uniqueId={uniqueId} details={details} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
+                                    <ConnectionListItem key={uniqueId} uniqueId={uniqueId} details={details} handleConnectionClick={handleOutgoingConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
                                 )
                             )
                             : <></>
@@ -228,7 +246,7 @@ export default function ConnectionsSideMenuItem(props) {
                                     {
                                         state.incomingConnections && Object.keys(state.incomingConnections).length > 0
                                         ? Object.entries(state.incomingConnections).map(([uniqueId, details]) => (
-                                                <ConnectionListItem key={uniqueId} uniqueId={uniqueId} details={details} handleConnectionClick={handleConnectionClick} />
+                                                <ConnectionListItem key={uniqueId} uniqueId={uniqueId} details={details} handleConnectionClick={handleIncomingConnectionClick} />
                                             )
                                         )
                                         : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>

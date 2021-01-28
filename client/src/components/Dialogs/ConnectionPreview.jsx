@@ -85,7 +85,8 @@ export default function ConnectionPreviewDialog (props) {
                                 </div>
                             </div>
                         </div>
-                        <div className="modal-footer card-footer">
+                        <div className="modal-footer card-footer justify-content-between">
+                            <small><a href={`/u/${props.selectedConnection?.details.profileName}`}>View Profile</a></small>
                             <small style={{ display: props.selectedConnection?.details.isMutual ? '' : 'none'}}>🤝 This connection is mutual!</small>
                         </div>
                     </div>

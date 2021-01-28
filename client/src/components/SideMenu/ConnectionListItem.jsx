@@ -9,7 +9,7 @@ import { HtmlTooltip } from '../HtmlTooltip';
 export default function ConnectionListItem(props) {
     const handleRemoveClick = (event) => {
         if (props.handleRemoveConnectionClick) {
-            props.handleRemoveConnectionClick();
+            props.handleRemoveConnectionClick(event);
         }
     };
 

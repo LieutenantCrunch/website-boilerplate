@@ -38,6 +38,7 @@ declare namespace WebsiteBoilerplate {
             pfp: string
             isMutual: Boolean;
             connectionTypes: UserConnectionTypeDictionary;
+            profileName: string;
         };
     }
 }
