@@ -15,7 +15,7 @@ function ProfilePicture (props) {
                     position: 'relative'
                 }}>
                     <div style={{
-                        backgroundImage: `url('/${props.pfpSmall}')`,
+                        backgroundImage: `url('${props.pfpSmall}')`,
                         backgroundPosition: 'center',
                         backgroundSize: 'cover',
                         bottom: 0,

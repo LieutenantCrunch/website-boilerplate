@@ -13,6 +13,7 @@ export interface UserAttributes {
     passwordHash: string;
     uniqueId: string;
     profileName: string;
+    allowPublicAccess?: Boolean;
     profilePictures?: ProfilePictureInstance[];
     activeJWTs?: UserJWTInstance[];
     inactiveJWTs?: UserJWTInstance[];
@@ -23,7 +24,8 @@ export interface UserAttributes {
     incomingConnections?: UserConnectionInstance[];
 };
 
-export interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {};
+export interface UserCreationAttributes extends Optional<UserAttributes, 'id'>, 
+    Optional<UserAttributes, 'allowPublicAccess'> {};
 
 export interface UserInstance extends Model<UserAttributes, UserCreationAttributes>, UserAttributes {
     getProfilePictures: HasManyGetAssociationsMixin<ProfilePictureInstance>;
@@ -86,6 +88,11 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
             type: DataTypes.STRING(20),
             field: 'profile_name',
             unique: true
+        },
+        allowPublicAccess: {
+            type: DataTypes.TINYINT,
+            field: 'allow_public_access',
+            defaultValue: 0
         }
     };
 

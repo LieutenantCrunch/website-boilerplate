@@ -43,6 +43,33 @@ export default class AuthHelper {
         }
     }
 
+    static async verifyTokenAndPassThrough(req: Request, res: Response, next: NextFunction) {
+        let jwtSecret: string = await AuthHelper.getJWTSecret();
+        let token: string = req.cookies['authToken'] as string;
+        
+        if (token) {
+            try {
+                let decodedToken = jwt.verify(token, jwtSecret);
+
+                if (decodedToken) {
+                    let jwtID: string = decodedToken.jti;
+                    let isValid: Boolean = await databaseHelper.validateJWTForUserId(decodedToken.id, jwtID);
+
+                    if (isValid) {
+                        req.userId = decodedToken.id;
+                        req.jti = decodedToken.jti;
+                        req.authToken = token;
+                    }
+                }
+            }
+            catch (err) {
+                console.error(`Error verifying token:\n${err.message}`);
+            }
+        }
+
+        next();
+    }
+
     static async decodeToken(req: Request, res: Response, next: NextFunction) {
         let jwtSecret: string = await AuthHelper.getJWTSecret();
         let token: string = req.cookies['authToken'] as string;

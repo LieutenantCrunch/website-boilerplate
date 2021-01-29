@@ -66,17 +66,20 @@ class DatabaseHelper {
         return false;
     }
 
-    async userExistsForProfileName(profileName: string): Promise<Boolean> {
+    async userExistsForProfileName(profileName: string): Promise<{exists: Boolean, allowPublicAccess: Boolean}> {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     profileName: profileName.toLowerCase()
-                }
+                },
+                attributes: [
+                    'allowPublicAccess'
+                ]
             });
 
             if (registeredUser) {
-                return true;
+                return {exists: true, allowPublicAccess: registeredUser.allowPublicAccess!};
             }
         }
         catch (err)
@@ -84,12 +87,14 @@ class DatabaseHelper {
             console.error(`Error looking up user with profile name ${profileName}:\n${err.message}`);
         }
 
-        return false;
+        return {exists: false, allowPublicAccess: false};
     }
 
     async getProfileInfo(currentUniqueId: string | undefined, profileName: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.ProfileInfo | null> {
         try {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let currentUserId: number | undefined = await this.getUserIdForUniqueId(currentUniqueId || '-1');
+
+            let queryOptions: {[key: string]: any;} = {
                 where: {
                     profileName: profileName.toLowerCase()
                 },
@@ -122,7 +127,17 @@ class DatabaseHelper {
                         ]
                     }
                 ]
-            });
+            };
+
+            // If there is no current user, we need to make sure the user we're looking up allows public access
+            if (currentUserId === undefined) {
+                queryOptions.where = {
+                    ...queryOptions.where,
+                    allowPublicAccess: true
+                };
+            }
+
+            let registeredUser: UserInstance | null = await db.User.findOne(queryOptions);
 
             if (registeredUser) {
                 let displayNames: DisplayNameInstance[] | undefined = registeredUser.displayNames;
@@ -134,7 +149,7 @@ class DatabaseHelper {
                 return {
                     displayName: displayName ? displayName.displayName : '',
                     displayNameIndex: displayName ? displayName.displayNameIndex : -1,
-                    pfpSmall: profilePicture ? `i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : 'i/s/pfpDefault.svgz',
+                    pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
                     uniqueId: registeredUser.uniqueId
                 };
             }
@@ -790,7 +805,7 @@ class DatabaseHelper {
                 let userDetails: WebsiteBoilerplate.UserDetails = {
                     displayName: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayName : ''),
                     displayNameIndex: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayNameIndex : -1),
-                    pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `i/u/${uniqueId}/${registeredUser.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz'),
+                    pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
                     roles: (registeredUser.roles ? registeredUser.roles.map(role => role.roleName) : []),
                     uniqueId
                 };
@@ -996,7 +1011,7 @@ class DatabaseHelper {
                         displayName: displayName.displayName, 
                         displayNameIndex: displayName.displayNameIndex, 
                         uniqueId: displayName.registeredUser!.uniqueId,
-                        pfpSmall: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                        pfpSmall: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
                     };
                 })
             };
@@ -1097,7 +1112,7 @@ class DatabaseHelper {
                             [connectedUser!.uniqueId]: {
                                 displayName: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayName : ''),
                                 displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
-                                pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                                pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
                                 isMutual: connectionView.isMutual,
                                 connectionTypes: {...connectionTypes, ...userConnectionTypes},
                                 profileName: connectedUser!.profileName
@@ -1220,7 +1235,7 @@ class DatabaseHelper {
                             [requestedUser.uniqueId]: {
                                 displayName: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
                                 displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
-                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
                                 isMutual: connectionView.isMutual,
                                 connectionTypes: {...connectionTypes, ...userConnectionTypes},
                                 profileName: requestedUser.profileName

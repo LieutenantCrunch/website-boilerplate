@@ -138,14 +138,13 @@ export default function App() {
                             /> : 
                             <Redirect to="/login" />)
                         }} />
-                        <Route path="/u" render={() => {
-                            return (checkForValidSession() ? 
+                        <Route path="/u">
                             <UserPage 
                                 appConstants={appConstants}
+                                checkForValidSession={checkForValidSession}
                                 setTitle={setTitle}
-                            /> : 
-                            <Redirect to="/login" />)
-                        }} />
+                            />
+                        </Route>
                         <Route path="/" exact={true}>
                             <Welcome setTitle={setTitle} />
                         </Route>

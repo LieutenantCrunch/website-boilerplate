@@ -6,6 +6,7 @@ export const API_PATH_USERS = 'users/';
 
 // Users subpaths
 export const API_PATH_PFP = 'pfp/';
+export const API_PATH_PUBLIC = 'public/';
 
 // User Search Status
 export const USER_SEARCH_STATUS = Object.freeze({

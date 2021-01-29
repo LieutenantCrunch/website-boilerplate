@@ -59,7 +59,7 @@ app.get(/^\/(index)?$/, (req: Request, res: Response) => {
     FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
 });
 
-app.get('/profile', [AuthHelper.verifyToken], (req: Request, res: Response) => {
+app.get('/profile', [AuthHelper.verifyTokenAndPassThrough], (req: Request, res: Response) => {
     FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
 });
 

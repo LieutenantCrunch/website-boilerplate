@@ -52,7 +52,7 @@ export default class UserService {
         try
         {
             let queryString = encodeURI(`profileName=${profileName}`);
-            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getProfileInfo?${queryString}`);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + Constants.API_PATH_PUBLIC + `/getProfileInfo?${queryString}`);
 
             if (response.data && response.data.success) {
                 return response.data.profileInfo;
