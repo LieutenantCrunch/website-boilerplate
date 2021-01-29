@@ -55,7 +55,11 @@ export default function App() {
         // Check if the userInfo is hanging around and if it's expired, if so, delete it
         // Else make sure the userDetails are populated
         if (checkForValidSession()) {
-            UserService.getCurrentDetails(setUserDetails);
+            UserService.getCurrentDetails().then(details => {
+                if (details) {
+                    setUserDetails(details);
+                }
+            });
             fetchConnectionTypeDict();
         }
 

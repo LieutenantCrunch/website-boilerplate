@@ -4,6 +4,7 @@ import classNames from 'classnames';
 import { usePopper } from 'react-popper';
 
 import ProfilePicture from './ProfilePicture';
+import SwitchCheckbox from './FormControls/SwitchCheckbox';
 import UserService from '../services/user.service';
 
 function User (props) {

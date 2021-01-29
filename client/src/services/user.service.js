@@ -19,17 +19,19 @@ export default class UserService {
         }
     }
 
-    static getCurrentDetails(successCallback) {
+    static async getCurrentDetails() {
         try {
-            axiosApi.get(Constants.API_PATH_USERS + 'currentUserDetails').then(response => {
-                if (response.data && response.data.success) {
-                    successCallback(response.data.userDetails);
-                }
-            })
+            let response = await axiosApi.get(Constants.API_PATH_USERS + 'currentUserDetails');
+
+            if (response.data && response.data.success) {
+                return response.data.userDetails;
+            }
         }
         catch (err) {
             console.error(`Error getting current user details: ${err.message}`);
         }
+
+        return null;
     }
 
     static async getUserDetails(uniqueId) {

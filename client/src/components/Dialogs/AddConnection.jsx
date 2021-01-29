@@ -135,12 +135,16 @@ export default function AddConnectionDialog (props) {
                                 </div>
                             </div>
                         </div>
-                        <div className="modal-footer card-footer">
-                            <div className="text-right">
-                                <button type="button" className="btn btn-primary btn-small" style={{display: state.isModified ? '' : 'none'}} disabled={!state.isModified} onClick={handleConfirmClick}>
-                                    Confirm
-                                </button>
-                            </div>
+                        <div className="modal-footer card-footer justify-content-end">
+                            <small style={{
+                                display: state.selectedUserDetails ? '' : 'none',
+                                marginRight: 'auto'
+                            }}>
+                                <a href={`/u/${state.selectedUserDetails?.profileName}`}>View Profile</a>
+                            </small>
+                            <button type="button" className="btn btn-primary btn-small" style={{display: state.isModified ? '' : 'none'}} disabled={!state.isModified} onClick={handleConfirmClick}>
+                                Confirm
+                            </button>
                         </div>
                     </div>
                 </div>

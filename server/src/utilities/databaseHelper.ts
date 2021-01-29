@@ -93,6 +93,8 @@ class DatabaseHelper {
     async getProfileInfo(currentUniqueId: string | undefined, profileName: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.ProfileInfo | null> {
         try {
             let currentUserId: number | undefined = await this.getUserIdForUniqueId(currentUniqueId || '-1');
+            let isPublicUser: Boolean = currentUserId === undefined;
+            let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = {};
 
             let queryOptions: {[key: string]: any;} = {
                 where: {
@@ -129,12 +131,32 @@ class DatabaseHelper {
                 ]
             };
 
-            // If there is no current user, we need to make sure the user we're looking up allows public access
-            if (currentUserId === undefined) {
+            if (isPublicUser) {
+                // If there is no current user, we need to make sure the user we're looking up allows public access
                 queryOptions.where = {
                     ...queryOptions.where,
                     allowPublicAccess: true
                 };
+            }
+            else {
+                // If they are logged in, pull any connection info
+                connectionTypes = await this.getConnectionTypeDict();
+                
+                queryOptions.include.push({
+                    model: db.UserConnection,
+                    as: 'incomingConnections',
+                    required: false,
+                    where: {
+                        requestedUserId: currentUserId
+                    },
+                    include: [
+                        {
+                            model: db.UserConnectionType,
+                            as: 'connectionTypes',
+                            required: false
+                        }
+                    ]
+                });
             }
 
             let registeredUser: UserInstance | null = await db.User.findOne(queryOptions);
@@ -146,12 +168,36 @@ class DatabaseHelper {
                 let profilePictures: ProfilePictureInstance[] | undefined = registeredUser.profilePictures;
                 let profilePicture: ProfilePictureInstance | null = profilePictures && profilePictures.length > 0 ? profilePictures[0] : null;
 
-                return {
-                    displayName: displayName ? displayName.displayName : '',
-                    displayNameIndex: displayName ? displayName.displayNameIndex : -1,
-                    pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
-                    uniqueId: registeredUser.uniqueId
-                };
+                if (isPublicUser) {
+                    return {
+                        displayName: displayName ? displayName.displayName : '',
+                        displayNameIndex: displayName ? displayName.displayNameIndex : -1,
+                        pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                        uniqueId: registeredUser.uniqueId
+                    };
+                }
+                else {
+                    let userConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = {};
+                        
+                    if (registeredUser.incomingConnections && registeredUser.incomingConnections[0] && registeredUser.incomingConnections[0].connectionTypes) {
+                        let incomingTypes: UserConnectionTypeInstance[] = registeredUser.incomingConnections[0].connectionTypes!;
+                        userConnectionTypes = incomingTypes.reduce((previousValue, connectionType) => ({
+                            ...previousValue,
+                            [connectionType.displayName]: true
+                        }), {});
+                    }
+
+                    return {
+                        displayName: displayName ? displayName.displayName : '',
+                        displayNameIndex: displayName ? displayName.displayNameIndex : -1,
+                        pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                        uniqueId: registeredUser.uniqueId,
+                        connectionTypes: {
+                            ...connectionTypes,
+                            ...userConnectionTypes
+                        }
+                    };
+                }
             }
         }
         catch (err) {
@@ -785,18 +831,34 @@ class DatabaseHelper {
                 where: {
                     uniqueId
                 },
+                attributes: [
+                    'id', /* This is necessary to select so the lazy loading of incomingConnections below will work */
+                    'email',
+                    'uniqueId',
+                    'profileName'
+                ],
                 include: [
                     {
                         model: db.DisplayName,
-                        as: 'displayNames'
+                        as: 'displayNames',
+                        attributes: [
+                            'displayName',
+                            'displayNameIndex'
+                        ]
                     }, 
                     {
                         model: db.ProfilePicture,
-                        as: 'profilePictures'
+                        as: 'profilePictures',
+                        attributes: [
+                            'fileName'
+                        ]
                     },
                     {
                         model: db.Role,
-                        as: 'roles'
+                        as: 'roles',
+                        attributes: [
+                            'roleName'
+                        ]
                     }
                 ]
             });
@@ -807,7 +869,8 @@ class DatabaseHelper {
                     displayNameIndex: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayNameIndex : -1),
                     pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
                     roles: (registeredUser.roles ? registeredUser.roles.map(role => role.roleName) : []),
-                    uniqueId
+                    uniqueId,
+                    profileName: registeredUser.profileName
                 };
 
                 if (includeEmail) {
@@ -899,7 +962,10 @@ class DatabaseHelper {
                         model: db.User,
                         as: 'registeredUser',
                         required: true,
-                        attributes: ['uniqueId'],
+                        attributes: [
+                            'uniqueId',
+                            'profileName'
+                        ],
                         include: [
                             {
                                 model: db.ProfilePicture,
@@ -949,7 +1015,7 @@ class DatabaseHelper {
                 queryOptions.where = {
                     ...queryOptions.where,
                     [Op.and]: [
-                        Sequelize.where(Sequelize.cast(Sequelize.col('displayNameIndex'), 'char'), {
+                        Sequelize.where(Sequelize.cast(Sequelize.col('DisplayName.display_name_index'), 'char'), {
                             [Op.like]: `${displayNameIndexFilter}%`
                         })
                     ]
@@ -1012,6 +1078,7 @@ class DatabaseHelper {
                         displayNameIndex: displayName.displayNameIndex, 
                         uniqueId: displayName.registeredUser!.uniqueId,
                         pfpSmall: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                        profileName: displayName.registeredUser!.profileName
                     };
                 })
             };

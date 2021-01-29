@@ -4,6 +4,7 @@ declare namespace WebsiteBoilerplate {
         displayNameIndex: number;
         pfpSmall: string;
         uniqueId: string;
+        connectionTypes?: UserConnectionTypeDictionary;
     }
 
     export interface UserDetails {
@@ -13,6 +14,7 @@ declare namespace WebsiteBoilerplate {
         pfp: string;
         roles: string[];
         uniqueId: string;
+        profileName: string;
         connectionTypes?: UserConnectionTypeDictionary;
     }
 
@@ -24,6 +26,7 @@ declare namespace WebsiteBoilerplate {
             displayNameIndex: number;
             uniqueId: string;
             pfpSmall: string;
+            profileName: string;
         }[];
     }
 
