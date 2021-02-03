@@ -8,7 +8,6 @@ import * as Hooks from '../../hooks/hooks';
 import AuthService from '../../services/auth.service';
 
 import { HtmlTooltip } from '../HtmlTooltip';
-import Zoom from '@material-ui/core/Zoom';
 
 function RegistrationForm(props) {
     const [state, setState] = useState({password: '', confirmPassword: ''});
@@ -179,7 +178,6 @@ function RegistrationForm(props) {
                                 </>
                             }
                             placement="bottom-start"
-                            TransitionComponent={Zoom}
                             enterDelay={500}
                             interactive
                             disableHoverListener

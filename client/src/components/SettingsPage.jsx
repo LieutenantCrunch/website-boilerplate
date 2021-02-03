@@ -3,7 +3,6 @@ import {withRouter} from 'react-router-dom';
 import AuthService from '../services/auth.service';
 import UserService from '../services/user.service';
 import { HtmlTooltip } from './HtmlTooltip';
-import Zoom from '@material-ui/core/Zoom';
 
 function SettingsPage(props) {
     const [settingsPageAlert, setSettingsPageAlert] = useState({type: 'info', message: null});
@@ -148,7 +147,6 @@ function SettingsPage(props) {
                                         </>
                                     }
                                     placement="bottom-start"
-                                    TransitionComponent={Zoom}
                                     enterDelay={500}
                                     interactive
                                     disableHoverListener

@@ -1,5 +1,6 @@
 import React from 'react';
 import Tooltip from '@material-ui/core/Tooltip';
+import Zoom from '@material-ui/core/Zoom';
 import { makeStyles } from '@material-ui/core/styles';
 import { RGB_Linear_Shade } from '../utilities/ShadeBlendConvert';
 
@@ -21,7 +22,7 @@ export const HtmlTooltip = ({children, ...props}) => {
   const classes = useStyles(props);
 
   return (
-    <Tooltip classes={classes} {...props}>
+    <Tooltip classes={classes} {...props} TransitionComponent={Zoom}>
       {children}
     </Tooltip>
   );

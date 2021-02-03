@@ -2,8 +2,6 @@ import React from 'react';
 import classNames from 'classnames';
 import {isMobile} from 'react-device-detect';
 
-import Zoom from '@material-ui/core/Zoom';
-
 import { HtmlTooltip } from '../HtmlTooltip';
 
 export default function ConnectionListItem(props) {
@@ -24,7 +22,6 @@ export default function ConnectionListItem(props) {
                             {props.details.displayName}<small>#{props.details.displayNameIndex}</small>
                         </>
                     }
-                    TransitionComponent={Zoom}
                     enterDelay={500}
                     arrow
                     interactive

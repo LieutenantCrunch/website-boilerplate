@@ -2,6 +2,8 @@ import React, {useState, useRef, useEffect} from 'react';
 import classNames from 'classnames';
 import { usePopper } from 'react-popper';
 import SwitchCheckbox from '../FormControls/SwitchCheckbox';
+import TwoClickButton from '../FormControls/TwoClickButton';
+import { HtmlTooltip } from '../HtmlTooltip';
 
 export default function ConnectionPreviewDialog (props) {
     const dropdownMenuContainer = useRef();
@@ -13,6 +15,8 @@ export default function ConnectionPreviewDialog (props) {
         placement: 'bottom-start'
     });
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [showConnectionTypesTooltip, setShowConnectionTypesTooltip] = useState(false);
+    const mainDiv = useRef();
 
     useEffect(() => {
         document.addEventListener('click', hideDropdown);
@@ -34,19 +38,39 @@ export default function ConnectionPreviewDialog (props) {
         event.stopPropagation();
     };
 
+    const canUncheck = () => {
+        if (props.selectedConnection?.details?.connectionTypes !== undefined) {
+            let selectedCount = Object.values(props.selectedConnection?.details?.connectionTypes).reduce((total, current) => {
+                return total + (current ? 1 : 0);
+            }, 0);
+
+            return selectedCount > 1;
+        }
+
+        return false;
+    };
+
     const handleTypeChange = (event) => {
         let { name, checked } = event.target;
 
-        props.updateSelectedConnection({
-            ...props.selectedConnection,
-            details: {
-                ...props.selectedConnection.details,
-                connectionTypes: {
-                    ...props.selectedConnection.details.connectionTypes,
-                    [name]: checked
+        if (!checked && !canUncheck()) {
+            event.target.checked = true;
+            setShowConnectionTypesTooltip(true);
+        }
+        else {
+            setShowConnectionTypesTooltip(false);
+
+            props.updateSelectedConnection({
+                ...props.selectedConnection,
+                details: {
+                    ...props.selectedConnection.details,
+                    connectionTypes: {
+                        ...props.selectedConnection.details.connectionTypes,
+                        [name]: checked
+                    }
                 }
-            }
-        });
+            });
+        }
 
         event.stopPropagation();
     };
@@ -55,13 +79,21 @@ export default function ConnectionPreviewDialog (props) {
         props.saveSelectedConnection();
     };
 
+    const closeDialog = () => {
+        if (mainDiv.current) {
+            let modal = bootstrap.Modal.getInstance(mainDiv.current);
+
+            modal.hide();
+        }
+    };
+
     return (
-        <div id={props.id} className="modal fade" data-backdrop="static" tabIndex="-1" aria-labelledby="connectionDetailsLabel" aria-hidden="true">
+        <div id={props.id} ref={mainDiv} className="modal fade" data-backdrop="static" tabIndex="-1" aria-labelledby="connectionDetailsLabel" aria-hidden="true">
             <div>
                 <div className="modal-dialog">
                     <div className="modal-content">
                         <div className="modal-header card-header">
-                            <h5 className="modal-title" id="connectionDetailsLabel">{props.selectedConnection?.details.displayName}<small className="text-muted">#{props.selectedConnection?.details.displayNameIndex}</small></h5>
+                            <h5 className="modal-title" id="connectionDetailsLabel">{props.selectedConnection?.details?.displayName}<small className="text-muted">#{props.selectedConnection?.details?.displayNameIndex}</small></h5>
                             <button type="button" className="btn-close" data-dismiss="modal" arial-label="close" onClick={handleCloseClick}></button>
                         </div>
                         <div className="modal-body">
@@ -73,15 +105,42 @@ export default function ConnectionPreviewDialog (props) {
                                     <button ref={setReferenceElement} type="button" className={classNames('btn', 'btn-outline-primary', 'dropdown-toggle', {'show': isDropdownOpen})} id="connectionTypeDropdownButton" onClick={toggleDropdown}>
                                         Relationship
                                     </button>
-                                    <div ref={setPopperElement} className={classNames('dropdown-menu', 'px-2', {'show': isDropdownOpen})} style={styles.popper} {...styles.popper}>
-                                        {
-                                            props.selectedConnection
-                                            ? Object.entries(props.selectedConnection.details.connectionTypes).map(([connectionType, details]) => (
-                                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
-                                            ))
-                                            : <></>
-                                        }
-                                    </div>
+                                    <HtmlTooltip title="At least one connection type must be selected."
+                                        enterDelay={500}
+                                        disableHoverListener
+                                        disableFocusListener 
+                                        interactive
+                                        placement="top"
+                                        open={showConnectionTypesTooltip}
+                                        color='rgb(255,0,0)'
+                                    >
+                                        <div ref={setPopperElement} className={classNames('dropdown-menu', 'px-2', {'show': isDropdownOpen})} style={styles.popper} {...styles.popper}>
+                                            <div className="text-center mb-2">
+                                                <TwoClickButton 
+                                                    firstTitle="Remove Connection" 
+                                                    secondTitle="Confirm Remove" 
+                                                    className="btn btn-sm" 
+                                                    firstClassName="btn-outline-danger" 
+                                                    secondClassName="btn-outline-dark" 
+                                                    progressClassName="bg-danger" 
+                                                    firstTooltip={`Remove your connection to ${props.selectedConnection?.details?.displayName}#${props.selectedConnection?.details?.displayNameIndex}`}
+                                                    secondTooltip={`Confirm you want to remove your connection to ${props.selectedConnection?.details?.displayName}#${props.selectedConnection?.details?.displayNameIndex}`}
+                                                    secondDuration={5} 
+                                                    onClick={(event) => {
+                                                        closeDialog();
+                                                        props.removeSelectedConnection();
+                                                    }} 
+                                                />
+                                            </div>
+                                            {
+                                                props.selectedConnection
+                                                ? Object.entries(props.selectedConnection.details.connectionTypes).map(([connectionType, details]) => (
+                                                    <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
+                                                ))
+                                                : <></>
+                                            }
+                                        </div>
+                                    </HtmlTooltip>
                                 </div>
                             </div>
                         </div>
