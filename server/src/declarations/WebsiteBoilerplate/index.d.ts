@@ -12,10 +12,12 @@ declare namespace WebsiteBoilerplate {
         displayName: string;
         displayNameIndex: number;
         pfp: string;
+        pfpSmall: string;
         roles: string[];
         uniqueId: string;
         profileName: string;
         connectionTypes?: UserConnectionTypeDictionary;
+        connectedToCurrentUser?: Boolean;
     }
 
     export interface UserSearchResults {
@@ -38,7 +40,7 @@ declare namespace WebsiteBoilerplate {
         [id: string]: {
             displayName: string;
             displayNameIndex: number;
-            pfp: string
+            pfpSmall: string
             isMutual: Boolean;
             connectionTypes: UserConnectionTypeDictionary;
             profileName: string;

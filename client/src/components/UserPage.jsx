@@ -6,6 +6,7 @@ import { usePopper } from 'react-popper';
 import ProfilePicture from './ProfilePicture';
 import SwitchCheckbox from './FormControls/SwitchCheckbox';
 import UserService from '../services/user.service';
+import { HtmlTooltip } from './HtmlTooltip';
 
 function User (props) {
     const { profileName } = useParams();
@@ -20,6 +21,7 @@ function User (props) {
         placement: 'bottom-start'
     });
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [showConnectionTypesTooltip, setShowConnectionTypesTooltip] = useState(false);
 
     useEffect(() => {
         UserService.getProfileInfo(profileName).then((profileInfo) => {
@@ -42,16 +44,37 @@ function User (props) {
         event.stopPropagation();
     };
 
+    const canUncheck = () => {
+        if (profileInfo?.connectionTypes !== undefined) {
+            let selectedCount = Object.values(profileInfo?.connectionTypes).reduce((total, current) => {
+                return total + (current ? 1 : 0);
+            }, 0);
+
+            return selectedCount > 1;
+        }
+
+        return false;
+    };
+
     const handleTypeChange = (event) => {
         let { name, checked } = event.target;
 
-        updateProfileInfo({
-            ...profileInfo,
-            connectionTypes: {
-                ...profileInfo.connectionTypes,
-                [name]: checked
-            }
-        });
+        if (!checked && !canUncheck()) {
+            event.target.checked = true;
+            setShowConnectionTypesTooltip(true);
+        }
+        else {
+            setShowConnectionTypesTooltip(false);
+            updateProfileInfo({
+                ...profileInfo,
+                connectionTypes: {
+                    ...profileInfo.connectionTypes,
+                    [name]: checked
+                }
+            });
+        }
+
+        event.stopPropagation();
     };
 
     return <div className="card col-8 col-md-4 mt-2 align-middle text-center">
@@ -74,15 +97,25 @@ function User (props) {
                     <button ref={setReferenceElement} type="button" className={classNames('btn', 'btn-outline-primary', 'dropdown-toggle', {'show': isDropdownOpen})} id="connectionTypeDropdownButton" onClick={toggleDropdown}>
                         Relationship
                     </button>
-                    <div ref={setPopperElement} className={classNames('dropdown-menu', 'px-2', {'show': isDropdownOpen})} style={styles.popper} {...styles.popper}>
-                        {
-                            profileInfo.connectionTypes
-                            ? Object.entries(profileInfo.connectionTypes).map(([connectionType, details]) => (
-                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
-                            ))
-                            : <></>
-                        }
-                    </div>
+                    <HtmlTooltip title="At least one connection type must be selected."
+                        enterDelay={500}
+                        disableHoverListener
+                        disableFocusListener 
+                        interactive
+                        placement="top"
+                        open={showConnectionTypesTooltip}
+                        color='rgb(255,0,0)'
+                    >
+                        <div ref={setPopperElement} className={classNames('dropdown-menu', 'px-2', {'show': isDropdownOpen})} style={styles.popper} {...styles.popper}>
+                            {
+                                profileInfo.connectionTypes
+                                ? Object.entries(profileInfo.connectionTypes).map(([connectionType, details]) => (
+                                    <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
+                                ))
+                                : <></>
+                            }
+                        </div>
+                    </HtmlTooltip>
                 </div>
             </div>
             : <></>

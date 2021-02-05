@@ -850,7 +850,8 @@ class DatabaseHelper {
                         model: db.ProfilePicture,
                         as: 'profilePictures',
                         attributes: [
-                            'fileName'
+                            'fileName',
+                            'smallFileName'
                         ]
                     },
                     {
@@ -868,6 +869,7 @@ class DatabaseHelper {
                     displayName: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayName : ''),
                     displayNameIndex: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayNameIndex : -1),
                     pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                    pfpSmall: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
                     roles: (registeredUser.roles ? registeredUser.roles.map(role => role.roleName) : []),
                     uniqueId,
                     profileName: registeredUser.profileName
@@ -905,6 +907,16 @@ class DatabaseHelper {
                             }
 
                             userDetails.connectionTypes = connectionTypes;
+                        }
+
+                        let outgoingConnections: UserConnectionInstance[] = await registeredUser.getOutgoingConnections({
+                            where: {
+                                connectedUserId: currentUserId
+                            }
+                        });
+
+                        if (outgoingConnections.length > 0) {
+                            userDetails.connectedToCurrentUser = true;
                         }
                     }
                 }
@@ -947,8 +959,10 @@ class DatabaseHelper {
         return false;
     }
 
-    async searchUsers(userId: string, displayNameFilter: string, displayNameIndexFilter: number, pageNumber: number, excludeConnections: Boolean): Promise<WebsiteBoilerplate.UserSearchResults | null> {
+    async searchUsers(currentUserUniqueId: string, displayNameFilter: string, displayNameIndexFilter: number, pageNumber: number, excludeConnections: Boolean): Promise<WebsiteBoilerplate.UserSearchResults | null> {
         try {
+            let currentUserId: number | undefined = await this.getUserIdForUniqueId(currentUserUniqueId);
+
             let queryOptions: {[key: string]: any;} = {
                 attributes: [
                     'displayName',
@@ -1022,7 +1036,22 @@ class DatabaseHelper {
                 };
             }
 
-            if (excludeConnections) {
+            if (excludeConnections && currentUserId) {
+                // This will get all of the incoming connections to the current user
+                let connectionViewRecords: UserConnectionViewInstance[] | null = await db.Views.UserConnectionView.findAll({
+                    where: {
+                        connectedUserId: currentUserId,
+                        isMutual: true
+                    }
+                });
+
+                let excludedOutgoingConnections: number[] | null = null;
+
+                // Go through the list and put all of the ids into a new array
+                if (connectionViewRecords && connectionViewRecords.length > 0) {
+                    excludedOutgoingConnections = connectionViewRecords.map((record) => (record.id));
+                }
+
                 let userQueryOptions: {[key: string]: any;} = queryOptions.include[0];
 
                 userQueryOptions.include = [
@@ -1053,18 +1082,36 @@ class DatabaseHelper {
                 queryOptions.where = {
                     ...queryOptions.where,
                     '$registeredUser.unique_id$': {
-                        [Op.ne]: userId
-                    },
-                    '$registeredUser.outgoingConnections.id$': {
-                        [Op.is]: null
+                        [Op.ne]: currentUserUniqueId
                     },
                     '$registeredUser.incomingConnections.requestedUser.unique_id$': {
                         [Op.or]: {
                             [Op.is]: null,
-                            [Op.ne]: userId
+                            [Op.ne]: currentUserUniqueId
                         }
                     }
                 };
+
+                // Any users who don't have any outgoing connections or who aren't already a mutual connection are fine to return
+                if (excludedOutgoingConnections) {
+                    queryOptions.where = {
+                        ...queryOptions.where,
+                        '$registeredUser.outgoingConnections.id$': {
+                            [Op.or]: {
+                                [Op.is]: null,
+                                [Op.notIn]: excludedOutgoingConnections
+                            }
+                        }
+                    };
+                }
+                else {
+                    queryOptions.where = {
+                        ...queryOptions.where,
+                        '$registeredUser.outgoingConnections.id$': {
+                            [Op.is]: null
+                        }
+                    };
+                }
             }
 
             let {rows, count}: {rows: DisplayNameInstance[]; count: number} = await db.DisplayName.findAndCountAll(queryOptions);

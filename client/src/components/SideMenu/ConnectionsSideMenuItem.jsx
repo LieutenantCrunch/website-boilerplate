@@ -14,6 +14,7 @@ export default function ConnectionsSideMenuItem(props) {
         incomingConnections: {},
         selectedConnection: null,
         selectedConnectionUpdated: false,
+        selectedConnectionIsIncoming: false,
         removeMessageTitle: 'Remove Connection Confirmation',
         removeMessageMessage: 'Are you sure you want to remove this connection?',
         removeMessageSubtext: 'The other user will not be notified but will be able to see that the connection is no longer mutual.',
@@ -84,7 +85,7 @@ export default function ConnectionsSideMenuItem(props) {
         }
     }
 
-    const handleConnectionClick = (event, connectionDict) => {
+    const handleConnectionClick = (event, connectionDict, isIncoming) => {
         let clickedButton = event.target;
 
         if (clickedButton.tagName === 'SMALL') {
@@ -96,15 +97,20 @@ export default function ConnectionsSideMenuItem(props) {
             details: connectionDict[clickedButton.dataset.connection]
         };
         
-        updateState(prevState => ({...prevState, selectedConnection, selectedConnectionUpdated: false}));
+        updateState(prevState => ({
+            ...prevState, 
+            selectedConnection, 
+            selectedConnectionUpdated: false,
+            selectedConnectionIsIncoming: isIncoming
+        }));
     };
 
     const handleOutgoingConnectionClick = (event) => {
-        handleConnectionClick(event, state.outgoingConnections);
+        handleConnectionClick(event, state.outgoingConnections, false);
     };
 
     const handleIncomingConnectionClick = (event) => {
-        handleConnectionClick(event, state.incomingConnections);
+        handleConnectionClick(event, state.incomingConnections, true);
     };
 
     const handleRemoveConnectionClick = (event) => {
@@ -130,6 +136,16 @@ export default function ConnectionsSideMenuItem(props) {
         event.stopPropagation();
     }
 
+    const handleAddedConnection = (connectionDetails) => {
+        updateState(prevState => ({
+            ...prevState,
+            outgoingConnections: {
+                ...prevState.outgoingConnections,
+                ...connectionDetails
+            }
+        }));
+    };
+
     const saveSelectedConnection = () => {
         let updateConnection = state.selectedConnectionUpdated;
 
@@ -143,7 +159,7 @@ export default function ConnectionsSideMenuItem(props) {
                     ...prevState.outgoingConnections,
                     [prevState.selectedConnection.id]: {
                         ...prevState.selectedConnection.details,
-                        isMutual: true
+                        isMutual: prevState.selectedConnectionIsIncoming || prevState.selectedConnection.details.isMutual
                     }
                 },
                 selectedConnectionUpdated: false
@@ -262,7 +278,7 @@ export default function ConnectionsSideMenuItem(props) {
         </div>
 
         <ConnectionPreviewDialog id="connectionDetails" selectedConnection={state.selectedConnection} updateSelectedConnection={updateSelectedConnection} saveSelectedConnection={saveSelectedConnection} removeSelectedConnection={removeSelectedConnection} />
-        <AddConnectionDialog id="addConnection" appState={props.appState} />
+        <AddConnectionDialog id="addConnection" appState={props.appState} onAddedConnection={handleAddedConnection} />
         <YesNoMessageBox ref={yesNoMessageBoxRef}
                 caption={state.removeMessageTitle} 
                 message={state.removeMessageMessage} 

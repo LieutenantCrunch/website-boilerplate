@@ -15,16 +15,13 @@ usersRouter.get('/:profileName', [AuthHelper.verifyTokenAndPassThrough], async (
         let currentUserId: string | undefined = req.userId;
         
         if (result.exists && (currentUserId || result.allowPublicAccess)) {
-            console.log(`Request for ${profileName} successful`);
             FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
         }
         else {
-            console.log(`Request for invalid profile: ${req.params}`);
             res.status(404).send(`Sorry, you can't view that profile.`);
         }
     }
     else {
-        console.log(`Request for invalid profile: ${req.params}`);
         res.status(404).send(`Sorry, you can't view that profile.`);
     }
 });

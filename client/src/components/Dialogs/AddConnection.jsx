@@ -78,13 +78,27 @@ export default function AddConnectionDialog (props) {
             let selectedUserDetails = state.selectedUserDetails;
             selectedUserDetails.connectionTypes = state.connectionTypeDict;
 
-            UserService.updateOutgoingConnection({ [state.selectedUserDetails.uniqueId]: state.selectedUserDetails });
+            let connectionDetails = {
+                [state.selectedUserDetails.uniqueId]: state.selectedUserDetails 
+            };
+
+            if (state.selectedUserDetails.connectedToCurrentUser === true) {
+                connectionDetails[state.selectedUserDetails.uniqueId].isMutual = true;
+                delete state.selectedUserDetails.connectedToCurrentUser;
+            }
+            else {
+                connectionDetails[state.selectedUserDetails.uniqueId].isMutual = false;
+            }
+
+            UserService.updateOutgoingConnection(connectionDetails);
 
             updateState(prevState => ({
                 ...prevState,
                 connectionTypeDictStr: JSON.stringify(prevState.connectionTypeDict),
                 isModified: false
-            }))
+            }));
+
+            props.onAddedConnection(connectionDetails);
         }
     };
 
