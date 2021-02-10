@@ -5,6 +5,7 @@ import { PasswordResetTokenInstance } from '../../models/PasswordResetToken';
 import { ProfilePictureInstance } from '../../models/ProfilePicture';
 import { RoleInstance } from '../../models/Role';
 import { UserInstance } from '../../models/User';
+import { UserBlockInstance } from '../../models/UserBlock';
 import { UserConnectionInstance } from '../../models/UserConnection';
 import { UserConnectionTypeInstance } from '../../models/UserConnectionType';
 import { UserConnectionTypeJunctionInstance } from '../../models/UserConnectionTypeJunction';
@@ -19,6 +20,7 @@ export interface DbInterface {
   ProfilePicture: ModelCtor<ProfilePictureInstance>;
   Role: ModelCtor<RoleInstance>;
   User: ModelCtor<UserInstance>;
+  UserBlock: ModelCtor<UserBlockInstance>;
   UserConnection: ModelCtor<UserConnectionInstance>;
   UserConnectionType: ModelCtor<UserConnectionTypeInstance>;
   UserConnectionTypeJunction: ModelCtor<UserConnectionTypeJunctionInstance>;

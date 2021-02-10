@@ -166,6 +166,22 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
                 field: 'connected_user_id'
             }
         });
+
+        User.hasMany(models.UserBlock, {
+            as: 'blockedUsers',
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
+            }
+        });
+
+        User.hasMany(models.UserBlock, {
+            as: 'blockingUsers',
+            foreignKey: {
+                name: 'blockedUserId',
+                field: 'blocked_user_id'
+            }
+        });
     };
 
     return User;

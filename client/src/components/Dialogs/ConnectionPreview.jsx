@@ -4,6 +4,7 @@ import { usePopper } from 'react-popper';
 import SwitchCheckbox from '../FormControls/SwitchCheckbox';
 import TwoClickButton from '../FormControls/TwoClickButton';
 import { HtmlTooltip } from '../HtmlTooltip';
+import ConnectionButton from '../FormControls/ConnectionButton';
 
 export default function ConnectionPreviewDialog (props) {
     const dropdownMenuContainer = useRef();
@@ -101,6 +102,7 @@ export default function ConnectionPreviewDialog (props) {
                                 <img src={props.selectedConnection?.details.pfpSmall} className="border rounded-circle w-25" />
                             </p>
                             <div className="text-right">
+                                <ConnectionButton connection={props.selectedConnection} />
                                 <div ref={dropdownMenuContainer} className="dropdown">
                                     <button ref={setReferenceElement} type="button" className={classNames('btn', 'btn-outline-primary', 'dropdown-toggle', {'show': isDropdownOpen})} id="connectionTypeDropdownButton" onClick={toggleDropdown}>
                                         Relationship

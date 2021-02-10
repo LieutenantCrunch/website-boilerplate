@@ -9,6 +9,7 @@ import { PasswordResetTokenFactory } from '../models/PasswordResetToken';
 import { ProfilePictureFactory } from '../models/ProfilePicture';
 import { RoleFactory } from '../models/Role';
 import { UserFactory } from '../models/User';
+import { UserBlockFactory } from '../models/UserBlock';
 import { UserConnectionFactory } from '../models/UserConnection';
 import { UserConnectionTypeFactory } from '../models/UserConnectionType';
 import { UserConnectionTypeJunctionFactory } from '../models/UserConnectionTypeJunction';
@@ -48,6 +49,7 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         ProfilePicture: ProfilePictureFactory(sequelize),
         Role: RoleFactory(sequelize),
         User: UserFactory(sequelize),
+        UserBlock: UserBlockFactory(sequelize),
         UserConnection: UserConnectionFactory(sequelize),
         UserConnectionType: cache.init(UserConnectionTypeFactory(sequelize)),
         UserConnectionTypeJunction: UserConnectionTypeJunctionFactory(sequelize),

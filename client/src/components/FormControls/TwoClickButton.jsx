@@ -43,7 +43,7 @@ const TwoClickButton = ({
         else if (clickState === CLICKED_ONCE) {
             setClickState(UNCLICKED);
         }
-    }, [progressValue])
+    }, [progressValue]);
     
 
     const handleClick = (event) => {
