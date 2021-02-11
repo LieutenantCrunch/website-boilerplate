@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { usePopper } from 'react-popper';
 import { HtmlTooltip } from '../HtmlTooltip';
+import SwitchCheckbox from './SwitchCheckbox';
+import TwoClickButton from './TwoClickButton';
+import UserService from '../../services/user.service';
 
 const ConnectionButton = ({ 
     connection
@@ -14,7 +17,8 @@ const ConnectionButton = ({
     const calculateInitialState = () => {
         let initialState = {
             isDropdownOpen: false,
-            connectionState: determineConnectionState()
+            connectionState: determineConnectionState(),
+            showConnectionTypesTooltip: false
         };
         
         return initialState;
@@ -58,7 +62,9 @@ const ConnectionButton = ({
 
     const handleBlockClick = (event) => {
         // Send block to server for uniqueId
+        UserService.blockUser(connection.id); // Might be nice to alert the user if this fails
         
+        // Update the state to blocked and close the dropdown
         updateState(prevState => ({
             ...prevState,
             connectionState: CS_BLOCKED,
@@ -87,6 +93,7 @@ const ConnectionButton = ({
         switch (state.connectionState) {
             case CS_BLOCKED:
                 // Send unblock to server
+                UserService.unblockUser(connection.id); // Might be nice to alert the user if this fails
 
                 // Update the state so it'll show the Add Connection appearance
                 updateState(prevState => ({
@@ -109,6 +116,7 @@ const ConnectionButton = ({
                         stateUpdates.connectionState = CS_CONNECTED;
 
                         // and send info to server
+                        UserService.updateOutgoingConnection({ [connection.id]: connection.details });
                     }
                     else {
                         // Else, change state to CS_NOT_CONNECTED
@@ -132,8 +140,9 @@ const ConnectionButton = ({
                 update(); // This fixes the position of the dropdown menu
 
                 // Remove connection closes the dropdown and the window, so probably don't need to worry about handling that
+
                 // Send any connection type updates to the server
-                //UserService.updateOutgoingConnection({ [connection.id]: state.selectedConnection.details });
+                UserService.updateOutgoingConnection({ [connection.id]: connection.details });
 
                 // Toggle the dropdown state
                 updateState(prevState => ({
@@ -157,13 +166,6 @@ const ConnectionButton = ({
                 event.stopPropagation();
 
                 break;
-        }
-
-        if (state.connectionState !== CS_BLOCKED) {
-            
-        }
-        else {
-            
         }
     };
 
@@ -274,15 +276,81 @@ const ConnectionButton = ({
         }
     };
 
+    const handleTypeChange = (event) => {
+        let { name, checked } = event.target;
+
+        if (!checked && !canUncheck()) {
+            event.target.checked = true;
+
+            updateState(prevState => ({
+                ...prevState,
+                showConnectionTypesTooltip: true
+            }));
+        }
+        else {
+            updateState(prevState => ({
+                ...prevState,
+                showConnectionTypesTooltip: false
+            }));
+
+            connection.details = {
+                ...connection.details,
+                connectionTypes: {
+                    ...connection.details.connectionTypes,
+                    [name]: checked
+                }
+            };
+        }
+
+        event.stopPropagation();
+    };
+
     const getCurrentListItems = () => {
         switch (state.connectionState)
         {
             case CS_BLOCKED:
                 return <></>;
             case CS_CONNECT_PENDING:
+                return connection?.details?.connectionTypes
+                ? Object.entries(connection.details.connectionTypes).map(([connectionType, details]) => (
+                    <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
+                ))
+                : <></>;
             case CS_CONNECTED:
                 return (
-                    <li>'Connection Types'</li>
+                    <>
+                        <li className="text-center mb-2">
+                            <TwoClickButton 
+                                firstTitle="Remove Connection" 
+                                secondTitle="Confirm Remove" 
+                                className="btn btn-sm" 
+                                firstClassName="btn-outline-danger" 
+                                secondClassName="btn-outline-dark" 
+                                progressClassName="bg-danger" 
+                                firstTooltip={`Remove your connection to ${connection?.details?.displayName}#${connection?.details?.displayNameIndex}`}
+                                secondTooltip={`Confirm you want to remove your connection to ${connection?.details?.displayName}#${connection?.details?.displayNameIndex}`}
+                                secondDuration={5} 
+                                onClick={(event) => {
+                                    UserService.removeOutgoingConnection({id: connection.id});
+
+                                    clearConnectionTypes();
+
+                                    updateState(prevState => ({
+                                        ...prevState,
+                                        connectionState: CS_NOT_CONNECTED,
+                                        isDropdownOpen: false
+                                    }));
+                                }} 
+                            />
+                        </li>
+                        {
+                            connection?.details?.connectionTypes
+                            ? Object.entries(connection.details.connectionTypes).map(([connectionType, details]) => (
+                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
+                            ))
+                            : <></>
+                        }
+                    </>
                 );
             case CS_NOT_CONNECTED:
             default:
@@ -291,6 +359,14 @@ const ConnectionButton = ({
                         <button type="button" className="dropdown-item" onClick={handleBlockClick}>Block User</button>
                     </li>
                 );
+        }
+    };
+
+    const clearConnectionTypes = () => {
+        if (connection?.details?.connectionTypes) {
+            Object.keys(connection.details.connectionTypes).forEach((key) => {
+                connection.details.connectionTypes[key] = false;
+            });
         }
     };
 
@@ -356,15 +432,25 @@ const ConnectionButton = ({
                     </span>
                 </button>
             </HtmlTooltip>
-            <ul ref={setPopperElement}
-                className={classNames('dropdown-menu', 'px-2', {'show': state.isDropdownOpen})}
-                style={styles.popper}
-                {...styles.popper}
+            <HtmlTooltip title="At least one connection type must be selected."
+                enterDelay={500}
+                disableHoverListener
+                disableFocusListener 
+                interactive
+                placement="top"
+                open={state.showConnectionTypesTooltip}
+                color='rgb(255,0,0)'
             >
-                {
-                    getCurrentListItems()
-                }
-            </ul>
+                <ul ref={setPopperElement}
+                    className={classNames('dropdown-menu', 'px-2', {'show': state.isDropdownOpen})}
+                    style={styles.popper}
+                    {...styles.popper}
+                >
+                    {
+                        getCurrentListItems()
+                    }
+                </ul>
+            </HtmlTooltip>
         </div>
     );
 };

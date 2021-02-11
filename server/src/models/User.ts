@@ -61,6 +61,10 @@ export interface UserInstance extends Model<UserAttributes, UserCreationAttribut
 
     getIncomingConnections: HasManyGetAssociationsMixin<UserConnectionInstance>;
     addIncomingConnection: HasManyAddAssociationMixin<UserConnectionInstance, UserConnectionInstance['id']>;
+
+    getBlockedUsers: HasManyGetAssociationsMixin<UserInstance>;
+    addBlockedUser: HasManyAddAssociationMixin<UserInstance, UserInstance['id']>;
+    removeBlockedUser: HasManyRemoveAssociationMixin<UserInstance, UserInstance['id']>;
 };
 
 export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
@@ -167,16 +171,18 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
             }
         });
 
-        User.hasMany(models.UserBlock, {
+        User.belongsToMany(models.User, {
             as: 'blockedUsers',
+            through: models.UserBlock,
             foreignKey: {
                 name: 'registeredUserId',
                 field: 'registered_user_id'
             }
         });
 
-        User.hasMany(models.UserBlock, {
+        User.belongsToMany(models.User, {
             as: 'blockingUsers',
+            through: models.UserBlock,
             foreignKey: {
                 name: 'blockedUserId',
                 field: 'blocked_user_id'

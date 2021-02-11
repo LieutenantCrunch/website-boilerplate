@@ -6,6 +6,18 @@ import * as Constants from '../constants/constants';
 const CancelToken = axios.CancelToken;
 
 export default class UserService {
+    static async blockUser(blockUserUniqueId) {
+        try
+        {
+            let payload = { blockUserUniqueId };
+
+            return await axiosApi.post(Constants.API_PATH_USERS + '/blockUser', payload);
+        }
+        catch (err) {
+            return { success: false };
+        }
+    }
+
     static async setDisplayName(displayName) {
         try
         {
@@ -215,6 +227,18 @@ export default class UserService {
         }
 
         return {};
+    }
+
+    static async unblockUser(unblockUserUniqueId) {
+        try
+        {
+            let payload = { unblockUserUniqueId };
+
+            return await axiosApi.post(Constants.API_PATH_USERS + '/unblockUser', payload);
+        }
+        catch (err) {
+            return { success: false };
+        }
     }
 };
 

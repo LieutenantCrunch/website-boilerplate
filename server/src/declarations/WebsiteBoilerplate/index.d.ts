@@ -8,28 +8,24 @@ declare namespace WebsiteBoilerplate {
     }
 
     export interface UserDetails {
+        connectedToCurrentUser?: Boolean;
+        connectionTypes?: UserConnectionTypeDictionary;
         email?: string;
         displayName: string;
         displayNameIndex: number;
+        isBlocked: Boolean;
+        isMutual: Boolean;
         pfp: string;
         pfpSmall: string;
-        roles: string[];
-        uniqueId: string;
         profileName: string;
-        connectionTypes?: UserConnectionTypeDictionary;
-        connectedToCurrentUser?: Boolean;
+        roles?: string[];
+        uniqueId: string;
     }
 
     export interface UserSearchResults {
         currentPage: number;
         total: number;
-        users: {
-            displayName: string;
-            displayNameIndex: number;
-            uniqueId: string;
-            pfpSmall: string;
-            profileName: string;
-        }[];
+        users: UserDetails[];
     }
 
     export interface UserConnectionTypeDictionary {
@@ -37,13 +33,6 @@ declare namespace WebsiteBoilerplate {
     }
 
     export interface UserConnectionDetails {
-        [id: string]: {
-            displayName: string;
-            displayNameIndex: number;
-            pfpSmall: string
-            isMutual: Boolean;
-            connectionTypes: UserConnectionTypeDictionary;
-            profileName: string;
-        };
+        [id: string]: UserDetails;
     }
 }

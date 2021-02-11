@@ -17,6 +17,7 @@ import { DisplayNameInstance } from '../models/DisplayName';
 import { UserConnectionInstance } from '../models/UserConnection';
 import { UserConnectionTypeInstance } from '../models/UserConnectionType';
 import { PasswordResetTokenInstance } from '../models/PasswordResetToken';
+import { UserBlockInstance } from '../models/UserBlock';
 
 class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -872,7 +873,9 @@ class DatabaseHelper {
                     pfpSmall: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
                     roles: (registeredUser.roles ? registeredUser.roles.map(role => role.roleName) : []),
                     uniqueId,
-                    profileName: registeredUser.profileName
+                    profileName: registeredUser.profileName,
+                    isBlocked: false /* ##TODO */,
+                    isMutual: false /* ##TODO */
                 };
 
                 if (includeEmail) {
@@ -880,12 +883,12 @@ class DatabaseHelper {
                 }
 
                 if (getConnectionTypes) {
-                    let currentUserId: number | undefined = await this.getUserIdForUniqueId(currentUniqueId!);
+                    let currentUser: UserInstance | null = await this.getUserWithUniqueId(currentUniqueId!);
 
-                    if (currentUserId) {
+                    if (currentUser) {
                         let incomingConnections: UserConnectionInstance[] = await registeredUser.getIncomingConnections({
                             where: {
-                                requestedUserId: currentUserId
+                                requestedUserId: currentUser.id!
                             },
                             include: {
                                 model: db.UserConnectionType,
@@ -911,13 +914,21 @@ class DatabaseHelper {
 
                         let outgoingConnections: UserConnectionInstance[] = await registeredUser.getOutgoingConnections({
                             where: {
-                                connectedUserId: currentUserId
+                                connectedUserId: currentUser.id!
                             }
                         });
 
                         if (outgoingConnections.length > 0) {
                             userDetails.connectedToCurrentUser = true;
                         }
+
+                        let blockedUsers: UserInstance[] = await currentUser.getBlockedUsers({
+                            where: {
+                                blockedUserId: registeredUser.id!
+                            }
+                        });
+
+                        userDetails.isBlocked = blockedUsers.length > 0;
                     }
                 }
 
@@ -992,7 +1003,8 @@ class DatabaseHelper {
                                 },
                                 attributes: [
                                     'mimeType',
-                                    'smallFileName'
+                                    'smallFileName',
+                                    'fileName'
                                 ]
                             }
                         ]
@@ -1123,9 +1135,12 @@ class DatabaseHelper {
                     return {
                         displayName: displayName.displayName, 
                         displayNameIndex: displayName.displayNameIndex, 
-                        uniqueId: displayName.registeredUser!.uniqueId,
+                        isBlocked: false, /* ##TODO */
+                        isMutual: false, /* ##TODO */
+                        pfp: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
                         pfpSmall: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
-                        profileName: displayName.registeredUser!.profileName
+                        profileName: displayName.registeredUser!.profileName,
+                        uniqueId: displayName.registeredUser!.uniqueId
                     };
                 })
             };
@@ -1227,6 +1242,7 @@ class DatabaseHelper {
                                 displayName: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayName : ''),
                                 displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
                                 pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                isBlocked: false, /* ##TODO */
                                 isMutual: connectionView.isMutual,
                                 connectionTypes: {...connectionTypes, ...userConnectionTypes},
                                 profileName: connectedUser!.profileName
@@ -1350,6 +1366,7 @@ class DatabaseHelper {
                                 displayName: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
                                 displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
                                 pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                isBlocked: false, /* ##TODO */
                                 isMutual: connectionView.isMutual,
                                 connectionTypes: {...connectionTypes, ...userConnectionTypes},
                                 profileName: requestedUser.profileName
@@ -1474,7 +1491,8 @@ class DatabaseHelper {
                 if (currentUser && currentUser.outgoingConnections) {
                     let outgoingConnections: UserConnectionInstance[] = currentUser.outgoingConnections;
                     let allConnectionTypes: UserConnectionTypeInstance[] = await this.getConnectionTypes();
-                    let { connectionTypes } : { connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary} = outgoingConnectionUpdates[connectedUserUniqueId];
+                    let details: WebsiteBoilerplate.UserDetails = outgoingConnectionUpdates[connectedUserUniqueId];
+                    let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = details.connectionTypes!;
 
                     if (outgoingConnections.length > 0) { // This is an existing connection, modify the types if necessary
                         let existingConnection: UserConnectionInstance = outgoingConnections[0];
@@ -1534,6 +1552,43 @@ class DatabaseHelper {
         catch (err)
         {
             console.error(`Failed to update outgoing connection for user ${uniqueId}:\n${err.message}`);
+        }
+
+        return false;
+    }
+
+    // User Blocking
+    async blockUser(currentUserUniqueId: string, blockUserUniqueId: string): Promise<Boolean> {
+        try {
+            let currentUser: UserInstance | null = await this.getUserWithUniqueId(currentUserUniqueId);
+            let blockedUser: UserInstance | null = await this.getUserWithUniqueId(blockUserUniqueId);
+
+            if (currentUser && blockedUser) {
+                await currentUser.addBlockedUser(blockedUser);
+
+                return true;
+            }
+        }
+        catch (err) {
+            console.error(`Error blocking user with unique id [${blockUserUniqueId}] for user with unique id [${currentUserUniqueId}]:\n${err.message}`);
+        }
+
+        return false;
+    }
+
+    async unblockUser(currentUserUniqueId: string, unblockUserUniqueId: string): Promise<Boolean> {
+        try {
+            let currentUser: UserInstance | null = await this.getUserWithUniqueId(currentUserUniqueId);
+            let blockedUser: UserInstance | null = await this.getUserWithUniqueId(unblockUserUniqueId);
+
+            if (currentUser && blockedUser) {
+                await currentUser.removeBlockedUser(blockedUser);
+
+                return true;
+            }
+        }
+        catch (err) {
+            console.error(`Error unblocking user with unique id [${unblockUserUniqueId}] for user with unique id [${currentUserUniqueId}]:\n${err.message}`);
         }
 
         return false;
