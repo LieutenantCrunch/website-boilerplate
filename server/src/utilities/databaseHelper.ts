@@ -163,6 +163,19 @@ class DatabaseHelper {
             let registeredUser: UserInstance | null = await db.User.findOne(queryOptions);
 
             if (registeredUser) {
+                let isMutual: Boolean = false;
+
+                if (!isPublicUser) {
+                    let connectionViewRecord: UserConnectionViewInstance | null = await db.Views.UserConnectionView.findOne({
+                        where: {
+                            requestedUserId: currentUserId,
+                            connectedUserId: registeredUser.id!
+                        }
+                    });
+
+                    isMutual = connectionViewRecord && connectionViewRecord.isMutual || false;
+                }
+
                 let displayNames: DisplayNameInstance[] | undefined = registeredUser.displayNames;
                 let displayName: DisplayNameInstance | null = displayNames && displayNames.length > 0 ? displayNames[0] : null;
 
@@ -174,7 +187,7 @@ class DatabaseHelper {
                         displayName: displayName ? displayName.displayName : '',
                         displayNameIndex: displayName ? displayName.displayNameIndex : -1,
                         isBlocked: false, /* ##TODO */
-                        isMutual: false, /* ##TODO */
+                        isMutual,
                         pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
                         pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
                         profileName,
@@ -196,7 +209,7 @@ class DatabaseHelper {
                         displayName: displayName ? displayName.displayName : '',
                         displayNameIndex: displayName ? displayName.displayNameIndex : -1,
                         isBlocked: false, /* ##TODO */
-                        isMutual: false, /* ##TODO */
+                        isMutual,
                         pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
                         pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
                         profileName,
@@ -835,6 +848,11 @@ class DatabaseHelper {
     async getUserDetails(currentUniqueId: string | undefined, uniqueId: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.UserDetails | null> {
         try {
             let getConnectionTypes = currentUniqueId && currentUniqueId !== uniqueId;
+            let currentUser: UserInstance | null = null;
+            
+            if (currentUniqueId) {
+                currentUser = await this.getUserWithUniqueId(currentUniqueId);
+            }
 
             let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
@@ -874,6 +892,19 @@ class DatabaseHelper {
             });
   
             if (registeredUser) {
+                let isMutual: Boolean = false;
+
+                if (currentUser) {
+                    let connectionViewRecord: UserConnectionViewInstance | null = await db.Views.UserConnectionView.findOne({
+                        where: {
+                            requestedUserId: currentUser.id!,
+                            connectedUserId: registeredUser.id!
+                        }
+                    });
+
+                    isMutual = connectionViewRecord && connectionViewRecord.isMutual || false;
+                }
+
                 let userDetails: WebsiteBoilerplate.UserDetails = {
                     displayName: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayName : ''),
                     displayNameIndex: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayNameIndex : -1),
@@ -883,7 +914,7 @@ class DatabaseHelper {
                     uniqueId,
                     profileName: registeredUser.profileName,
                     isBlocked: false /* ##TODO */,
-                    isMutual: false /* ##TODO */
+                    isMutual
                 };
 
                 if (includeEmail) {
@@ -891,8 +922,6 @@ class DatabaseHelper {
                 }
 
                 if (getConnectionTypes) {
-                    let currentUser: UserInstance | null = await this.getUserWithUniqueId(currentUniqueId!);
-
                     if (currentUser) {
                         let incomingConnections: UserConnectionInstance[] = await registeredUser.getIncomingConnections({
                             where: {
@@ -1056,15 +1085,19 @@ class DatabaseHelper {
                 };
             }
 
-            if (excludeConnections && currentUserId) {
+            let connectionViewRecords: UserConnectionViewInstance[] | null = null;
+
+            if (currentUserId) {
                 // This will get all of the incoming connections to the current user
-                let connectionViewRecords: UserConnectionViewInstance[] | null = await db.Views.UserConnectionView.findAll({
+                connectionViewRecords = await db.Views.UserConnectionView.findAll({
                     where: {
                         connectedUserId: currentUserId,
                         isMutual: true
                     }
                 });
+            }
 
+            if (excludeConnections && currentUserId) {
                 let excludedOutgoingConnections: number[] | null = null;
 
                 // Go through the list and put all of the ids into a new array
@@ -1140,11 +1173,24 @@ class DatabaseHelper {
                 currentPage: pageNumber,
                 total: count,
                 users: rows.map(displayName => {
+                    let isMutual: Boolean = false;
+
+                    // If excluding connections, none of them will be mutual
+                    // If not excluding connections, some of them will be mutual
+                    // In order for a connection to be mutual, an incoming connection must exist, and since connectionViewRecords contains all incoming connections, we can check their isMutual flag
+                    if (!excludeConnections && connectionViewRecords) {
+                        let connectionViewRecord: UserConnectionViewInstance | undefined = connectionViewRecords.find(record => record.requestedUserId === displayName.registeredUser!.id);
+
+                        if (connectionViewRecord) {
+                            isMutual = connectionViewRecord.isMutual;
+                        }
+                    }
+
                     return {
                         displayName: displayName.displayName, 
                         displayNameIndex: displayName.displayNameIndex, 
                         isBlocked: false, /* ##TODO */
-                        isMutual: false, /* ##TODO */
+                        isMutual,
                         pfp: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
                         pfpSmall: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
                         profileName: displayName.registeredUser!.profileName,
