@@ -54,8 +54,11 @@ export default function ConnectionsSideMenuItem(props) {
         updateState(prevState => ({
             ...prevState,
             selectedConnection: {
-                ...prevState.selectedConnection,
-                ...selectedConnection
+                id: selectedConnection.id,
+                details: {
+                    ...prevState.selectedConnection?.details,
+                    ...selectedConnection.details
+                }
             },
             selectedConnectionUpdated: true
         }));

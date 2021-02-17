@@ -24,7 +24,7 @@ apiUserPublicRouter.get('/:methodName', [AuthHelper.verifyTokenAndPassThrough], 
                     res.send('No database connection found');
                 }
 
-                let profileInfo: WebsiteBoilerplate.ProfileInfo | null = await databaseHelper.getProfileInfo(currentId, req.query.profileName.toString(), hasEmailRole);
+                let profileInfo: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getProfileInfo(currentId, req.query.profileName.toString(), hasEmailRole);
 
                 if (profileInfo) {
                     return res.status(200).json({success: true, profileInfo});

@@ -91,7 +91,7 @@ class DatabaseHelper {
         return {exists: false, allowPublicAccess: false};
     }
 
-    async getProfileInfo(currentUniqueId: string | undefined, profileName: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.ProfileInfo | null> {
+    async getProfileInfo(currentUniqueId: string | undefined, profileName: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.UserDetails | null> {
         try {
             let currentUserId: number | undefined = await this.getUserIdForUniqueId(currentUniqueId || '-1');
             let isPublicUser: Boolean = currentUserId === undefined;
@@ -173,7 +173,11 @@ class DatabaseHelper {
                     return {
                         displayName: displayName ? displayName.displayName : '',
                         displayNameIndex: displayName ? displayName.displayNameIndex : -1,
+                        isBlocked: false, /* ##TODO */
+                        isMutual: false, /* ##TODO */
+                        pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
                         pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                        profileName,
                         uniqueId: registeredUser.uniqueId
                     };
                 }
@@ -191,7 +195,11 @@ class DatabaseHelper {
                     return {
                         displayName: displayName ? displayName.displayName : '',
                         displayNameIndex: displayName ? displayName.displayNameIndex : -1,
+                        isBlocked: false, /* ##TODO */
+                        isMutual: false, /* ##TODO */
+                        pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
                         pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                        profileName,
                         uniqueId: registeredUser.uniqueId,
                         connectionTypes: {
                             ...connectionTypes,
@@ -1453,7 +1461,13 @@ class DatabaseHelper {
         return false;
     }
 
-    async updateUserConnection(uniqueId: string, outgoingConnectionUpdates: WebsiteBoilerplate.UserConnectionDetails): Promise<Boolean> {
+    async updateUserConnection(currentUserUniqueId: string, outgoingConnectionUpdates: WebsiteBoilerplate.UserConnectionDetails): Promise<WebsiteBoilerplate.UpdateUserConnectionResults> {
+        let results: WebsiteBoilerplate.UpdateUserConnectionResults = {
+            success: false,
+            isMutual: false,
+            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.NONE
+        };
+
         try
         {
             let connectedUserUniqueId: string = Object.keys(outgoingConnectionUpdates)[0];
@@ -1462,7 +1476,7 @@ class DatabaseHelper {
             if (connectedUser) {
                 let currentUser: UserInstance | null = await db.User.findOne({
                     where: {
-                        uniqueId
+                        uniqueId: currentUserUniqueId
                     },
                     include: [
                         {
@@ -1493,6 +1507,16 @@ class DatabaseHelper {
                     let allConnectionTypes: UserConnectionTypeInstance[] = await this.getConnectionTypes();
                     let details: WebsiteBoilerplate.UserDetails = outgoingConnectionUpdates[connectedUserUniqueId];
                     let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = details.connectionTypes!;
+
+                    let incomingConnection: UserConnectionInstance | null = await db.UserConnection.findOne({
+                        where: {
+                            requestedUserId: connectedUser.id!,
+                            connectedUserId: currentUser.id!
+                        },
+                        attributes: [
+                            'id'
+                        ]
+                    });
 
                     if (outgoingConnections.length > 0) { // This is an existing connection, modify the types if necessary
                         let existingConnection: UserConnectionInstance = outgoingConnections[0];
@@ -1528,9 +1552,16 @@ class DatabaseHelper {
                             await existingConnection.addConnectionTypes(addConnectionTypes);
                         }
 
-                        return true;
+                        results = {
+                            ...results,
+                            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.UPDATED,
+                            isMutual: incomingConnection !== null,
+                            success: true
+                        };
+
+                        return results;
                     }
-                    else {
+                    else { // Else, this is a new connection
                         let newConnection: UserConnectionInstance = await db.UserConnection.create({
                             requestedUserId: currentUser.id!,
                             connectedUserId: connectedUser.id!
@@ -1544,17 +1575,24 @@ class DatabaseHelper {
                             }
                         }
 
-                        return true;
+                        results = {
+                            ...results,
+                            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.ADDED,
+                            isMutual: incomingConnection !== null,
+                            success: true
+                        };
+
+                        return results;
                     }
                 }
             }
         }
         catch (err)
         {
-            console.error(`Failed to update outgoing connection for user ${uniqueId}:\n${err.message}`);
+            console.error(`Failed to update outgoing connection for user ${currentUserUniqueId}:\n${err.message}`);
         }
 
-        return false;
+        return results;
     }
 
     // User Blocking

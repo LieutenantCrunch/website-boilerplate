@@ -233,16 +233,16 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
             let { outgoingConnection } = req.body;
 
             if (uniqueId && outgoingConnection) {
-                let result: Boolean = await databaseHelper.updateUserConnection(uniqueId, outgoingConnection);
+                let results: WebsiteBoilerplate.UpdateUserConnectionResults = await databaseHelper.updateUserConnection(uniqueId, outgoingConnection);
 
-                return res.status(200).json({success: result, message: ''});
+                return res.status(200).json({success: results.success, results, message: ''});
             }
         }
         catch (err) {
             console.error(`Error updating connection\n${err.message}`);
         }
 
-        res.status(200).json({success: false, message: 'An error occurred while updating the connection'});
+        res.status(200).json({success: false, results: null, message: 'An error occurred while updating the connection'});
 
         break;
     case 'verifyDisplayName':

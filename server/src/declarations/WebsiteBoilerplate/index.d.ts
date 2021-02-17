@@ -1,12 +1,4 @@
 declare namespace WebsiteBoilerplate {
-    export interface ProfileInfo {
-        displayName: string;
-        displayNameIndex: number;
-        pfpSmall: string;
-        uniqueId: string;
-        connectionTypes?: UserConnectionTypeDictionary;
-    }
-
     export interface UserDetails {
         connectedToCurrentUser?: Boolean;
         connectionTypes?: UserConnectionTypeDictionary;
@@ -34,5 +26,11 @@ declare namespace WebsiteBoilerplate {
 
     export interface UserConnectionDetails {
         [id: string]: UserDetails;
+    }
+
+    export interface UpdateUserConnectionResults {
+        actionTaken: number;
+        isMutual: Boolean;
+        success: Boolean;
     }
 }

@@ -1,27 +1,30 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Redirect, Route, useParams, useRouteMatch, withRouter } from 'react-router-dom';
 import classNames from 'classnames';
-import { usePopper } from 'react-popper';
 
 import ProfilePicture from './ProfilePicture';
-import SwitchCheckbox from './FormControls/SwitchCheckbox';
 import UserService from '../services/user.service';
-import { HtmlTooltip } from './HtmlTooltip';
+import ConnectionButton from './FormControls/ConnectionButton';
 
 function User (props) {
     const { profileName } = useParams();
-    const [profileInfo, updateProfileInfo] = useState({});
-
-    const dropdownMenuContainer = useRef();
-    const [referenceElement, setReferenceElement] = useState(null);
-    const [popperElement, setPopperElement] = useState(null);
-    const { styles, update } = usePopper(referenceElement, popperElement, {
-        modifiers: [
-        ],
-        placement: 'bottom-start'
+    const [state, updateState] = useState({
+        profileInfo: {},
+        connection: null
     });
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [showConnectionTypesTooltip, setShowConnectionTypesTooltip] = useState(false);
+
+    const updateConnection = (connection) => {
+        updateState(prevState => ({
+            ...prevState,
+            connection: {
+                id: connection.id,
+                details: {
+                    ...prevState.connection?.details,
+                    ...connection.details
+                }
+            }
+        }));
+    }
 
     useEffect(() => {
         UserService.getProfileInfo(profileName).then((profileInfo) => {
@@ -32,60 +35,30 @@ function User (props) {
 
             props.setTitle(`${title}'s Profile`);
 
-            updateProfileInfo(profileInfo);
+            updateState(prevState => ({
+                ...prevState,
+                profileInfo,
+                connection: {
+                    id: profileInfo.uniqueId,
+                    details: {
+                        ...profileInfo
+                    }
+                }
+            }));
         }).catch((reason) => {
             console.error(reason);
         });
     }, []);
 
-    const toggleDropdown = (event) => {
-        update(); // This fixes the position of the dropdown menu
-        setIsDropdownOpen(!isDropdownOpen);
-        event.stopPropagation();
-    };
-
-    const canUncheck = () => {
-        if (profileInfo?.connectionTypes !== undefined) {
-            let selectedCount = Object.values(profileInfo?.connectionTypes).reduce((total, current) => {
-                return total + (current ? 1 : 0);
-            }, 0);
-
-            return selectedCount > 1;
-        }
-
-        return false;
-    };
-
-    const handleTypeChange = (event) => {
-        let { name, checked } = event.target;
-
-        if (!checked && !canUncheck()) {
-            event.target.checked = true;
-            setShowConnectionTypesTooltip(true);
-        }
-        else {
-            setShowConnectionTypesTooltip(false);
-            updateProfileInfo({
-                ...profileInfo,
-                connectionTypes: {
-                    ...profileInfo.connectionTypes,
-                    [name]: checked
-                }
-            });
-        }
-
-        event.stopPropagation();
-    };
-
     return <div className="card col-8 col-md-4 mt-2 align-middle text-center">
         <div className="card-header">
-            <ProfilePicture pfpSmall={profileInfo.pfpSmall || ''} />
+            <ProfilePicture pfpSmall={state.profileInfo.pfpSmall || ''} />
         </div>
         <div className="card-body">
-            <h5 className="card-title">{profileInfo.displayName || ''}
+            <h5 className="card-title">{state.profileInfo.displayName || ''}
                 {
-                    profileInfo.displayNameIndex && profileInfo.displayNameIndex > 0
-                    ? <small className="text-muted">#{profileInfo.displayNameIndex}</small>
+                    state.profileInfo.displayNameIndex && state.profileInfo.displayNameIndex > 0
+                    ? <small className="text-muted">#{state.profileInfo.displayNameIndex}</small>
                     : <></>
                 }
             </h5>
@@ -93,30 +66,7 @@ function User (props) {
         {
             props.checkForValidSession()
             ? <div className="card-footer text-right">
-                <div ref={dropdownMenuContainer} className="dropdown">
-                    <button ref={setReferenceElement} type="button" className={classNames('btn', 'btn-outline-primary', 'dropdown-toggle', {'show': isDropdownOpen})} id="connectionTypeDropdownButton" onClick={toggleDropdown}>
-                        Relationship
-                    </button>
-                    <HtmlTooltip title="At least one connection type must be selected."
-                        enterDelay={500}
-                        disableHoverListener
-                        disableFocusListener 
-                        interactive
-                        placement="top"
-                        open={showConnectionTypesTooltip}
-                        color='rgb(255,0,0)'
-                    >
-                        <div ref={setPopperElement} className={classNames('dropdown-menu', 'px-2', {'show': isDropdownOpen})} style={styles.popper} {...styles.popper}>
-                            {
-                                profileInfo.connectionTypes
-                                ? Object.entries(profileInfo.connectionTypes).map(([connectionType, details]) => (
-                                    <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
-                                ))
-                                : <></>
-                            }
-                        </div>
-                    </HtmlTooltip>
-                </div>
+                <ConnectionButton connection={state.connection} updateConnection={updateConnection} />
             </div>
             : <></>
         }

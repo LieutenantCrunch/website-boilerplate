@@ -206,11 +206,19 @@ export default class UserService {
     static async updateOutgoingConnection(outgoingConnection) {
         try {
             let payload = {outgoingConnection};
-            axiosApi.post(Constants.API_PATH_USERS + '/updateConnection', payload);
+            let response = await axiosApi.post(Constants.API_PATH_USERS + '/updateConnection', payload);
+
+            if (response.data?.success && response.data?.results) {
+                return response.data.results;
+            }
+
+            return null;
         }
         catch (err) {
             console.error(`Error updating connection:\n${err.message}`);
         }
+
+        return null;
     }
 
     static async removeOutgoingConnection(outgoingConnection) {

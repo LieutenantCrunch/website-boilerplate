@@ -7,7 +7,8 @@ import TwoClickButton from './TwoClickButton';
 import UserService from '../../services/user.service';
 
 const ConnectionButton = ({ 
-    connection
+    connection,
+    updateConnection
 }) => {
     const CS_BLOCKED = -1;
     const CS_NOT_CONNECTED = 0;
@@ -60,6 +61,25 @@ const ConnectionButton = ({
         }));
     }, [connection]);
 
+    useEffect(() => {
+        if (state.isDropdownOpen) {
+            document.addEventListener('click', hideDropdown);
+
+            return function cleanup() {
+                document.removeEventListener('click', hideDropdown);
+            }
+        }
+        else {
+            document.removeEventListener('click', hideDropdown);
+        }
+    }, [state.isDropdownOpen]);
+
+    const hideDropdown = (event) => {
+        if (dropdownMenuContainer && !dropdownMenuContainer.current.contains(event.target)) {
+            handleDropdownClickOut(event);
+        }       
+    };
+
     const handleBlockClick = (event) => {
         // Send block to server for uniqueId
         UserService.blockUser(connection.id); // Might be nice to alert the user if this fails
@@ -88,25 +108,84 @@ const ConnectionButton = ({
         }
     };
     
+    const handleDropdownClickOut = async (event) => {
+        // This should only fire if the dropdown is open due to how useEffect was set up
+
+        // Need to close the dropdown
+        let stateUpdates = {
+            isDropdownOpen: false
+        };
+
+        switch (state.connectionState) {
+            case CS_BLOCKED:
+                // Don't need to do anything special, the dropdown shouldn't be open anyway, just let it close
+                break;
+            case CS_CONNECT_PENDING:
+                // Determine if they checked any connection types
+                const selectedConnectionTypeCount = getSelectedConnectionTypeCount();
+
+                if (selectedConnectionTypeCount > 0) {
+                    // If so, change state to CS_CONNECTED
+                    stateUpdates.connectionState = CS_CONNECTED;
+
+                    // and send info to server
+                    let results = await UserService.updateOutgoingConnection({ [connection.id]: connection.details });
+
+                    console.log(results);
+
+                    if (results?.isMutual) {
+                        connection.details.isMutual = results.isMutual;
+                    }
+
+                    // Update the root connection
+                    updateConnection(connection);
+                }
+                else {
+                    // Else, change state to CS_NOT_CONNECTED
+                    stateUpdates.connectionState = CS_NOT_CONNECTED;
+                }
+
+                break;
+            case CS_CONNECTED:
+                // Send any connection type updates to the server
+                let results = await UserService.updateOutgoingConnection({ [connection.id]: connection.details });
+
+                console.log(results);
+
+                if (results?.isMutual) {
+                    connection.details.isMutual = results.isMutual;
+                }
+
+                // Update the root connection
+                updateConnection(connection);
+
+                break;
+            case CS_NOT_CONNECTED:
+            default:
+                // Don't need to do anything special, since they wouldn't have chosen an action to take
+                break;
+        }
+
+        updateState(prevState => ({
+            ...prevState,
+            ...stateUpdates
+        }));
+    };
+
     // This handles the right side of the button, which displays dropdowns and performs the unblock action
-    const handleDropdownButtonClick = (event) => {
+    const handleDropdownButtonClick = async (event) => {
+        let stateUpdates = {};
+
         switch (state.connectionState) {
             case CS_BLOCKED:
                 // Send unblock to server
                 UserService.unblockUser(connection.id); // Might be nice to alert the user if this fails
 
                 // Update the state so it'll show the Add Connection appearance
-                updateState(prevState => ({
-                    ...prevState,
-                    connectionState: CS_NOT_CONNECTED
-                }));
+                stateUpdates.connectionState = CS_NOT_CONNECTED;
 
                 break;
             case CS_CONNECT_PENDING:
-                let stateUpdates = {
-                    isDropdownOpen: !state.isDropdownOpen
-                };
-
                 // If open, determine if they checked any connection types
                 if (state.isDropdownOpen) {
                     const selectedConnectionTypeCount = getSelectedConnectionTypeCount();
@@ -116,7 +195,16 @@ const ConnectionButton = ({
                         stateUpdates.connectionState = CS_CONNECTED;
 
                         // and send info to server
-                        UserService.updateOutgoingConnection({ [connection.id]: connection.details });
+                        let results = await UserService.updateOutgoingConnection({ [connection.id]: connection.details });
+
+                        console.log(results);
+
+                        if (results?.isMutual) {
+                            connection.details.isMutual = results.isMutual;
+                        }
+
+                        // Update the root connection
+                        updateConnection(connection);
                     }
                     else {
                         // Else, change state to CS_NOT_CONNECTED
@@ -128,27 +216,31 @@ const ConnectionButton = ({
                 }
 
                 // Toggle the dropdown state
-                updateState(prevState => ({
-                    ...prevState,
-                    ...stateUpdates
-                }));
+                stateUpdates.isDropdownOpen = !state.isDropdownOpen;
 
                 event.stopPropagation();
 
                 break;
             case CS_CONNECTED:
-                update(); // This fixes the position of the dropdown menu
+                if (state.isDropdownOpen) {
+                    // Send any connection type updates to the server
+                    let results = await UserService.updateOutgoingConnection({ [connection.id]: connection.details });
 
-                // Remove connection closes the dropdown and the window, so probably don't need to worry about handling that
+                    console.log(results);
 
-                // Send any connection type updates to the server
-                UserService.updateOutgoingConnection({ [connection.id]: connection.details });
+                    if (results?.isMutual) {
+                        connection.details.isMutual = results.isMutual;
+                    }
+
+                    // Update the root connection
+                    updateConnection(connection);
+                }
+                else {
+                    update(); // This fixes the position of the dropdown menu
+                }
 
                 // Toggle the dropdown state
-                updateState(prevState => ({
-                    ...prevState,
-                    isDropdownOpen: !prevState.isDropdownOpen
-                }));
+                stateUpdates.isDropdownOpen = !state.isDropdownOpen;
 
                 event.stopPropagation();
 
@@ -158,15 +250,59 @@ const ConnectionButton = ({
                 update(); // This fixes the position of the dropdown menu
 
                 // Toggle the dropdown state
-                updateState(prevState => ({
-                    ...prevState,
-                    isDropdownOpen: !prevState.isDropdownOpen
-                }));
+                stateUpdates.isDropdownOpen = !state.isDropdownOpen;
 
                 event.stopPropagation();
 
                 break;
         }
+
+        updateState(prevState => ({
+            ...prevState,
+            ...stateUpdates
+        }));
+    };
+
+    const handleTypeChange = (event) => {
+        let { name, checked } = event.target;
+
+        if (!checked && !canUncheck()) {
+            event.target.checked = true;
+
+            updateState(prevState => ({
+                ...prevState,
+                showConnectionTypesTooltip: true
+            }));
+        }
+        else {
+            updateState(prevState => ({
+                ...prevState,
+                showConnectionTypesTooltip: false
+            }));
+
+            // This will not update the root connection object properly, call updateConnection when the dropdown is closed or something
+            connection.details = {
+                ...connection.details,
+                connectionTypes: {
+                    ...connection.details.connectionTypes,
+                    [name]: checked
+                }
+            };
+            /*let connectionUpdate = {
+                ...connection,
+                details: {
+                    ...connection.details,
+                    connectionTypes: {
+                        ...connection.details.connectionTypes,
+                        [name]: checked
+                    }
+                }
+            };
+            
+            updateConnection(connectionUpdate);*/
+        }
+
+        event.stopPropagation();
     };
 
     const getCurrentButtonTitle = () => {
@@ -274,35 +410,6 @@ const ConnectionButton = ({
             default:
                 return 'btn btn-outline-success dropdown-toggle dropdown-toggle-split';
         }
-    };
-
-    const handleTypeChange = (event) => {
-        let { name, checked } = event.target;
-
-        if (!checked && !canUncheck()) {
-            event.target.checked = true;
-
-            updateState(prevState => ({
-                ...prevState,
-                showConnectionTypesTooltip: true
-            }));
-        }
-        else {
-            updateState(prevState => ({
-                ...prevState,
-                showConnectionTypesTooltip: false
-            }));
-
-            connection.details = {
-                ...connection.details,
-                connectionTypes: {
-                    ...connection.details.connectionTypes,
-                    [name]: checked
-                }
-            };
-        }
-
-        event.stopPropagation();
     };
 
     const getCurrentListItems = () => {
