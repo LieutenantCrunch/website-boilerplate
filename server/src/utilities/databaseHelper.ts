@@ -102,6 +102,7 @@ class DatabaseHelper {
                     profileName: profileName.toLowerCase()
                 },
                 attributes: [
+                    'id',
                     'uniqueId'
                 ],
                 include: [
@@ -126,6 +127,7 @@ class DatabaseHelper {
                             }
                         },
                         attributes: [
+                            'fileName',
                             'smallFileName'
                         ]
                     }
@@ -235,7 +237,10 @@ class DatabaseHelper {
             let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
-                }
+                },
+                attributes: [
+                    'id'
+                ]
             });
 
             if (registeredUser) {
@@ -256,7 +261,34 @@ class DatabaseHelper {
             let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
-                }
+                },
+                include: [
+                    {
+                        model: db.DisplayName,
+                        as: 'displayNames',
+                        where: {
+                            isActive: true
+                        },
+                        attributes: [
+                            'displayName',
+                            'displayNameIndex'
+                        ]
+                    },
+                    {
+                        model: db.ProfilePicture,
+                        as: 'profilePictures',
+                        required: false,
+                        on: {
+                            id: {
+                                [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `User`.`id` order by `profile_picture`.`id` desc limit 1)')
+                            }
+                        },
+                        attributes: [
+                            'fileName',
+                            'smallFileName'
+                        ]
+                    }
+                ]
             });
 
             return registeredUser;
@@ -1208,7 +1240,7 @@ class DatabaseHelper {
         return null;        
     }
 
-    async getOutgoingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
+    async getOutgoingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserDetails[]> {
         try {
             let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
 
@@ -1277,7 +1309,7 @@ class DatabaseHelper {
                 });
 
                 if (outgoingConnectionsView && outgoingConnectionsView.length > 0) {
-                    return outgoingConnectionsView.reduce((previousValue, connectionView) => {
+                    return outgoingConnectionsView.map(connectionView => {
                         let connection: UserConnectionInstance = connectionView.userConnection!;
                         let connectedUser: UserInstance | undefined = connection.connectedUser;
     
@@ -1289,20 +1321,19 @@ class DatabaseHelper {
                                 [connectionType.displayName]: true
                             }), {});
                         }
-    
+
                         return {
-                            ...previousValue,
-                            [connectedUser!.uniqueId]: {
-                                displayName: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayName : ''),
-                                displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
-                                pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
-                                isBlocked: false, /* ##TODO */
-                                isMutual: connectionView.isMutual,
-                                connectionTypes: {...connectionTypes, ...userConnectionTypes},
-                                profileName: connectedUser!.profileName
-                            }
-                        }
-                    }, {});
+                            connectionTypes: {...connectionTypes, ...userConnectionTypes},
+                            displayName: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayName : ''),
+                            displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
+                            isBlocked: false, /* ##TODO */
+                            isMutual: connectionView.isMutual,
+                            pfp: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${uniqueId}/${connectedUser!.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                            pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                            profileName: connectedUser!.profileName,
+                            uniqueId: connectedUser!.uniqueId
+                        };
+                    });
                 }
             }
         }
@@ -1310,10 +1341,10 @@ class DatabaseHelper {
             console.error(`Error looking up connections for uniqueId ${uniqueId}:\n${err.message}`);
         }
 
-        return {};
+        return [];
     }
 
-    async getIncomingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
+    async getIncomingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserDetails[]> {
         try {
             let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
 
@@ -1400,7 +1431,7 @@ class DatabaseHelper {
                 });
 
                 if (incomingConnectionsView && incomingConnectionsView.length > 0) {
-                    return incomingConnectionsView.reduce((previousValue, connectionView) => {
+                    return incomingConnectionsView.map(connectionView => {
                         let connection: UserConnectionInstance = connectionView.userConnection!;
                         let requestedUser: UserInstance = connection.requestedUser!;
 
@@ -1415,18 +1446,17 @@ class DatabaseHelper {
                         }
 
                         return {
-                            ...previousValue,
-                            [requestedUser.uniqueId]: {
-                                displayName: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
-                                displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
-                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
-                                isBlocked: false, /* ##TODO */
-                                isMutual: connectionView.isMutual,
-                                connectionTypes: {...connectionTypes, ...userConnectionTypes},
-                                profileName: requestedUser.profileName
-                            }
+                            connectionTypes: {...connectionTypes, ...userConnectionTypes},    
+                            displayName: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
+                            displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
+                            isBlocked: false, /* ##TODO */
+                            isMutual: connectionView.isMutual,
+                            pfp: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                            pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                            profileName: requestedUser.profileName,
+                            uniqueId: requestedUser.uniqueId
                         }
-                    }, {});
+                    });
                 }
             }
         }
@@ -1434,7 +1464,7 @@ class DatabaseHelper {
             console.error(`Error looking up connections for uniqueId ${uniqueId}:\n${err.message}`);
         }
 
-        return {};
+        return [];
     }
 
     async getConnectionTypeDict(): Promise<WebsiteBoilerplate.UserConnectionTypeDictionary> {
@@ -1507,16 +1537,16 @@ class DatabaseHelper {
         return false;
     }
 
-    async updateUserConnection(currentUserUniqueId: string, outgoingConnectionUpdates: WebsiteBoilerplate.UserConnectionDetails): Promise<WebsiteBoilerplate.UpdateUserConnectionResults> {
+    async updateUserConnection(currentUserUniqueId: string, outgoingConnectionUpdates: WebsiteBoilerplate.UserDetails): Promise<WebsiteBoilerplate.UpdateUserConnectionResults> {
         let results: WebsiteBoilerplate.UpdateUserConnectionResults = {
+            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.NONE,
             success: false,
-            isMutual: false,
-            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.NONE
+            userConnection: outgoingConnectionUpdates
         };
 
         try
         {
-            let connectedUserUniqueId: string = Object.keys(outgoingConnectionUpdates)[0];
+            let connectedUserUniqueId: string = outgoingConnectionUpdates.uniqueId;
             let connectedUser: UserInstance | null = await this.getUserWithUniqueId(connectedUserUniqueId);
 
             if (connectedUser) {
@@ -1551,8 +1581,7 @@ class DatabaseHelper {
                 if (currentUser && currentUser.outgoingConnections) {
                     let outgoingConnections: UserConnectionInstance[] = currentUser.outgoingConnections;
                     let allConnectionTypes: UserConnectionTypeInstance[] = await this.getConnectionTypes();
-                    let details: WebsiteBoilerplate.UserDetails = outgoingConnectionUpdates[connectedUserUniqueId];
-                    let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = details.connectionTypes!;
+                    let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = outgoingConnectionUpdates.connectionTypes!;
 
                     let incomingConnection: UserConnectionInstance | null = await db.UserConnection.findOne({
                         where: {
@@ -1601,8 +1630,18 @@ class DatabaseHelper {
                         results = {
                             ...results,
                             actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.UPDATED,
-                            isMutual: incomingConnection !== null,
-                            success: true
+                            success: true,
+                            userConnection: {
+                                displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
+                                displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
+                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                isBlocked: false, /* ##TODO */
+                                isMutual: incomingConnection !== null,
+                                connectionTypes,
+                                profileName: connectedUser.profileName,
+                                uniqueId: connectedUserUniqueId
+                            }
                         };
 
                         return results;
@@ -1624,8 +1663,18 @@ class DatabaseHelper {
                         results = {
                             ...results,
                             actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.ADDED,
-                            isMutual: incomingConnection !== null,
-                            success: true
+                            success: true,
+                            userConnection: {
+                                displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
+                                displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
+                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                isBlocked: false, /* ##TODO */
+                                isMutual: incomingConnection !== null,
+                                connectionTypes,
+                                profileName: connectedUser.profileName,
+                                uniqueId: connectedUserUniqueId
+                            }
                         };
 
                         return results;

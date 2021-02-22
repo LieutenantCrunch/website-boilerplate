@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { outgoingConnectionAdded } from '../../redux/connections/outgoingConnectionsSlice';
 import classNames from 'classnames';
 import { usePopper } from 'react-popper';
 import { HtmlTooltip } from '../HtmlTooltip';
@@ -10,6 +12,9 @@ const ConnectionButton = ({
     connection,
     updateConnection
 }) => {
+    // Redux
+    const dispatch = useDispatch();
+
     const CS_BLOCKED = -1;
     const CS_NOT_CONNECTED = 0;
     const CS_CONNECT_PENDING = 1;
@@ -30,8 +35,8 @@ const ConnectionButton = ({
             if (connection.isBlocked) {
                 return CS_BLOCKED;
             }
-            else if (connection.details?.connectionTypes !== undefined) {
-                let hasOneConnectionType = Object.values(connection.details.connectionTypes).find(element => element) || false;
+            else if (connection.connectionTypes !== undefined) {
+                let hasOneConnectionType = Object.values(connection.connectionTypes).find(element => element) || false;
 
                 if (hasOneConnectionType) {
                     return CS_CONNECTED;
@@ -82,7 +87,7 @@ const ConnectionButton = ({
 
     const handleBlockClick = (event) => {
         // Send block to server for uniqueId
-        UserService.blockUser(connection.id); // Might be nice to alert the user if this fails
+        UserService.blockUser(connection.uniqueId); // Might be nice to alert the user if this fails
         
         // Update the state to blocked and close the dropdown
         updateState(prevState => ({
@@ -129,12 +134,17 @@ const ConnectionButton = ({
                     stateUpdates.connectionState = CS_CONNECTED;
 
                     // and send info to server
-                    let results = await UserService.updateOutgoingConnection({ [connection.id]: connection.details });
+                    // REDUX Add
+                    let results = await UserService.updateOutgoingConnection( connection );
+
+                    if (results) {
+                        dispatch(outgoingConnectionAdded(results.userConnection));
+                    }
 
                     console.log(results);
 
                     if (results?.isMutual) {
-                        connection.details.isMutual = results.isMutual;
+                        connection.isMutual = results.isMutual;
                     }
 
                     // Update the root connection
@@ -148,12 +158,13 @@ const ConnectionButton = ({
                 break;
             case CS_CONNECTED:
                 // Send any connection type updates to the server
-                let results = await UserService.updateOutgoingConnection({ [connection.id]: connection.details });
+                // REDUX Update
+                let results = await UserService.updateOutgoingConnection( connection );
 
                 console.log(results);
 
                 if (results?.isMutual) {
-                    connection.details.isMutual = results.isMutual;
+                    connection.isMutual = results.isMutual;
                 }
 
                 // Update the root connection
@@ -179,7 +190,7 @@ const ConnectionButton = ({
         switch (state.connectionState) {
             case CS_BLOCKED:
                 // Send unblock to server
-                UserService.unblockUser(connection.id); // Might be nice to alert the user if this fails
+                UserService.unblockUser(connection.uniqueId); // Might be nice to alert the user if this fails
 
                 // Update the state so it'll show the Add Connection appearance
                 stateUpdates.connectionState = CS_NOT_CONNECTED;
@@ -195,12 +206,19 @@ const ConnectionButton = ({
                         stateUpdates.connectionState = CS_CONNECTED;
 
                         // and send info to server
-                        let results = await UserService.updateOutgoingConnection({ [connection.id]: connection.details });
+                        // REDUX Add
+                        let results = await UserService.updateOutgoingConnection( connection );
 
                         console.log(results);
 
+                        if (results) {
+                            if (results) {
+                                dispatch(outgoingConnectionAdded(results.userConnection));
+                            }
+                        }
+
                         if (results?.isMutual) {
-                            connection.details.isMutual = results.isMutual;
+                            connection.isMutual = results.isMutual;
                         }
 
                         // Update the root connection
@@ -224,12 +242,13 @@ const ConnectionButton = ({
             case CS_CONNECTED:
                 if (state.isDropdownOpen) {
                     // Send any connection type updates to the server
-                    let results = await UserService.updateOutgoingConnection({ [connection.id]: connection.details });
+                    // REDUX Update
+                    let results = await UserService.updateOutgoingConnection( connection );
 
                     console.log(results);
 
                     if (results?.isMutual) {
-                        connection.details.isMutual = results.isMutual;
+                        connection.isMutual = results.isMutual;
                     }
 
                     // Update the root connection
@@ -281,21 +300,15 @@ const ConnectionButton = ({
             }));
 
             // This will not update the root connection object properly, call updateConnection when the dropdown is closed or something
-            connection.details = {
-                ...connection.details,
-                connectionTypes: {
-                    ...connection.details.connectionTypes,
-                    [name]: checked
-                }
+            connection.connectionTypes = {
+                ...connection.connectionTypes,
+                [name]: checked
             };
             /*let connectionUpdate = {
                 ...connection,
-                details: {
-                    ...connection.details,
-                    connectionTypes: {
-                        ...connection.details.connectionTypes,
-                        [name]: checked
-                    }
+                connectionTypes: {
+                    ...connection.connectionTypes,
+                    [name]: checked
                 }
             };
             
@@ -418,8 +431,8 @@ const ConnectionButton = ({
             case CS_BLOCKED:
                 return <></>;
             case CS_CONNECT_PENDING:
-                return connection?.details?.connectionTypes
-                ? Object.entries(connection.details.connectionTypes).map(([connectionType, details]) => (
+                return connection?.connectionTypes
+                ? Object.entries(connection.connectionTypes).map(([connectionType, details]) => (
                     <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
                 ))
                 : <></>;
@@ -434,11 +447,12 @@ const ConnectionButton = ({
                                 firstClassName="btn-outline-danger" 
                                 secondClassName="btn-outline-dark" 
                                 progressClassName="bg-danger" 
-                                firstTooltip={`Remove your connection to ${connection?.details?.displayName}#${connection?.details?.displayNameIndex}`}
-                                secondTooltip={`Confirm you want to remove your connection to ${connection?.details?.displayName}#${connection?.details?.displayNameIndex}`}
+                                firstTooltip={`Remove your connection to ${connection?.displayName}#${connection?.displayNameIndex}`}
+                                secondTooltip={`Confirm you want to remove your connection to ${connection?.displayName}#${connection?.displayNameIndex}`}
                                 secondDuration={5} 
                                 onClick={(event) => {
-                                    UserService.removeOutgoingConnection({id: connection.id});
+                                    // REDUX Remove
+                                    UserService.removeOutgoingConnection( connection.uniqueId );
 
                                     clearConnectionTypes();
 
@@ -451,8 +465,8 @@ const ConnectionButton = ({
                             />
                         </li>
                         {
-                            connection?.details?.connectionTypes
-                            ? Object.entries(connection.details.connectionTypes).map(([connectionType, details]) => (
+                            connection?.connectionTypes
+                            ? Object.entries(connection.connectionTypes).map(([connectionType, details]) => (
                                 <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
                             ))
                             : <></>
@@ -470,15 +484,15 @@ const ConnectionButton = ({
     };
 
     const clearConnectionTypes = () => {
-        if (connection?.details?.connectionTypes) {
-            Object.keys(connection.details.connectionTypes).forEach((key) => {
-                connection.details.connectionTypes[key] = false;
+        if (connection?.connectionTypes) {
+            Object.keys(connection.connectionTypes).forEach((key) => {
+                connection.connectionTypes[key] = false;
             });
         }
     };
 
     const getSelectedConnectionTypeCount = () => {
-        let selectedCount = Object.values(connection?.details?.connectionTypes).reduce((total, current) => {
+        let selectedCount = Object.values(connection?.connectionTypes).reduce((total, current) => {
             return total + (current ? 1 : 0);
         }, 0);
 
@@ -491,7 +505,7 @@ const ConnectionButton = ({
             // That way, when they close the popup, it won't try to add the connection and will flip back to not connected
             return true;
         }
-        else if (connection?.details?.connectionTypes !== undefined) {
+        else if (connection?.connectionTypes !== undefined) {
             return getSelectedConnectionTypeCount() > 1;
         }
 

@@ -9,20 +9,13 @@ import ConnectionButton from './FormControls/ConnectionButton';
 function User (props) {
     const { profileName } = useParams();
     const [state, updateState] = useState({
-        profileInfo: {},
-        connection: null
+        profileInfo: null
     });
 
     const updateConnection = (connection) => {
         updateState(prevState => ({
             ...prevState,
-            connection: {
-                id: connection.id,
-                details: {
-                    ...prevState.connection?.details,
-                    ...connection.details
-                }
-            }
+            profileInfo: connection
         }));
     }
 
@@ -37,13 +30,7 @@ function User (props) {
 
             updateState(prevState => ({
                 ...prevState,
-                profileInfo,
-                connection: {
-                    id: profileInfo.uniqueId,
-                    details: {
-                        ...profileInfo
-                    }
-                }
+                profileInfo
             }));
         }).catch((reason) => {
             console.error(reason);
@@ -52,13 +39,13 @@ function User (props) {
 
     return <div className="card col-8 col-md-4 mt-2 align-middle text-center">
         <div className="card-header">
-            <ProfilePicture pfpSmall={state.profileInfo.pfpSmall || ''} />
+            <ProfilePicture pfpSmall={state.profileInfo?.pfpSmall || ''} />
         </div>
         <div className="card-body">
-            <h5 className="card-title">{state.profileInfo.displayName || ''}
+            <h5 className="card-title">{state.profileInfo?.displayName || ''}
                 {
-                    state.profileInfo.displayNameIndex && state.profileInfo.displayNameIndex > 0
-                    ? <small className="text-muted">#{state.profileInfo.displayNameIndex}</small>
+                    state.profileInfo?.displayNameIndex && state.profileInfo?.displayNameIndex > 0
+                    ? <small className="text-muted">#{state.profileInfo?.displayNameIndex}</small>
                     : <></>
                 }
             </h5>
@@ -66,7 +53,7 @@ function User (props) {
         {
             props.checkForValidSession()
             ? <div className="card-footer text-right">
-                <ConnectionButton connection={state.connection} updateConnection={updateConnection} />
+                <ConnectionButton connection={state.profileInfo} updateConnection={updateConnection} />
             </div>
             : <></>
         }

@@ -6,7 +6,7 @@ declare namespace WebsiteBoilerplate {
         displayName: string;
         displayNameIndex: number;
         isBlocked: Boolean;
-        isMutual: Boolean;
+        isMutual?: Boolean;
         pfp: string;
         pfpSmall: string;
         profileName: string;
@@ -30,7 +30,7 @@ declare namespace WebsiteBoilerplate {
 
     export interface UpdateUserConnectionResults {
         actionTaken: number;
-        isMutual: Boolean;
+        userConnection: UserDetails;
         success: Boolean;
     }
 }

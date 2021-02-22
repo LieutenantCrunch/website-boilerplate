@@ -23,3 +23,9 @@ export const USER_SEARCH_TRIGGER = Object.freeze({
     KEYBOARD: 0,
     MOUSE: 1
 });
+
+export const UPDATE_USER_CONNECTION_ACTIONS = Object.freeze({
+    NONE: 0,
+    ADDED: 1,
+    UPDATED: 2
+});

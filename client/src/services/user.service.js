@@ -171,8 +171,15 @@ export default class UserService {
 
     static async getOutgoingConnections(uniqueId) {
         try {
-            let queryString = encodeURI(`uniqueId=${uniqueId}`);
-            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getOutgoingConnections?${queryString}`);
+            let response = null;
+
+            if (uniqueId) {
+                let queryString = encodeURI(`uniqueId=${uniqueId}`);
+                response = await axiosApi.get(Constants.API_PATH_USERS + `/getOutgoingConnections?${queryString}`);
+            }
+            else {
+                response = await axiosApi.get(Constants.API_PATH_USERS + `/getOutgoingConnections`);
+            }
 
             if (response.data && response.data.success) {
                 return response.data.connections;
@@ -221,9 +228,8 @@ export default class UserService {
         return null;
     }
 
-    static async removeOutgoingConnection(outgoingConnection) {
+    static async removeOutgoingConnection(connectedUserUniqueId) {
         try {
-            let connectedUserUniqueId = outgoingConnection.id;
             let payload = {connectedUserUniqueId};
             
             let response = await axiosApi.post(Constants.API_PATH_USERS + '/removeConnection', payload);

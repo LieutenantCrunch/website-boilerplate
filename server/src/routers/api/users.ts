@@ -117,9 +117,17 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         return res.status(200).json({success: false, results: []});
     case 'getOutgoingConnections':
         try {
-            if (req.query.uniqueId) {
-                let uniqueId: string = req.query.uniqueId.toString();
-                let connections: WebsiteBoilerplate.UserConnectionDetails = await databaseHelper.getOutgoingConnections(uniqueId);
+            if ((req.query && req.query.uniqueId !== undefined) || req.userId !== undefined) {
+                let uniqueId: string = '';
+                
+                if (req.query && req.query.uniqueId !== undefined) {
+                    uniqueId = req.query.uniqueId.toString();
+                }
+                else {
+                    uniqueId = req.userId!;
+                }
+
+                let connections: WebsiteBoilerplate.UserDetails[] = await databaseHelper.getOutgoingConnections(uniqueId);
 
                 return res.status(200).json({success: true, connections});
             }
@@ -133,7 +141,7 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         try {
             if (req.query.uniqueId) {
                 let uniqueId: string = req.query.uniqueId.toString();
-                let connections: WebsiteBoilerplate.UserConnectionDetails = await databaseHelper.getIncomingConnections(uniqueId);
+                let connections: WebsiteBoilerplate.UserDetails[] = await databaseHelper.getIncomingConnections(uniqueId);
 
                 return res.status(200).json({success: true, connections});
             }
