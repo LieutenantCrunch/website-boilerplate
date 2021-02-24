@@ -31,7 +31,7 @@ export default function ConnectionPreviewDialog (props) {
                                 <img src={props.connection?.pfpSmall} className="border rounded-circle w-25" />
                             </p>
                             <div className="text-right">
-                                <ConnectionButton connection={props.connection} updateConnection={props.updateConnection} />
+                                <ConnectionButton connection={props.connection} />
                             </div>
                         </div>
                         <div className="modal-footer card-footer justify-content-between">

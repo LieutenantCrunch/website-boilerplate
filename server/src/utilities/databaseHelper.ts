@@ -965,6 +965,8 @@ class DatabaseHelper {
                             }
                         });
 
+                        let allConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
+
                         if (incomingConnections.length > 0) {
                             let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary;
 
@@ -975,10 +977,13 @@ class DatabaseHelper {
                                 }), {});
                             }
                             else {
-                                connectionTypes = {};
+                                connectionTypes = allConnectionTypes;
                             }
 
                             userDetails.connectionTypes = connectionTypes;
+                        }
+                        else {
+                            userDetails.connectionTypes = allConnectionTypes;
                         }
 
                         let outgoingConnections: UserConnectionInstance[] = await registeredUser.getOutgoingConnections({
@@ -993,7 +998,7 @@ class DatabaseHelper {
 
                         let blockedUsers: UserInstance[] = await currentUser.getBlockedUsers({
                             where: {
-                                blockedUserId: registeredUser.id!
+                                id: registeredUser.id!
                             }
                         });
 

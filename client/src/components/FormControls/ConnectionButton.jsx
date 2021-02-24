@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { outgoingConnectionAdded } from '../../redux/connections/outgoingConnectionsSlice';
+import { 
+    addOutgoingConnection, 
+    updateOutgoingConnection,
+    removeOutgoingConnection
+} from '../../redux/connections/outgoingConnectionsSlice';
 import classNames from 'classnames';
 import { usePopper } from 'react-popper';
 import { HtmlTooltip } from '../HtmlTooltip';
@@ -8,9 +12,9 @@ import SwitchCheckbox from './SwitchCheckbox';
 import TwoClickButton from './TwoClickButton';
 import UserService from '../../services/user.service';
 
+
 const ConnectionButton = ({ 
-    connection,
-    updateConnection
+    connection
 }) => {
     // Redux
     const dispatch = useDispatch();
@@ -135,20 +139,9 @@ const ConnectionButton = ({
 
                     // and send info to server
                     // REDUX Add
-                    let results = await UserService.updateOutgoingConnection( connection );
-
-                    if (results) {
-                        dispatch(outgoingConnectionAdded(results.userConnection));
-                    }
+                    let results = await dispatch(addOutgoingConnection(connection));
 
                     console.log(results);
-
-                    if (results?.isMutual) {
-                        connection.isMutual = results.isMutual;
-                    }
-
-                    // Update the root connection
-                    updateConnection(connection);
                 }
                 else {
                     // Else, change state to CS_NOT_CONNECTED
@@ -159,16 +152,9 @@ const ConnectionButton = ({
             case CS_CONNECTED:
                 // Send any connection type updates to the server
                 // REDUX Update
-                let results = await UserService.updateOutgoingConnection( connection );
+                let results = await dispatch(updateOutgoingConnection(connection));
 
                 console.log(results);
-
-                if (results?.isMutual) {
-                    connection.isMutual = results.isMutual;
-                }
-
-                // Update the root connection
-                updateConnection(connection);
 
                 break;
             case CS_NOT_CONNECTED:
@@ -207,22 +193,9 @@ const ConnectionButton = ({
 
                         // and send info to server
                         // REDUX Add
-                        let results = await UserService.updateOutgoingConnection( connection );
+                        let results = await dispatch(addOutgoingConnection(connection));
 
                         console.log(results);
-
-                        if (results) {
-                            if (results) {
-                                dispatch(outgoingConnectionAdded(results.userConnection));
-                            }
-                        }
-
-                        if (results?.isMutual) {
-                            connection.isMutual = results.isMutual;
-                        }
-
-                        // Update the root connection
-                        updateConnection(connection);
                     }
                     else {
                         // Else, change state to CS_NOT_CONNECTED
@@ -243,16 +216,9 @@ const ConnectionButton = ({
                 if (state.isDropdownOpen) {
                     // Send any connection type updates to the server
                     // REDUX Update
-                    let results = await UserService.updateOutgoingConnection( connection );
+                    let results = await dispatch(updateOutgoingConnection(connection));
 
                     console.log(results);
-
-                    if (results?.isMutual) {
-                        connection.isMutual = results.isMutual;
-                    }
-
-                    // Update the root connection
-                    updateConnection(connection);
                 }
                 else {
                     update(); // This fixes the position of the dropdown menu
@@ -299,20 +265,10 @@ const ConnectionButton = ({
                 showConnectionTypesTooltip: false
             }));
 
-            // This will not update the root connection object properly, call updateConnection when the dropdown is closed or something
             connection.connectionTypes = {
                 ...connection.connectionTypes,
                 [name]: checked
             };
-            /*let connectionUpdate = {
-                ...connection,
-                connectionTypes: {
-                    ...connection.connectionTypes,
-                    [name]: checked
-                }
-            };
-            
-            updateConnection(connectionUpdate);*/
         }
 
         event.stopPropagation();
@@ -452,7 +408,7 @@ const ConnectionButton = ({
                                 secondDuration={5} 
                                 onClick={(event) => {
                                     // REDUX Remove
-                                    UserService.removeOutgoingConnection( connection.uniqueId );
+                                    dispatch(removeOutgoingConnection(connection.uniqueId));
 
                                     clearConnectionTypes();
 
