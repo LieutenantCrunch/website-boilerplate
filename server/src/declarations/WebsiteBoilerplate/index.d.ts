@@ -1,5 +1,6 @@
 declare namespace WebsiteBoilerplate {
     export interface UserDetails {
+        allowPublicAccess?: Boolean;
         connectedToCurrentUser?: Boolean;
         connectionTypes?: UserConnectionTypeDictionary;
         email?: string;
@@ -32,5 +33,10 @@ declare namespace WebsiteBoilerplate {
         actionTaken: number;
         userConnection: UserDetails;
         success: Boolean;
+    }
+
+    export interface RemoveUserConnectionResults {
+        success: Boolean;
+        wasMutual: Boolean;
     }
 }

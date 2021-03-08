@@ -61,7 +61,7 @@ export default function AddConnectionDialog (props) {
                                 <a href={`/u/${state.selectedUserDetails?.profileName}`}>View Profile</a>
                             </small>
                             <span style={{display: state.selectedUserDetails ? '' : 'none'}}>
-                                <ConnectionButton connection={state.selectedUserDetails} />
+                                <ConnectionButton newConnection={state.selectedUserDetails} />
                             </span>
                         </div>
                     </div>

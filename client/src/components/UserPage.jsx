@@ -53,7 +53,7 @@ function User (props) {
         {
             props.checkForValidSession()
             ? <div className="card-footer text-right">
-                <ConnectionButton connection={state.profileInfo} updateConnection={updateConnection} />
+                <ConnectionButton newConnection={state.profileInfo} />
             </div>
             : <></>
         }

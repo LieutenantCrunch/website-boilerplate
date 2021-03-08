@@ -1,10 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
-import outgoingConnectionsReducer from './connections/outgoingConnectionsSlice';
-import incomingConnectionsReducer from './connections/incomingConnectionsSlice';
+import connectionsReducer from './connections/connectionsSlice';
+import { myMiddleware } from './connections/connectionsSlice';
 
-export default configureStore({
-    reducer: {
-        outgoingConnections: outgoingConnectionsReducer,
-        incomingConnections: incomingConnectionsReducer
-    }
+const store = configureStore({
+    reducer: connectionsReducer,
+    middleware: [
+        myMiddleware
+    ]
 });
+
+export default store;

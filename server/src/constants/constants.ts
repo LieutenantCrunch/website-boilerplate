@@ -19,20 +19,16 @@ export const CACHE_KEY_CONNECTION_TYPES_DICT: string = 'db.connectionTypesDict';
 
 export const DB_USER_FETCH_PAGE_SIZE: number = 5; // The number of users to fetch at one time
 
-export const INVALIDATE_TOKEN_MODE = {
+export const INVALIDATE_TOKEN_MODE = Object.freeze({
     SPECIFIC: 0,
     OTHERS: 1,
     ALL: 2
-};
+});
 
-Object.freeze(INVALIDATE_TOKEN_MODE);
-
-export const UPDATE_USER_CONNECTION_ACTIONS = {
+export const UPDATE_USER_CONNECTION_ACTIONS = Object.freeze({
     NONE: 0,
     ADDED: 1,
     UPDATED: 2
-};
-
-Object.freeze(UPDATE_USER_CONNECTION_ACTIONS);
+});
 
 export const EMAIL_FROM: string = '"Website Boilerplate" <test@test.test>';

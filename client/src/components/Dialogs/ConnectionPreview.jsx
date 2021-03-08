@@ -17,6 +17,10 @@ export default function ConnectionPreviewDialog (props) {
         }
     };
 
+    const isBlockedWarningDisplayed = () => {
+        return props.connection?.isBlocked && props.userDetails?.allowPublicAccess;
+    };
+
     return (
         <div id={props.id} ref={mainDiv} className="modal fade" data-backdrop="static" tabIndex="-1" aria-labelledby="connectionDetailsLabel" aria-hidden="true">
             <div>
@@ -31,8 +35,11 @@ export default function ConnectionPreviewDialog (props) {
                                 <img src={props.connection?.pfpSmall} className="border rounded-circle w-25" />
                             </p>
                             <div className="text-right">
-                                <ConnectionButton connection={props.connection} />
+                                <ConnectionButton uniqueId={props.connection?.uniqueId} />
                             </div>
+                        </div>
+                        <div className="modal-body card-body bg-warning justify-content-between" style={{display: isBlockedWarningDisplayed() ? '' : 'none'}}>
+                            <small className="card-text">You have blocked this user but you are allowing public access, so they can still view your profile while logged out. Visit <a href="/settings">Settings</a> to change this.</small>
                         </div>
                         <div className="modal-footer card-footer justify-content-between">
                             <small><a href={`/u/${props.connection?.profileName}`}>View Profile</a></small>

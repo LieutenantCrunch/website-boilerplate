@@ -1,10 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useDispatch } from 'react-redux';
-import { 
-    addOutgoingConnection, 
-    updateOutgoingConnection,
-    removeOutgoingConnection
-} from '../../redux/connections/outgoingConnectionsSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+    connectionUpdated,
+    connectionRemoved,
+    selectConnectionById,
+    userBlocked,
+    userUnblocked,
+    connectionUpdatedLocal
+} from '../../redux/connections/connectionsSlice';
+
 import classNames from 'classnames';
 import { usePopper } from 'react-popper';
 import { HtmlTooltip } from '../HtmlTooltip';
@@ -12,12 +16,14 @@ import SwitchCheckbox from './SwitchCheckbox';
 import TwoClickButton from './TwoClickButton';
 import UserService from '../../services/user.service';
 
-
-const ConnectionButton = ({ 
-    connection
+const ConnectionButton = ({
+    newConnection, 
+    uniqueId
 }) => {
     // Redux
     const dispatch = useDispatch();
+    const existingConnection = useSelector(state => selectConnectionById(state, uniqueId));
+    let connection = newConnection ? newConnection : existingConnection;
 
     const CS_BLOCKED = -1;
     const CS_NOT_CONNECTED = 0;
@@ -68,7 +74,7 @@ const ConnectionButton = ({
             ...prevState,
             connectionState: determineConnectionState()
         }));
-    }, [connection]);
+    }, [connection?.uniqueId]);
 
     useEffect(() => {
         if (state.isDropdownOpen) {
@@ -92,6 +98,11 @@ const ConnectionButton = ({
     const handleBlockClick = (event) => {
         // Send block to server for uniqueId
         UserService.blockUser(connection.uniqueId); // Might be nice to alert the user if this fails
+
+        dispatch(userBlocked({
+            ...connection,
+            isBlocked: true
+        }));
         
         // Update the state to blocked and close the dropdown
         updateState(prevState => ({
@@ -138,10 +149,7 @@ const ConnectionButton = ({
                     stateUpdates.connectionState = CS_CONNECTED;
 
                     // and send info to server
-                    // REDUX Add
-                    let results = await dispatch(addOutgoingConnection(connection));
-
-                    console.log(results);
+                    let results = await dispatch(connectionUpdated(connection));
                 }
                 else {
                     // Else, change state to CS_NOT_CONNECTED
@@ -151,10 +159,10 @@ const ConnectionButton = ({
                 break;
             case CS_CONNECTED:
                 // Send any connection type updates to the server
-                // REDUX Update
-                let results = await dispatch(updateOutgoingConnection(connection));
+                let results = await dispatch(connectionUpdated(connection));
 
-                console.log(results);
+                // Hide the connection types tooltip if it's shown
+                stateUpdates.showConnectionTypesTooltip = false;
 
                 break;
             case CS_NOT_CONNECTED:
@@ -178,6 +186,11 @@ const ConnectionButton = ({
                 // Send unblock to server
                 UserService.unblockUser(connection.uniqueId); // Might be nice to alert the user if this fails
 
+                dispatch(userUnblocked({
+                    ...connection,
+                    isBlocked: false
+                }));
+
                 // Update the state so it'll show the Add Connection appearance
                 stateUpdates.connectionState = CS_NOT_CONNECTED;
 
@@ -192,10 +205,7 @@ const ConnectionButton = ({
                         stateUpdates.connectionState = CS_CONNECTED;
 
                         // and send info to server
-                        // REDUX Add
-                        let results = await dispatch(addOutgoingConnection(connection));
-
-                        console.log(results);
+                        let results = await dispatch(connectionUpdated(connection));
                     }
                     else {
                         // Else, change state to CS_NOT_CONNECTED
@@ -215,10 +225,10 @@ const ConnectionButton = ({
             case CS_CONNECTED:
                 if (state.isDropdownOpen) {
                     // Send any connection type updates to the server
-                    // REDUX Update
-                    let results = await dispatch(updateOutgoingConnection(connection));
+                    let results = await dispatch(connectionUpdated(connection));
 
-                    console.log(results);
+                    // Hide the connection types tooltip if it's shown
+                    stateUpdates.showConnectionTypesTooltip = false;
                 }
                 else {
                     update(); // This fixes the position of the dropdown menu
@@ -265,10 +275,21 @@ const ConnectionButton = ({
                 showConnectionTypesTooltip: false
             }));
 
-            connection.connectionTypes = {
-                ...connection.connectionTypes,
-                [name]: checked
-            };
+            if (newConnection) {
+                connection.connectionTypes = {
+                    ...connection.connectionTypes,
+                    [name]: checked
+                };
+            }
+            else {
+                dispatch(connectionUpdatedLocal({
+                    ...connection,
+                    connectionTypes: {
+                        ...connection.connectionTypes,
+                        [name]: checked
+                    }
+                }));
+            }
         }
 
         event.stopPropagation();
@@ -407,9 +428,6 @@ const ConnectionButton = ({
                                 secondTooltip={`Confirm you want to remove your connection to ${connection?.displayName}#${connection?.displayNameIndex}`}
                                 secondDuration={5} 
                                 onClick={(event) => {
-                                    // REDUX Remove
-                                    dispatch(removeOutgoingConnection(connection.uniqueId));
-
                                     clearConnectionTypes();
 
                                     updateState(prevState => ({
@@ -417,6 +435,8 @@ const ConnectionButton = ({
                                         connectionState: CS_NOT_CONNECTED,
                                         isDropdownOpen: false
                                     }));
+
+                                    dispatch(connectionRemoved(connection));
                                 }} 
                             />
                         </li>
@@ -440,10 +460,21 @@ const ConnectionButton = ({
     };
 
     const clearConnectionTypes = () => {
-        if (connection?.connectionTypes) {
+        if (newConnection) {
             Object.keys(connection.connectionTypes).forEach((key) => {
                 connection.connectionTypes[key] = false;
             });
+        }
+        else if (connection?.connectionTypes) {
+            let clearedConnectionTypes = Object.keys(connection.connectionTypes).reduce((previousValue, currentKey) => ({
+                ...previousValue,
+                [currentKey]: false
+            }), {});
+            
+            dispatch(connectionUpdatedLocal({
+                ...connection,
+                connectionTypes: clearedConnectionTypes
+            }));
         }
     };
 

@@ -17,7 +17,6 @@ import { DisplayNameInstance } from '../models/DisplayName';
 import { UserConnectionInstance } from '../models/UserConnection';
 import { UserConnectionTypeInstance } from '../models/UserConnectionType';
 import { PasswordResetTokenInstance } from '../models/PasswordResetToken';
-import { UserBlockInstance } from '../models/UserBlock';
 
 class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -188,7 +187,7 @@ class DatabaseHelper {
                     return {
                         displayName: displayName ? displayName.displayName : '',
                         displayNameIndex: displayName ? displayName.displayNameIndex : -1,
-                        isBlocked: false, /* ##TODO */
+                        isBlocked: false, /* This is a public user so they won't have been blocked */
                         isMutual,
                         pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
                         pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
@@ -219,7 +218,8 @@ class DatabaseHelper {
                         connectionTypes: {
                             ...connectionTypes,
                             ...userConnectionTypes
-                        }
+                        },
+                        connectedToCurrentUser: (registeredUser.incomingConnections !== undefined && registeredUser.incomingConnections.length > 0)
                     };
                 }
             }
@@ -892,6 +892,7 @@ class DatabaseHelper {
                 },
                 attributes: [
                     'id', /* This is necessary to select so the lazy loading of incomingConnections below will work */
+                    'allowPublicAccess',
                     'email',
                     'uniqueId',
                     'profileName'
@@ -938,15 +939,16 @@ class DatabaseHelper {
                 }
 
                 let userDetails: WebsiteBoilerplate.UserDetails = {
+                    allowPublicAccess: registeredUser.allowPublicAccess,
                     displayName: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayName : ''),
                     displayNameIndex: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayNameIndex : -1),
+                    isBlocked: false /* ##TODO */,
+                    isMutual,
                     pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
                     pfpSmall: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
-                    roles: (registeredUser.roles ? registeredUser.roles.map(role => role.roleName) : []),
-                    uniqueId,
                     profileName: registeredUser.profileName,
-                    isBlocked: false /* ##TODO */,
-                    isMutual
+                    roles: (registeredUser.roles ? registeredUser.roles.map(role => role.roleName) : []),
+                    uniqueId
                 };
 
                 if (includeEmail) {
@@ -981,19 +983,11 @@ class DatabaseHelper {
                             }
 
                             userDetails.connectionTypes = connectionTypes;
+                            userDetails.connectedToCurrentUser = true;
                         }
                         else {
                             userDetails.connectionTypes = allConnectionTypes;
-                        }
-
-                        let outgoingConnections: UserConnectionInstance[] = await registeredUser.getOutgoingConnections({
-                            where: {
-                                connectedUserId: currentUser.id!
-                            }
-                        });
-
-                        if (outgoingConnections.length > 0) {
-                            userDetails.connectedToCurrentUser = true;
+                            userDetails.connectedToCurrentUser = false;
                         }
 
                         let blockedUsers: UserInstance[] = await currentUser.getBlockedUsers({
@@ -1328,6 +1322,7 @@ class DatabaseHelper {
                         }
 
                         return {
+                            connectedToCurrentUser: true, /* Outgoing connections are always connected to the user */
                             connectionTypes: {...connectionTypes, ...userConnectionTypes},
                             displayName: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayName : ''),
                             displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
@@ -1436,32 +1431,27 @@ class DatabaseHelper {
                 });
 
                 if (incomingConnectionsView && incomingConnectionsView.length > 0) {
-                    return incomingConnectionsView.map(connectionView => {
+                    return incomingConnectionsView.reduce((results: WebsiteBoilerplate.UserDetails[], connectionView: UserConnectionViewInstance) => {
                         let connection: UserConnectionInstance = connectionView.userConnection!;
                         let requestedUser: UserInstance = connection.requestedUser!;
 
-                        let mutualConnection: UserConnectionInstance | undefined = connectionView.mutualConnection;
-                        let userConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = {};
-                        
-                        if (mutualConnection && mutualConnection.connectionTypes) {
-                            userConnectionTypes = mutualConnection.connectionTypes.reduce((previousValue, connectionType) => ({
-                                ...previousValue,
-                                [connectionType.displayName]: true
-                            }), {});
+                        if (!connectionView.isMutual) {                          
+                            results.push({
+                                connectedToCurrentUser: false, /* This list will only contain users who are not connected */
+                                connectionTypes: {...connectionTypes},    
+                                displayName: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
+                                displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
+                                isBlocked: false, /* ##TODO */
+                                isMutual: false,
+                                pfp: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                profileName: requestedUser.profileName,
+                                uniqueId: requestedUser.uniqueId
+                            });
                         }
 
-                        return {
-                            connectionTypes: {...connectionTypes, ...userConnectionTypes},    
-                            displayName: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
-                            displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
-                            isBlocked: false, /* ##TODO */
-                            isMutual: connectionView.isMutual,
-                            pfp: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                            pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
-                            profileName: requestedUser.profileName,
-                            uniqueId: requestedUser.uniqueId
-                        }
-                    });
+                        return results;
+                    }, []);
                 }
             }
         }
@@ -1514,7 +1504,7 @@ class DatabaseHelper {
         return [];
     }
 
-    async removeUserConnection(currentUserUniqueId: string, connectedUserUniqueId: string): Promise<Boolean> {
+    async removeUserConnection(currentUserUniqueId: string, connectedUserUniqueId: string): Promise<WebsiteBoilerplate.RemoveUserConnectionResults> {
         try
         {
             let currentUser: UserInstance | null = await this.getUserWithUniqueId(currentUserUniqueId);
@@ -1528,30 +1518,42 @@ class DatabaseHelper {
                     }
                 });
                 
+                let wasMutual: Boolean = false;
+
                 if (userConnection) {
+                    let userConnectionView: UserConnectionViewInstance | null = await db.Views.UserConnectionView.findOne({
+                        where: {
+                            id: userConnection.id!
+                        }
+                    });
+
+                    if (userConnectionView) {
+                        wasMutual = userConnectionView.isMutual;
+                    }
+
                     await userConnection.destroy();
                 }
                 
-                return true;
+                return {success: true, wasMutual};
             }
         }
         catch (err) {
             console.error(`Error removing connection:\n${err.message}`);
         }
 
-        return false;
+        return {success: false, wasMutual: false};
     }
 
-    async updateUserConnection(currentUserUniqueId: string, outgoingConnectionUpdates: WebsiteBoilerplate.UserDetails): Promise<WebsiteBoilerplate.UpdateUserConnectionResults> {
+    async updateUserConnection(currentUserUniqueId: string, connectionUpdates: WebsiteBoilerplate.UserDetails): Promise<WebsiteBoilerplate.UpdateUserConnectionResults> {
         let results: WebsiteBoilerplate.UpdateUserConnectionResults = {
             actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.NONE,
             success: false,
-            userConnection: outgoingConnectionUpdates
+            userConnection: connectionUpdates
         };
 
         try
         {
-            let connectedUserUniqueId: string = outgoingConnectionUpdates.uniqueId;
+            let connectedUserUniqueId: string = connectionUpdates.uniqueId;
             let connectedUser: UserInstance | null = await this.getUserWithUniqueId(connectedUserUniqueId);
 
             if (connectedUser) {
@@ -1586,7 +1588,7 @@ class DatabaseHelper {
                 if (currentUser && currentUser.outgoingConnections) {
                     let outgoingConnections: UserConnectionInstance[] = currentUser.outgoingConnections;
                     let allConnectionTypes: UserConnectionTypeInstance[] = await this.getConnectionTypes();
-                    let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = outgoingConnectionUpdates.connectionTypes!;
+                    let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = connectionUpdates.connectionTypes!;
 
                     let incomingConnection: UserConnectionInstance | null = await db.UserConnection.findOne({
                         where: {
@@ -1637,13 +1639,14 @@ class DatabaseHelper {
                             actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.UPDATED,
                             success: true,
                             userConnection: {
+                                connectionTypes,
+                                connectedToCurrentUser: true, /* If we updated the connection, it means that they're connected to the user */
                                 displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
                                 displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
                                 pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
                                 pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
                                 isBlocked: false, /* ##TODO */
                                 isMutual: incomingConnection !== null,
-                                connectionTypes,
                                 profileName: connectedUser.profileName,
                                 uniqueId: connectedUserUniqueId
                             }
@@ -1670,13 +1673,14 @@ class DatabaseHelper {
                             actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.ADDED,
                             success: true,
                             userConnection: {
+                                connectionTypes,
+                                connectedToCurrentUser: true, /* They are now connected to the current user */
                                 displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
                                 displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
                                 pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
                                 pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
                                 isBlocked: false, /* ##TODO */
                                 isMutual: incomingConnection !== null,
-                                connectionTypes,
                                 profileName: connectedUser.profileName,
                                 uniqueId: connectedUserUniqueId
                             }

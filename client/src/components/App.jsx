@@ -33,7 +33,16 @@ export default function App() {
         },
         ProfileNameRegex: /^[\-\._~]*(?:[a-z0-9][\-\._~]*){3,}/i
     });
-    const [userDetails, setUserDetails] = useState({email: '', displayName: '', displayNameIndex: -1, pfp: '', roles: [], uniqueId: ''});
+    const [userDetails, setUserDetails] = useState({
+        allowPublicAccess: false,
+        displayName: '', 
+        displayNameIndex: -1, 
+        email: '', 
+        pfp: '', 
+        roles: [], 
+        uniqueId: ''
+    });
+
     const [appState, updateAppState] = useState({
         connectionTypeDict: {}
     })

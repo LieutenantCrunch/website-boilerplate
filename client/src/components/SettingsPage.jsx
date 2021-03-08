@@ -93,6 +93,8 @@ function SettingsPage(props) {
         setSettingsPageAlert({type: 'info', message: null});
     };
 
+    //## Add Allow Public Access
+
     return (
         <>
             <div className="container-fluid">

@@ -1,89 +1,83 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import UserService from '../../services/user.service';
 
 const initialState = {
-    outgoingConnections: {},
+    entities: [],
     status: 'idle',
     error: null
 };
 
+// Async Thunks
 export const fetchOutgoingConnections = createAsyncThunk('outgoingConnections/fetchOutgoingConnections', async () => {
     const response = await UserService.getOutgoingConnections();
     return response;
 });
 
-export const addOutgoingConnection = createAsyncThunk('outgoingConnections/addOutgoingConnection', async outgoingConnection => {
-    const response = await UserService.updateOutgoingConnection(outgoingConnection);
-
-    if (response) {
-        return response.userConnection;
-    }
-
-    return null;
-});
-
-export const updateOutgoingConnection = createAsyncThunk('outgoingConnections/updateOutgoingConnection', async outgoingConnection => {
-    const response = await UserService.updateOutgoingConnection(outgoingConnection);
-
-    if (response) {
-        return response.userConnection;
-    }
-
-    return null;
-});
-
-export const removeOutgoingConnection = createAsyncThunk('outgoingConnections/removeOutgoingConnection', async uniqueId => {
-    const response = await UserService.removeOutgoingConnection(uniqueId);
-
-    if (response.success) {
-        return uniqueId;
-    }
-
-    return null;
-})
-
 const outgoingConnectionsSlice = createSlice({
     name: 'outgoingConnections',
     initialState,
     reducers: {
+        outgoingConnectionAdded(state, action) {
+            state.entities.push(action.payload);
+        },
+        outgoingConnectionRemoved(state, action) {
+            let { uniqueId } = action.payload;
+            let removeIndex = state.entities.findIndex(entity => entity.uniqueId === uniqueId);
+
+            if (removeIndex > -1) {
+                state.entities.splice(removeIndex, 1);
+            }
+        },
+        outgoingConnectionUpdated(state, action) {
+            let { uniqueId } = action.payload;
+            let updateIndex = state.entities.findIndex(entity => entity.uniqueId === uniqueId);
+
+            if (updateIndex > -1) {
+                state.entities[updateIndex] = action.payload;
+            }
+        }
     },
     extraReducers: {
-        [addOutgoingConnection.fulfilled]: (state, action) => {
-            state.outgoingConnections.push(action.payload);
+        'connections/connectionUpdatedLocal': (state, action) => {
+            let { uniqueId } = action.payload;
+            let connection = state.entities.find(entity => entity.uniqueId === uniqueId);
+
+            if (connection) {
+                Object.assign(connection, action.payload);
+            }
+        },
+        'connections/userBlocked': (state, action) => {
+            let { uniqueId, isBlocked } = action.payload;
+            let updateIndex = state.entities.findIndex(entity => entity.uniqueId === uniqueId);
+
+            if (updateIndex > -1) {
+                state.entities[updateIndex].isBlocked = isBlocked;
+            }
+        },
+        'connections/userUnblocked': (state, action) => {
+            let { uniqueId, isBlocked } = action.payload;
+            let updateIndex = state.entities.findIndex(entity => entity.uniqueId === uniqueId);
+
+            if (updateIndex > -1) {
+                state.entities[updateIndex].isBlocked = isBlocked;
+            }
         },
         [fetchOutgoingConnections.pending]: (state, action) => {
             state.status = 'loading';
         },
         [fetchOutgoingConnections.fulfilled]: (state, action) => {
             state.status = 'idle';
-            state.outgoingConnections = action.payload;
+            state.entities = action.payload;
         },
         [fetchOutgoingConnections.rejected]: (state, action) => {
             state.status = 'failed';
             state.error = action.error.message;
-        },
-        [removeOutgoingConnection.fulfilled]: (state, action) => {
-            if (action.payload) {
-                let uniqueId = action.payload;
-                let outgoingConnectionIndex = state.outgoingConnections.findIndex(outgoingConnection => outgoingConnection.uniqueId === uniqueId);
-
-                if (outgoingConnectionIndex > -1) {
-                    state.outgoingConnections.splice(outgoingConnectionIndex, 1);
-                }
-            }
-        },
-        [updateOutgoingConnection.fulfilled]: (state, action) => {
-            const updatedConnection = action.payload;
-            const existingConnection = state.outgoingConnections.find(outgoingConnection => outgoingConnection.uniqueId === updatedConnection.uniqueId);
-
-            if (existingConnection) {
-                Object.assign(existingConnection, updatedConnection);
-            }
         }
     }
 });
 
-export const { outgoingConnectionAdded } = outgoingConnectionsSlice.actions;
 export default outgoingConnectionsSlice.reducer;
-export const selectAllOutgoingConnections = state => state.outgoingConnections.outgoingConnections;
-export const selectOutgoingConnectionById = (state, outgoingConnectionId) => state.outgoingConnections.outgoingConnections[outgoingConnectionId];
+export const { outgoingConnectionAdded, outgoingConnectionRemoved, outgoingConnectionUpdated } = outgoingConnectionsSlice.actions;
+
+// Selectors
+export const selectAllOutgoingConnections = state => state.outgoingConnections.entities;

@@ -185,7 +185,7 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
             let { blockUserUniqueId } = req.body;
 
             if (currentUserUniqueId && blockUserUniqueId) {
-                let success = await databaseHelper.blockUser(currentUserUniqueId, blockUserUniqueId);
+                let success: Boolean = await databaseHelper.blockUser(currentUserUniqueId, blockUserUniqueId);
 
                 return res.status(200).json({ success });
             }
@@ -201,9 +201,9 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
                 let { connectedUserUniqueId } = req.body;
     
                 if (uniqueId && connectedUserUniqueId) {
-                    let result: Boolean = await databaseHelper.removeUserConnection(uniqueId, connectedUserUniqueId);
+                    let results: WebsiteBoilerplate.RemoveUserConnectionResults = await databaseHelper.removeUserConnection(uniqueId, connectedUserUniqueId);
     
-                    return res.status(200).json({success: result, message: ''});
+                    return res.status(200).json({success: results.success, results, message: ''});
                 }
             }
             catch (err) {
@@ -246,10 +246,10 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
     case 'updateConnection':
         try {
             let uniqueId = req.userId;
-            let { outgoingConnection } = req.body;
+            let { connection } = req.body;
 
-            if (uniqueId && outgoingConnection) {
-                let results: WebsiteBoilerplate.UpdateUserConnectionResults = await databaseHelper.updateUserConnection(uniqueId, outgoingConnection);
+            if (uniqueId && connection) {
+                let results: WebsiteBoilerplate.UpdateUserConnectionResults = await databaseHelper.updateUserConnection(uniqueId, connection);
 
                 return res.status(200).json({success: results.success, results, message: ''});
             }

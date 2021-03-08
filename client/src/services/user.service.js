@@ -217,9 +217,9 @@ export default class UserService {
         return {};
     }
 
-    static async updateOutgoingConnection(outgoingConnection) {
+    static async updateConnection(connection) {
         try {
-            let payload = {outgoingConnection};
+            let payload = {connection};
             let response = await axiosApi.post(Constants.API_PATH_USERS + '/updateConnection', payload);
 
             if (response.data?.success && response.data?.results) {
@@ -241,8 +241,8 @@ export default class UserService {
             
             let response = await axiosApi.post(Constants.API_PATH_USERS + '/removeConnection', payload);
 
-            if (response?.data) {
-                return response.data;
+            if (response.data?.success && response.data?.results) {
+                return response.data.results;
             }
         }
         catch (err) {
