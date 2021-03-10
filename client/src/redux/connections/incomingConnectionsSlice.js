@@ -2,7 +2,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import UserService from '../../services/user.service';
 
 const initialState = {
-    entities: [],
+    ids: [],
     status: 'idle',
     error: null
 };
@@ -18,56 +18,24 @@ const incomingConnectionsSlice = createSlice({
     initialState,
     reducers: {
         incomingConnectionAdded(state, action) {
-            state.entities.push(action.payload);
+            state.ids.push(action.payload);
         },
         incomingConnectionRemoved(state, action) {
-            let { uniqueId } = action.payload;
-            let removeIndex = state.entities.findIndex(entity => entity.uniqueId === uniqueId);
+            let uniqueId = action.payload;
+            let removeIndex = state.ids.findIndex(id => id === uniqueId);
 
             if (removeIndex > -1) {
-                state.entities.splice(removeIndex, 1);
-            }
-        },
-        incomingConnectionUpdated(state, action) {
-            let { uniqueId } = action.payload;
-            let updateIndex = state.entities.findIndex(entity => entity.uniqueId === uniqueId);
-
-            if (updateIndex > -1) {
-                state.entities[updateIndex] = action.payload;
+                state.ids.splice(removeIndex, 1);
             }
         }
     },
     extraReducers: {
-        'connections/connectionUpdatedLocal': (state, action) => {
-            let { uniqueId } = action.payload;
-            let connection = state.entities.find(entity => entity.uniqueId === uniqueId);
-
-            if (connection) {
-                Object.assign(connection, action.payload);
-            }
-        },
-        'connections/userBlocked': (state, action) => {
-            let { uniqueId, isBlocked } = action.payload;
-            let updateIndex = state.entities.findIndex(entity => entity.uniqueId === uniqueId);
-
-            if (updateIndex > -1) {
-                state.entities[updateIndex].isBlocked = isBlocked;
-            }
-        },
-        'connections/userUnblocked': (state, action) => {
-            let { uniqueId, isBlocked } = action.payload;
-            let updateIndex = state.entities.findIndex(entity => entity.uniqueId === uniqueId);
-
-            if (updateIndex > -1) {
-                state.entities[updateIndex].isBlocked = isBlocked;
-            }
-        },
         [fetchIncomingConnections.pending]: (state, action) => {
             state.status = 'loading';
         },
         [fetchIncomingConnections.fulfilled]: (state, action) => {
             state.status = 'idle';
-            state.entities = action.payload;
+            state.ids = action.payload;
         },
         [fetchIncomingConnections.rejected]: (state, action) => {
             state.status = 'failed';
@@ -77,7 +45,15 @@ const incomingConnectionsSlice = createSlice({
 });
 
 export default incomingConnectionsSlice.reducer;
-export const { incomingConnectionAdded, incomingConnectionRemoved, incomingConnectionUpdated } = incomingConnectionsSlice.actions;
+export const { incomingConnectionAdded, incomingConnectionRemoved } = incomingConnectionsSlice.actions;
 
 // Selectors
-export const selectAllIncomingConnections = state => state.incomingConnections.entities;
+export const selectAllIncomingConnections = state => {
+    let ids = state.connections.incomingConnections.ids;
+    if (ids.length) {
+        return ids.map(id => state.users.entities[id]);
+    }
+
+    return ids;
+};
+export const selectIncomingConnectionsStatus = state => state.connections.incomingConnections.status;

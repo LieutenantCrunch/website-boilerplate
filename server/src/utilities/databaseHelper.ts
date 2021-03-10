@@ -102,6 +102,7 @@ class DatabaseHelper {
                 },
                 attributes: [
                     'id',
+                    'allowPublicAccess',
                     'uniqueId'
                 ],
                 include: [
@@ -185,6 +186,7 @@ class DatabaseHelper {
 
                 if (isPublicUser) {
                     return {
+                        allowPublicAccess: true,
                         displayName: displayName ? displayName.displayName : '',
                         displayNameIndex: displayName ? displayName.displayNameIndex : -1,
                         isBlocked: false, /* This is a public user so they won't have been blocked */
@@ -207,6 +209,12 @@ class DatabaseHelper {
                     }
 
                     return {
+                        allowPublicAccess: registeredUser.allowPublicAccess,
+                        connectedToCurrentUser: (registeredUser.incomingConnections !== undefined && registeredUser.incomingConnections.length > 0),
+                        connectionTypes: {
+                            ...connectionTypes,
+                            ...userConnectionTypes
+                        },
                         displayName: displayName ? displayName.displayName : '',
                         displayNameIndex: displayName ? displayName.displayNameIndex : -1,
                         isBlocked: false, /* ##TODO */
@@ -214,12 +222,7 @@ class DatabaseHelper {
                         pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
                         pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
                         profileName,
-                        uniqueId: registeredUser.uniqueId,
-                        connectionTypes: {
-                            ...connectionTypes,
-                            ...userConnectionTypes
-                        },
-                        connectedToCurrentUser: (registeredUser.incomingConnections !== undefined && registeredUser.incomingConnections.length > 0)
+                        uniqueId: registeredUser.uniqueId
                     };
                 }
             }
@@ -982,12 +985,13 @@ class DatabaseHelper {
                                 connectionTypes = allConnectionTypes;
                             }
 
-                            userDetails.connectionTypes = connectionTypes;
                             userDetails.connectedToCurrentUser = true;
+                            userDetails.connectionTypes = connectionTypes;
+                            
                         }
                         else {
-                            userDetails.connectionTypes = allConnectionTypes;
                             userDetails.connectedToCurrentUser = false;
+                            userDetails.connectionTypes = allConnectionTypes;
                         }
 
                         let blockedUsers: UserInstance[] = await currentUser.getBlockedUsers({
@@ -1263,6 +1267,7 @@ class DatabaseHelper {
                                     model: db.User,
                                     as: 'connectedUser',
                                     attributes: [
+                                        'allowPublicAccess',
                                         'uniqueId',
                                         'profileName'
                                     ],
@@ -1322,6 +1327,7 @@ class DatabaseHelper {
                         }
 
                         return {
+                            allowPublicAccess: connectedUser!.allowPublicAccess,
                             connectedToCurrentUser: true, /* Outgoing connections are always connected to the user */
                             connectionTypes: {...connectionTypes, ...userConnectionTypes},
                             displayName: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayName : ''),
@@ -1368,6 +1374,7 @@ class DatabaseHelper {
                                     model: db.User,
                                     as: 'requestedUser',
                                     attributes: [
+                                        'allowPublicAccess',
                                         'uniqueId',
                                         'profileName'
                                     ],
@@ -1437,6 +1444,7 @@ class DatabaseHelper {
 
                         if (!connectionView.isMutual) {                          
                             results.push({
+                                allowPublicAccess: requestedUser.allowPublicAccess,
                                 connectedToCurrentUser: false, /* This list will only contain users who are not connected */
                                 connectionTypes: {...connectionTypes},    
                                 displayName: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
@@ -1639,8 +1647,9 @@ class DatabaseHelper {
                             actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.UPDATED,
                             success: true,
                             userConnection: {
-                                connectionTypes,
+                                allowPublicAccess: connectedUser.allowPublicAccess,
                                 connectedToCurrentUser: true, /* If we updated the connection, it means that they're connected to the user */
+                                connectionTypes,
                                 displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
                                 displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
                                 pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
@@ -1673,8 +1682,9 @@ class DatabaseHelper {
                             actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.ADDED,
                             success: true,
                             userConnection: {
-                                connectionTypes,
+                                allowPublicAccess: connectedUser.allowPublicAccess,
                                 connectedToCurrentUser: true, /* They are now connected to the current user */
+                                connectionTypes,
                                 displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
                                 displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
                                 pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),

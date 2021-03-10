@@ -6,7 +6,11 @@ import ProfilePicture from './ProfilePicture';
 import UserService from '../services/user.service';
 import ConnectionButton from './FormControls/ConnectionButton';
 
+import { upsertUser } from '../redux/users/usersSlice';
+import { useDispatch } from 'react-redux';
+
 function User (props) {
+    const dispatch = useDispatch();
     const { profileName } = useParams();
     const [state, updateState] = useState({
         profileInfo: null
@@ -21,7 +25,10 @@ function User (props) {
 
     useEffect(() => {
         UserService.getProfileInfo(profileName).then((profileInfo) => {
+            dispatch(upsertUser(profileInfo));
+
             let title = profileInfo.displayName;
+
             if (profileInfo.displayNameIndex > 0) {
                 title += `#${profileInfo.displayNameIndex}`;
             }
@@ -53,7 +60,7 @@ function User (props) {
         {
             props.checkForValidSession()
             ? <div className="card-footer text-right">
-                <ConnectionButton newConnection={state.profileInfo} />
+                <ConnectionButton uniqueId={state.profileInfo?.uniqueId} />
             </div>
             : <></>
         }

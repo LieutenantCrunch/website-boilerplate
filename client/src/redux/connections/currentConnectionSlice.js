@@ -17,4 +17,4 @@ export const currentConnectionSelected = connection => ({type: 'connections/curr
 export const currentConnectionDeselected = connection => ({type: 'connections/currentConnectionDeselected', payload: connection});
 
 // Selectors
-export const selectCurrentConnection = state => state.currentConnection;
+export const selectCurrentConnection = state => state.connections.currentConnection;

@@ -3,8 +3,8 @@ import classNames from 'classnames';
 import scrollIntoView from 'scroll-into-view-if-needed';
 import {isMobile} from 'react-device-detect';
 
-import * as Constants from '../constants/constants';
-import UserService from '../services/user.service';
+import * as Constants from '../../constants/constants';
+import UserService from '../../services/user.service';
 
 /**
  * A text input component for searching users. Has autocomplete functionality, mostly triggered by keyboard inputs. Exposes a method clearInput() for clearing the input from a parent component. To use, set a ref on this component and call clearInput() on the ref.

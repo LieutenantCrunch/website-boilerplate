@@ -4,8 +4,9 @@ import outgoingConnectionsReducer from './outgoingConnectionsSlice';
 import incomingConnectionsReducer from './incomingConnectionsSlice';
 import currentConnectionReducer from './currentConnectionSlice';
 
-import {outgoingConnectionAdded, outgoingConnectionRemoved, outgoingConnectionUpdated} from './outgoingConnectionsSlice';
+import {outgoingConnectionAdded, outgoingConnectionRemoved} from './outgoingConnectionsSlice';
 import {incomingConnectionAdded, incomingConnectionRemoved} from './incomingConnectionsSlice';
+import {selectUserById, upsertUser} from '../users/usersSlice';
 
 import * as Constants from '../../constants/constants';
 import UserService from '../../services/user.service';
@@ -16,22 +17,30 @@ const connectionsReducer = combineReducers({
     currentConnection: currentConnectionReducer
 });
 
-export const myMiddleware = storeApi => next => action => {
+// Utility functions
+const clearConnectionTypes = connectionTypes => {
+    if (connectionTypes) {
+        return Object.keys(connectionTypes).reduce((previousValue, currentKey) => ({
+            ...previousValue,
+            [currentKey]: false
+        }), {});
+    }
+
+    return connectionTypes;
+}
+
+export const connectionsMiddleware = storeApi => next => action => {
     let { dispatch, getState } = storeApi;
+    let state = getState();
 
     if (typeof action === 'function') {
         return action(dispatch, getState);
     }
     else {
         switch (action.type) {
-            case 'connections/connectionUpdated': {
+            case 'connections/postConnectionUpdate': {
                 let { uniqueId } = action.payload;
-                let state = getState();
-                let connection = selectConnectionById(state, uniqueId);
-
-                if (!connection) {
-                    connection = action.payload;
-                }
+                let connection = selectUserById(state, uniqueId);
 
                 if (connection) {
                     UserService.updateConnection(connection).then(response => {
@@ -40,13 +49,15 @@ export const myMiddleware = storeApi => next => action => {
                         switch (actionTaken) {
                             case Constants.UPDATE_USER_CONNECTION_ACTIONS.ADDED:
                                 // Add to outgoing
-                                dispatch(outgoingConnectionAdded(userConnection));
+                                dispatch(outgoingConnectionAdded(uniqueId));
                                 // Remove from incoming
-                                dispatch(incomingConnectionRemoved(userConnection));
+                                dispatch(incomingConnectionRemoved(uniqueId));
+                                // Update user record
+                                dispatch(upsertUser(userConnection));
                                 break;
                             case Constants.UPDATE_USER_CONNECTION_ACTIONS.UPDATED:
-                                // Update outgoing
-                                dispatch(outgoingConnectionUpdated(userConnection));
+                                // Update user record
+                                dispatch(upsertUser(userConnection));
                                 break;
                             case Constants.UPDATE_USER_CONNECTION_ACTIONS.NONE:
                             default:
@@ -59,32 +70,35 @@ export const myMiddleware = storeApi => next => action => {
 
                 break;
             }
-            case 'connections/connectionRemoved': {
+            case 'connections/postConnectionRemove': {
                 let { uniqueId } = action.payload;
-                let state = getState();
-                let connection = selectConnectionById(state, uniqueId);
-
-                if (!connection) {
-                    connection = action.payload;
-                }
+                let connection = selectUserById(state, uniqueId);
 
                 if (connection) {
                     UserService.removeOutgoingConnection(uniqueId).then(response => {
                         let { wasMutual } = response;
 
                         // Remove from outgoing
-                        dispatch(outgoingConnectionRemoved(connection));
+                        dispatch(outgoingConnectionRemoved(uniqueId));
 
-                        // Based on response, add to incoming, making sure isMutual is reset to false
+                        // Based on response, add to incoming
                         if (wasMutual) {
-                            let incomingConnection = {
-                                ...connection,
-                                connectedToCurrentUser: false,
-                                isMutual: false
-                            };
-
-                            dispatch(incomingConnectionAdded(incomingConnection));
+                            dispatch(incomingConnectionAdded(uniqueId));
                         }
+
+                        // Update user record, making sure connectedToCurrentUser and isMutual is reset to false
+                        let userUpdates = {
+                            uniqueId,
+                            connectedToCurrentUser: false,
+                            isMutual: false
+                        };
+
+                        // Reset all connectionTypes to false if they exist
+                        if (connection.connectionTypes) {
+                            userUpdates.connectionTypes = clearConnectionTypes(connection.connectionTypes);
+                        }
+
+                        dispatch(upsertUser(userUpdates));
                     }).catch(err => console.error(err.message));
                 }
 
@@ -100,20 +114,6 @@ export const myMiddleware = storeApi => next => action => {
 
 export default connectionsReducer;
 
-// Selectors
-export const selectConnectionById = (state, uniqueId) => {
-    let connection = state.outgoingConnections.entities.find(entity => entity.uniqueId === uniqueId);
-
-    if (!connection) {
-        connection = state.incomingConnections.entities.find(entity => entity.uniqueId === uniqueId);
-    }
-
-    return connection;
-};
-
 // Action Creators
-export const connectionUpdated = connection => ({type: 'connections/connectionUpdated', payload: connection});
-export const connectionRemoved = connection => ({type: 'connections/connectionRemoved', payload: connection});
-export const userBlocked = connection => ({type: 'connections/userBlocked', payload: connection});
-export const userUnblocked = connection => ({type: 'connections/userUnblocked', payload: connection});
-export const connectionUpdatedLocal = connection => ({type: 'connections/connectionUpdatedLocal', payload: connection});
+export const postConnectionUpdate = connection => ({type: 'connections/postConnectionUpdate', payload: connection});
+export const postConnectionRemove = connection => ({type: 'connections/postConnectionRemove', payload: connection});

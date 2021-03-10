@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-    connectionUpdated,
-    connectionRemoved,
-    selectConnectionById,
-    userBlocked,
-    userUnblocked,
-    connectionUpdatedLocal
+    postConnectionRemove,
+    postConnectionUpdate
 } from '../../redux/connections/connectionsSlice';
+
+import {
+    selectUserById,
+    upsertUser
+} from '../../redux/users/usersSlice';
 
 import classNames from 'classnames';
 import { usePopper } from 'react-popper';
@@ -17,13 +18,11 @@ import TwoClickButton from './TwoClickButton';
 import UserService from '../../services/user.service';
 
 const ConnectionButton = ({
-    newConnection, 
     uniqueId
 }) => {
     // Redux
     const dispatch = useDispatch();
-    const existingConnection = useSelector(state => selectConnectionById(state, uniqueId));
-    let connection = newConnection ? newConnection : existingConnection;
+    const user = useSelector(state => selectUserById(state, uniqueId));
 
     const CS_BLOCKED = -1;
     const CS_NOT_CONNECTED = 0;
@@ -41,16 +40,12 @@ const ConnectionButton = ({
     };
 
     const determineConnectionState = () => {
-        if (connection) {
-            if (connection.isBlocked) {
+        if (user) {
+            if (user.isBlocked) {
                 return CS_BLOCKED;
             }
-            else if (connection.connectionTypes !== undefined) {
-                let hasOneConnectionType = Object.values(connection.connectionTypes).find(element => element) || false;
-
-                if (hasOneConnectionType) {
-                    return CS_CONNECTED;
-                }
+            else if (user.connectedToCurrentUser === true) {
+                return CS_CONNECTED;
             }
         }
 
@@ -74,7 +69,7 @@ const ConnectionButton = ({
             ...prevState,
             connectionState: determineConnectionState()
         }));
-    }, [connection?.uniqueId]);
+    }, [user?.uniqueId, user?.connectedToCurrentUser, user?.isBlocked]);
 
     useEffect(() => {
         if (state.isDropdownOpen) {
@@ -97,10 +92,10 @@ const ConnectionButton = ({
 
     const handleBlockClick = (event) => {
         // Send block to server for uniqueId
-        UserService.blockUser(connection.uniqueId); // Might be nice to alert the user if this fails
+        UserService.blockUser(uniqueId); // Might be nice to alert the user if this fails
 
-        dispatch(userBlocked({
-            ...connection,
+        dispatch(upsertUser({
+            uniqueId,
             isBlocked: true
         }));
         
@@ -149,7 +144,7 @@ const ConnectionButton = ({
                     stateUpdates.connectionState = CS_CONNECTED;
 
                     // and send info to server
-                    let results = await dispatch(connectionUpdated(connection));
+                    let results = await dispatch(postConnectionUpdate(user));
                 }
                 else {
                     // Else, change state to CS_NOT_CONNECTED
@@ -159,7 +154,7 @@ const ConnectionButton = ({
                 break;
             case CS_CONNECTED:
                 // Send any connection type updates to the server
-                let results = await dispatch(connectionUpdated(connection));
+                let results = await dispatch(postConnectionUpdate(user));
 
                 // Hide the connection types tooltip if it's shown
                 stateUpdates.showConnectionTypesTooltip = false;
@@ -184,10 +179,10 @@ const ConnectionButton = ({
         switch (state.connectionState) {
             case CS_BLOCKED:
                 // Send unblock to server
-                UserService.unblockUser(connection.uniqueId); // Might be nice to alert the user if this fails
+                UserService.unblockUser(uniqueId); // Might be nice to alert the user if this fails
 
-                dispatch(userUnblocked({
-                    ...connection,
+                dispatch(upsertUser({
+                    uniqueId,
                     isBlocked: false
                 }));
 
@@ -205,7 +200,7 @@ const ConnectionButton = ({
                         stateUpdates.connectionState = CS_CONNECTED;
 
                         // and send info to server
-                        let results = await dispatch(connectionUpdated(connection));
+                        let results = await dispatch(postConnectionUpdate(user));
                     }
                     else {
                         // Else, change state to CS_NOT_CONNECTED
@@ -225,7 +220,7 @@ const ConnectionButton = ({
             case CS_CONNECTED:
                 if (state.isDropdownOpen) {
                     // Send any connection type updates to the server
-                    let results = await dispatch(connectionUpdated(connection));
+                    let results = await dispatch(postConnectionUpdate(user));
 
                     // Hide the connection types tooltip if it's shown
                     stateUpdates.showConnectionTypesTooltip = false;
@@ -275,21 +270,13 @@ const ConnectionButton = ({
                 showConnectionTypesTooltip: false
             }));
 
-            if (newConnection) {
-                connection.connectionTypes = {
-                    ...connection.connectionTypes,
+            dispatch(upsertUser({
+                uniqueId,
+                connectionTypes: {
+                    ...user.connectionTypes,
                     [name]: checked
-                };
-            }
-            else {
-                dispatch(connectionUpdatedLocal({
-                    ...connection,
-                    connectionTypes: {
-                        ...connection.connectionTypes,
-                        [name]: checked
-                    }
-                }));
-            }
+                }
+            }));
         }
 
         event.stopPropagation();
@@ -408,8 +395,8 @@ const ConnectionButton = ({
             case CS_BLOCKED:
                 return <></>;
             case CS_CONNECT_PENDING:
-                return connection?.connectionTypes
-                ? Object.entries(connection.connectionTypes).map(([connectionType, details]) => (
+                return user?.connectionTypes
+                ? Object.entries(user.connectionTypes).map(([connectionType, details]) => (
                     <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
                 ))
                 : <></>;
@@ -424,25 +411,23 @@ const ConnectionButton = ({
                                 firstClassName="btn-outline-danger" 
                                 secondClassName="btn-outline-dark" 
                                 progressClassName="bg-danger" 
-                                firstTooltip={`Remove your connection to ${connection?.displayName}#${connection?.displayNameIndex}`}
-                                secondTooltip={`Confirm you want to remove your connection to ${connection?.displayName}#${connection?.displayNameIndex}`}
+                                firstTooltip={`Remove your connection to ${user?.displayName}#${user?.displayNameIndex}`}
+                                secondTooltip={`Confirm you want to remove your connection to ${user?.displayName}#${user?.displayNameIndex}`}
                                 secondDuration={5} 
                                 onClick={(event) => {
-                                    clearConnectionTypes();
-
                                     updateState(prevState => ({
                                         ...prevState,
                                         connectionState: CS_NOT_CONNECTED,
                                         isDropdownOpen: false
                                     }));
 
-                                    dispatch(connectionRemoved(connection));
+                                    dispatch(postConnectionRemove(user));
                                 }} 
                             />
                         </li>
                         {
-                            connection?.connectionTypes
-                            ? Object.entries(connection.connectionTypes).map(([connectionType, details]) => (
+                            user?.connectionTypes
+                            ? Object.entries(user.connectionTypes).map(([connectionType, details]) => (
                                 <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
                             ))
                             : <></>
@@ -459,27 +444,8 @@ const ConnectionButton = ({
         }
     };
 
-    const clearConnectionTypes = () => {
-        if (newConnection) {
-            Object.keys(connection.connectionTypes).forEach((key) => {
-                connection.connectionTypes[key] = false;
-            });
-        }
-        else if (connection?.connectionTypes) {
-            let clearedConnectionTypes = Object.keys(connection.connectionTypes).reduce((previousValue, currentKey) => ({
-                ...previousValue,
-                [currentKey]: false
-            }), {});
-            
-            dispatch(connectionUpdatedLocal({
-                ...connection,
-                connectionTypes: clearedConnectionTypes
-            }));
-        }
-    };
-
     const getSelectedConnectionTypeCount = () => {
-        let selectedCount = Object.values(connection?.connectionTypes).reduce((total, current) => {
+        let selectedCount = Object.values(user?.connectionTypes).reduce((total, current) => {
             return total + (current ? 1 : 0);
         }, 0);
 
@@ -492,7 +458,7 @@ const ConnectionButton = ({
             // That way, when they close the popup, it won't try to add the connection and will flip back to not connected
             return true;
         }
-        else if (connection?.connectionTypes !== undefined) {
+        else if (user?.connectionTypes !== undefined) {
             return getSelectedConnectionTypeCount() > 1;
         }
 

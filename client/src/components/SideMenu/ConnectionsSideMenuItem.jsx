@@ -8,24 +8,26 @@ import YesNoMessageBox from '../MessageBoxes/YesNoMessageBox';
 
 import { 
     fetchOutgoingConnections, 
-    selectAllOutgoingConnections
+    selectAllOutgoingConnections,
+    selectOutgoingConnectionsStatus
 } from '../../redux/connections/outgoingConnectionsSlice';
 
 import {
     fetchIncomingConnections,
-    selectAllIncomingConnections
+    selectAllIncomingConnections,
+    selectIncomingConnectionsStatus
 } from '../../redux/connections/incomingConnectionsSlice';
 
 import {
-    connectionRemoved,
-    connectionUpdated
+    postConnectionRemove,
+    postConnectionUpdate
 } from '../../redux/connections/connectionsSlice';
 
 export default function ConnectionsSideMenuItem(props) {
     const dispatch = useDispatch();
-    const outgoingConnectionsStatus = useSelector(state => state.outgoingConnections.status);
+    const outgoingConnectionsStatus = useSelector(selectOutgoingConnectionsStatus);
     const outgoingConnections = useSelector(selectAllOutgoingConnections);
-    const incomingConnectionsStatus = useSelector(state => state.incomingConnections.status);
+    const incomingConnectionsStatus = useSelector(selectIncomingConnectionsStatus);
     const incomingConnections = useSelector(selectAllIncomingConnections);
 
     const [state, updateState] = useState({
@@ -143,7 +145,7 @@ export default function ConnectionsSideMenuItem(props) {
     }
 
     const handleAddedConnection = async (newConnection) => {
-        const result = await dispatch(connectionUpdated(newConnection));
+        const result = await dispatch(postConnectionUpdate(newConnection));
     };
 
     const saveSelectedConnection = async () => {
@@ -153,7 +155,7 @@ export default function ConnectionsSideMenuItem(props) {
             // This is going to add the connection to the list of outgoing connections
             // If it was an incoming connection and they updated it, this isn't necessarily ideal since maybe they turned off all connection types or wanted to remove the connection
 
-            let results = await dispatch(connectionUpdated(state.selectedConnection));
+            let results = await dispatch(postConnectionUpdate(state.selectedConnection));
 
             updateState(prevState => ({
                 ...prevState,
@@ -163,7 +165,7 @@ export default function ConnectionsSideMenuItem(props) {
     };
 
     const removeSelectedConnection = async () => {
-        let success = await dispatch(connectionRemoved(state.selectedConnection));
+        let success = await dispatch(postConnectionRemove(state.selectedConnection));
 
         // Should alert them that the removal failed
         updateState(prevState => ({

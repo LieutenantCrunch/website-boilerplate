@@ -1,10 +1,14 @@
 import React, {useState, useRef, useEffect} from 'react';
 import classNames from 'classnames';
-import UserSearch from '../UserSearch';
+import UserSearch from '../FormControls/UserSearch';
 import UserService from '../../services/user.service';
 import ConnectionButton from '../FormControls/ConnectionButton';
 
+import { upsertUser } from '../../redux/users/usersSlice';
+import { useDispatch } from 'react-redux';
+
 export default function AddConnectionDialog (props) {
+    const dispatch = useDispatch();
     const [state, updateState] = useState({
         selectedUserDetails: null
     });
@@ -15,6 +19,10 @@ export default function AddConnectionDialog (props) {
 
         if (selectedUserId !== '') {
             selectedUserDetails = await UserService.getUserDetails(selectedUserId);
+
+            if (selectedUserDetails) {
+                dispatch(upsertUser(selectedUserDetails));
+            }
         }
 
         updateState(prevState => {
@@ -61,7 +69,7 @@ export default function AddConnectionDialog (props) {
                                 <a href={`/u/${state.selectedUserDetails?.profileName}`}>View Profile</a>
                             </small>
                             <span style={{display: state.selectedUserDetails ? '' : 'none'}}>
-                                <ConnectionButton newConnection={state.selectedUserDetails} />
+                                <ConnectionButton uniqueId={state.selectedUserDetails?.uniqueId} />
                             </span>
                         </div>
                     </div>
