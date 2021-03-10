@@ -22,6 +22,7 @@ import {
     postConnectionRemove,
     postConnectionUpdate
 } from '../../redux/connections/connectionsSlice';
+import { selectUserById } from '../../redux/users/usersSlice';
 
 export default function ConnectionsSideMenuItem(props) {
     const dispatch = useDispatch();
@@ -33,9 +34,7 @@ export default function ConnectionsSideMenuItem(props) {
     const [state, updateState] = useState({
         expanded: false,
         incomingExpanded: false,
-        selectedConnection: null,
-        selectedConnectionUpdated: false,
-        selectedConnectionIsIncoming: false,
+        selectedConnectionId: null,
         removeMessageTitle: 'Remove Connection Confirmation',
         removeMessageMessage: 'Are you sure you want to remove this connection?',
         removeMessageSubtext: 'The other user will not be notified but will be able to see that the connection is no longer mutual.',
@@ -58,14 +57,6 @@ export default function ConnectionsSideMenuItem(props) {
 
         return yesNoMessageBox;
     };
-
-    const updateSelectedConnection = (selectedConnection) => {
-        updateState(prevState => ({
-            ...prevState,
-            selectedConnection,
-            selectedConnectionUpdated: true
-        }));
-    }
 
     const toggleExpanded = async (event) => {
         if (event.target && event.target.className.startsWith('sideMenuItem')) {
@@ -91,48 +82,31 @@ export default function ConnectionsSideMenuItem(props) {
         }
     }
 
-    const handleConnectionClick = (event, connections, isIncoming) => {
+    const handleConnectionClick = (event) => {
         let clickedButton = event.target;
 
         if (clickedButton.tagName === 'SMALL') {
             clickedButton = clickedButton.parentNode;
         }
 
-        let selectedConnection = connections.find(connection => connection.uniqueId === clickedButton.dataset.connection);
+        let selectedConnectionId = clickedButton.dataset.connection;
         
-        // Make a copy of the connection to work on
-        selectedConnection = {
-            ...selectedConnection,
-            connectionTypes: {
-                ...selectedConnection.connectionTypes
-            }
-        };
-
         updateState(prevState => ({
             ...prevState, 
-            selectedConnection, 
-            selectedConnectionUpdated: false,
-            selectedConnectionIsIncoming: isIncoming
+            selectedConnectionId
         }));
-    };
-
-    const handleOutgoingConnectionClick = (event) => {
-        handleConnectionClick(event, outgoingConnections, false);
-    };
-
-    const handleIncomingConnectionClick = (event) => {
-        handleConnectionClick(event, incomingConnections, true);
     };
 
     const handleRemoveConnectionClick = (event) => {
         let clickedButton = event.target;
 
-        let selectedConnection = outgoingConnections.find(outgoingConnection => outgoingConnection.uniqueId === clickedButton.dataset.connection);
+        let selectedConnectionId = clickedButton.dataset.connection;
+        let user = selectUserById(selectedConnectionId);
       
         updateState(prevState => ({
-            ...prevState
-            , selectedConnection
-            , removeMessageMessage: `Are you sure you want to remove your connection to ${selectedConnection.displayName}#${selectedConnection.displayNameIndex}?`
+            ...prevState,
+            selectedConnectionId,
+            removeMessageMessage: `Are you sure you want to remove your connection to ${user.displayName}#${user.displayNameIndex}?`
         }));
 
         let yesNoMessageBoxInstance = getYesNoMessageBox();
@@ -148,29 +122,13 @@ export default function ConnectionsSideMenuItem(props) {
         const result = await dispatch(postConnectionUpdate(newConnection));
     };
 
-    const saveSelectedConnection = async () => {
-        let updateConnection = state.selectedConnectionUpdated;
-
-        if (updateConnection) {
-            // This is going to add the connection to the list of outgoing connections
-            // If it was an incoming connection and they updated it, this isn't necessarily ideal since maybe they turned off all connection types or wanted to remove the connection
-
-            let results = await dispatch(postConnectionUpdate(state.selectedConnection));
-
-            updateState(prevState => ({
-                ...prevState,
-                selectedConnectionUpdated: false
-            }))
-        }
-    };
-
     const removeSelectedConnection = async () => {
-        let success = await dispatch(postConnectionRemove(state.selectedConnection));
+        let success = await dispatch(postConnectionRemove(state.selectedConnectionId));
 
         // Should alert them that the removal failed
         updateState(prevState => ({
             ...prevState,
-            selectedConnection: null
+            selectedConnectionId: null
         }));
     };
 
@@ -183,7 +141,7 @@ export default function ConnectionsSideMenuItem(props) {
             case 'idle':
                 return outgoingConnections && outgoingConnections.length > 0
                     ? outgoingConnections.map(outgoingConnection => (
-                        <ConnectionListItem key={outgoingConnection.uniqueId} connection={outgoingConnection} handleConnectionClick={handleOutgoingConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
+                        <ConnectionListItem key={outgoingConnection.uniqueId} connection={outgoingConnection} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
                         )
                     )
                     : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>
@@ -206,7 +164,7 @@ export default function ConnectionsSideMenuItem(props) {
             case 'idle':
                 return incomingConnections && incomingConnections.length > 0
                         ? incomingConnections.map(incomingConnection => (
-                                <ConnectionListItem key={incomingConnection.uniqueId} connection={incomingConnection} handleConnectionClick={handleIncomingConnectionClick} />
+                                <ConnectionListItem key={incomingConnection.uniqueId} connection={incomingConnection} handleConnectionClick={handleConnectionClick} />
                             )
                         )
                         : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>
@@ -288,7 +246,7 @@ export default function ConnectionsSideMenuItem(props) {
             </div>
         </div>
 
-        <ConnectionPreviewDialog id="connectionDetails" userDetails={props.userDetails} connection={state.selectedConnection} updateConnection={updateSelectedConnection} saveConnection={saveSelectedConnection} removeConnection={removeSelectedConnection} isIncoming={state.selectedConnectionIsIncoming} />
+        <ConnectionPreviewDialog id="connectionDetails" userDetails={props.userDetails} connectionId={state.selectedConnectionId} />
         <AddConnectionDialog id="addConnection" appState={props.appState} onAddedConnection={handleAddedConnection} />
         <YesNoMessageBox ref={yesNoMessageBoxRef}
                 caption={state.removeMessageTitle} 

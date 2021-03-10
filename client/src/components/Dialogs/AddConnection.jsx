@@ -4,36 +4,29 @@ import UserSearch from '../FormControls/UserSearch';
 import UserService from '../../services/user.service';
 import ConnectionButton from '../FormControls/ConnectionButton';
 
-import { upsertUser } from '../../redux/users/usersSlice';
-import { useDispatch } from 'react-redux';
+import { selectUserById, upsertUser } from '../../redux/users/usersSlice';
+import { useDispatch, useSelector } from 'react-redux';
 
 export default function AddConnectionDialog (props) {
     const dispatch = useDispatch();
-    const [state, updateState] = useState({
-        selectedUserDetails: null
-    });
+    const [selectedUserId, setSelectedUserId] = useState(null);
     const userSearch = useRef();
+    const user = useSelector(state => selectUserById(state, selectedUserId));
 
     const onUserSelect = async (selectedUserId) => {
-        let selectedUserDetails = null;
-
         if (selectedUserId !== '') {
-            selectedUserDetails = await UserService.getUserDetails(selectedUserId);
+            let selectedUserDetails = await UserService.getUserDetails(selectedUserId);
 
             if (selectedUserDetails) {
                 dispatch(upsertUser(selectedUserDetails));
             }
         }
 
-        updateState(prevState => {
-            return {...prevState, selectedUserDetails};
-        });
+        setSelectedUserId(selectedUserId);
     }
 
     const clearSelectedUser = (event) => {
-        updateState(prevState => {
-            return {...prevState, selectedUserDetails: null};
-        });
+        setSelectedUserId(null);
 
         userSearch.current.clearInput();
     };
@@ -51,25 +44,25 @@ export default function AddConnectionDialog (props) {
                             <UserSearch ref={userSearch} className="w-100" onUserSelect={onUserSelect} selectAllOnFocus={true} excludeConnections={true} />
                         </div>
                         <div className="modal-body card-body" style={{
-                                display: state.selectedUserDetails ? '' : 'none'
+                                display: selectedUserId ? '' : 'none'
                             }}
                         >
                             <p className="text-center">
-                                <img src={state.selectedUserDetails?.pfp} className="border rounded-circle w-25" />
+                                <img src={user?.pfp} className="border rounded-circle w-25" />
                             </p>
                             <div className="text-center">
-                                <h5 className="text-center">{state.selectedUserDetails?.displayName}<small className="text-muted">#{state.selectedUserDetails?.displayNameIndex}</small></h5>
+                                <h5 className="text-center">{user?.displayName}<small className="text-muted">#{user?.displayNameIndex}</small></h5>
                             </div>
                         </div>
                         <div className="modal-footer card-footer justify-content-end">
                             <small style={{
-                                display: state.selectedUserDetails ? '' : 'none',
+                                display: selectedUserId ? '' : 'none',
                                 marginRight: 'auto'
                             }}>
-                                <a href={`/u/${state.selectedUserDetails?.profileName}`}>View Profile</a>
+                                <a href={`/u/${user?.profileName}`}>View Profile</a>
                             </small>
-                            <span style={{display: state.selectedUserDetails ? '' : 'none'}}>
-                                <ConnectionButton uniqueId={state.selectedUserDetails?.uniqueId} />
+                            <span style={{display: selectedUserId ? '' : 'none'}}>
+                                <ConnectionButton uniqueId={selectedUserId} />
                             </span>
                         </div>
                     </div>
