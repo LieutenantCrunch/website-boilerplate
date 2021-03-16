@@ -6,6 +6,7 @@ export const API_PATH_USERS = 'users/';
 
 // Users subpaths
 export const API_PATH_PFP = 'pfp/';
+export const API_PATH_PUBLIC = 'public/';
 
 // User Search Status
 export const USER_SEARCH_STATUS = Object.freeze({
@@ -21,4 +22,10 @@ export const USER_SEARCH_RESULTS = Object.freeze({
 export const USER_SEARCH_TRIGGER = Object.freeze({
     KEYBOARD: 0,
     MOUSE: 1
+});
+
+export const UPDATE_USER_CONNECTION_ACTIONS = Object.freeze({
+    NONE: 0,
+    ADDED: 1,
+    UPDATED: 2
 });

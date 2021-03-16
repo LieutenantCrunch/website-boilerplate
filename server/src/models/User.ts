@@ -1,17 +1,19 @@
-import { DataTypes, Model, ModelCtor, Optional, Sequelize, HasManyGetAssociationsMixin, HasManyAddAssociationMixin, HasManyRemoveAssociationMixin, BelongsToManyGetAssociationsMixin, BelongsToManyAddAssociationMixin, BelongsToManyAddAssociationsMixin, BelongsToManyRemoveAssociationMixin, BelongsToManyRemoveAssociationsMixin, HasManyCreateAssociationMixin, HasManyRemoveAssociationsMixin, HasManyAddAssociationsMixin } from 'sequelize';
+import { DataTypes, Model, ModelCtor, Optional, Sequelize, HasManyGetAssociationsMixin, HasManyAddAssociationMixin, HasManyRemoveAssociationMixin, BelongsToManyGetAssociationsMixin, BelongsToManyAddAssociationMixin, BelongsToManyAddAssociationsMixin, BelongsToManyRemoveAssociationMixin, BelongsToManyRemoveAssociationsMixin, HasManyCreateAssociationMixin, HasManyRemoveAssociationsMixin, HasManyAddAssociationsMixin, BelongsToManyHasAssociationMixin } from 'sequelize';
 import { SequelizeAttributes } from '../typings/SequelizeAttributes';
-import { DisplayNameAttributes, DisplayNameInstance } from './DisplayName';
-import { PasswordResetTokenAttributes, PasswordResetTokenInstance } from './PasswordResetToken';
-import { ProfilePictureAttributes, ProfilePictureInstance } from './ProfilePicture';
-import { RoleAttributes, RoleInstance } from './Role';
-import { UserConnectionAttributes, UserConnectionInstance } from './UserConnection';
-import { UserJWTAttributes, UserJWTInstance } from './UserJWT';
+import { DisplayNameInstance } from './DisplayName';
+import { PasswordResetTokenInstance } from './PasswordResetToken';
+import { ProfilePictureInstance } from './ProfilePicture';
+import { RoleInstance } from './Role';
+import { UserConnectionInstance } from './UserConnection';
+import { UserJWTInstance } from './UserJWT';
 
 export interface UserAttributes {
     id?: number;
     email: string;
     passwordHash: string;
     uniqueId: string;
+    profileName: string;
+    allowPublicAccess?: Boolean;
     profilePictures?: ProfilePictureInstance[];
     activeJWTs?: UserJWTInstance[];
     inactiveJWTs?: UserJWTInstance[];
@@ -20,9 +22,12 @@ export interface UserAttributes {
     roles?: RoleInstance[];
     outgoingConnections?: UserConnectionInstance[];
     incomingConnections?: UserConnectionInstance[];
+    blockedUsers?: UserInstance[];
+    blockingUsers?: UserInstance[];
 };
 
-export interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {};
+export interface UserCreationAttributes extends Optional<UserAttributes, 'id'>, 
+    Optional<UserAttributes, 'allowPublicAccess'> {};
 
 export interface UserInstance extends Model<UserAttributes, UserCreationAttributes>, UserAttributes {
     getProfilePictures: HasManyGetAssociationsMixin<ProfilePictureInstance>;
@@ -48,6 +53,7 @@ export interface UserInstance extends Model<UserAttributes, UserCreationAttribut
     addDisplayName: HasManyAddAssociationMixin<DisplayNameInstance, DisplayNameInstance['id']>;
 
     getRoles: BelongsToManyGetAssociationsMixin<RoleInstance>;
+    hasRole: BelongsToManyHasAssociationMixin<RoleInstance, RoleInstance['id']>;
     addRole: BelongsToManyAddAssociationMixin<RoleInstance, RoleInstance['id']>;
     addRoles: BelongsToManyAddAssociationsMixin<RoleInstance, RoleInstance['id']>;
     removeRole: BelongsToManyRemoveAssociationMixin<RoleInstance, RoleInstance['id']>;
@@ -58,6 +64,12 @@ export interface UserInstance extends Model<UserAttributes, UserCreationAttribut
 
     getIncomingConnections: HasManyGetAssociationsMixin<UserConnectionInstance>;
     addIncomingConnection: HasManyAddAssociationMixin<UserConnectionInstance, UserConnectionInstance['id']>;
+
+    getBlockedUsers: BelongsToManyGetAssociationsMixin<UserInstance>;
+    addBlockedUser: BelongsToManyAddAssociationMixin<UserInstance, UserInstance['id']>;
+    removeBlockedUser: BelongsToManyRemoveAssociationMixin<UserInstance, UserInstance['id']>;
+
+    getBlockingUsers: BelongsToManyGetAssociationsMixin<UserInstance>;
 };
 
 export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
@@ -80,6 +92,16 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
             type: DataTypes.UUIDV4,
             field: 'unique_id',
             unique: true
+        },
+        profileName: {
+            type: DataTypes.STRING(20),
+            field: 'profile_name',
+            unique: true
+        },
+        allowPublicAccess: {
+            type: DataTypes.TINYINT,
+            field: 'allow_public_access',
+            defaultValue: 0
         }
     };
 
@@ -151,6 +173,24 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
             foreignKey: {
                 name: 'connectedUserId',
                 field: 'connected_user_id'
+            }
+        });
+
+        User.belongsToMany(models.User, {
+            as: 'blockedUsers',
+            through: models.UserBlock,
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
+            }
+        });
+
+        User.belongsToMany(models.User, {
+            as: 'blockingUsers',
+            through: models.UserBlock,
+            foreignKey: {
+                name: 'blockedUserId',
+                field: 'blocked_user_id'
             }
         });
     };

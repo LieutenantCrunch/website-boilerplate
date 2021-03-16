@@ -2,13 +2,20 @@
 import React, {useState} from 'react';
 import { withRouter } from 'react-router-dom';
 import classNames from 'classnames';
+import zxcvbn from 'zxcvbn';
 
 import * as Hooks from '../../hooks/hooks';
 import AuthService from '../../services/auth.service';
 
+import { HtmlTooltip } from '../HtmlTooltip';
+
 function RegistrationForm(props) {
     const [state, setState] = useState({password: '', confirmPassword: ''});
-    const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {email: '', displayName: ''});
+    const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {
+        email: '', 
+        displayName: '',
+        profileName: ''
+    });
     const setStatusMessage = props.setStatusMessage;
 
     const handleSessionStateChange = (e) => {
@@ -39,8 +46,11 @@ function RegistrationForm(props) {
         if (!sessionState.email.length) {
             setStatusMessage({type: 'danger', message: 'You must enter an email'});
         }
-        if (!sessionState.displayName.length || sessionState.displayName.indexOf('#') > -1) {
+        else if (!sessionState.displayName.length || sessionState.displayName.indexOf('#') > -1) {
             setStatusMessage({type: 'danger', message: 'You must enter a display name and it must not contain #. Note that it does not have to be unique.'});
+        }
+        else if (!sessionState.profileName.length || !props.appConstants.ProfileNameRegex.test(sessionState.profileName)) {
+            setStatusMessage({type: 'danger', message: 'You must enter a profile name, it must contain at least three alphanumeric characters, and may only contain the following symbols: - | . | _ | ~.'});
         }
         else if (state.password === state.confirmPassword) {
             if (!state.password.length) {
@@ -82,6 +92,48 @@ function RegistrationForm(props) {
         props.history.push('/login')
     };
 
+    const getPasswordStrength = () => {
+        let { password } = state;
+        return zxcvbn(password).score;
+    };
+
+    const getPasswordStrengthClass = () => {
+        switch (getPasswordStrength()) {
+            case 4:
+                return ''; /* Default is blue */
+            case 3:
+                return 'bg-success'
+            case 2:
+                return 'bg-warning'
+            case 1:
+            case 0:
+            default:
+                return 'bg-danger';
+        };
+    };
+
+    const getPasswordStrengthWidth = () => {
+        const strength = getPasswordStrength();
+
+        return `${strength * 25}${strength > 0 ? '%' : ''}`;
+    };
+
+    const getPasswordStrengthDescription = () => {
+        switch (getPasswordStrength()) {
+            case 4:
+                return 'Excellent';
+            case 3:
+                return 'Good'
+            case 2:
+                return 'Fair'
+            case 1:
+                return 'Weak'
+            case 0:
+            default:
+                return 'Very Weak';
+        };
+    };
+
     const statusMessageType = props.statusMessage.type;
 
     return (
@@ -115,27 +167,108 @@ function RegistrationForm(props) {
                     </div>
                     <div className="mb-3 text-left">
                         <label htmlFor="displayName">Display Name</label>
-                        <input id="displayName"
-                            type="text"
-                            required
-                            className="form-control"
-                            placeholder="Enter display name"
-                            aria-describedby="displayNameHelp"
-                            value={sessionState.displayName || ''}
-                            onChange={handleSessionStateChange}
-                        />
-                        <small id="displayNameHelp" className="form-text text-muted">This is the name other users will see.</small>
+                        <HtmlTooltip title={
+                                <>
+                                    <b>Requirements</b>
+                                    <ul>
+                                        <li>Cannot contain '#' (pound/hash)</li>
+                                        <li>Does not have to be unique</li>
+                                        <li>Can only be changed {props.appConstants.DisplayNameChangeDays === 1 ? 'once a day' : `every ${props.appConstants.DisplayNameChangeDays} days`}</li>
+                                    </ul>
+                                </>
+                            }
+                            placement="bottom-start"
+                            enterDelay={500}
+                            interactive
+                            disableHoverListener
+                            fontWeight='normal'
+                        >
+                            <input id="displayName"
+                                type="text"
+                                required
+                                className="form-control"
+                                placeholder="Enter display name"
+                                aria-describedby="displayNameHelp"
+                                value={sessionState.displayName || ''}
+                                onChange={handleSessionStateChange}
+                            />
+                        </HtmlTooltip>
+                        <small id="displayNameHelp" className="form-text text-muted">This is the name other users will see.  It will be followed by a unique id number unless your account is verified.</small>
+                    </div>
+                    <div className="mb-3 text-left">
+                        <label htmlFor="profileName">Profile Name</label>
+                        <HtmlTooltip title={
+                                <>
+                                    <b>Requirements</b>
+                                    <ul>
+                                        <li>Should not be the same as your email</li>
+                                        <li>20 characters or less</li>
+                                        <li>Can only contain the following:
+                                            <ul>
+                                                <li>a-z</li>
+                                                <li>0-9</li>
+                                                <li>. (dot)</li>
+                                                <li>- (en dash)</li>
+                                                <li>_ (underscore)</li>
+                                                <li>~ (tilde)</li>
+                                            </ul>
+                                        </li>
+                                        <li>Must be unique</li>
+                                    </ul>
+                                </>
+                            }
+                            placement="bottom-start"
+                            TransitionComponent={Zoom}
+                            enterDelay={500}
+                            interactive
+                            disableHoverListener
+                            fontWeight='normal'
+                        >
+                            <input id="profileName"
+                                type="text"
+                                required
+                                className="form-control"
+                                placeholder="Enter profile name"
+                                aria-describedby="profileNameHelp"
+                                value={sessionState.profileName || ''}
+                                onChange={handleSessionStateChange}
+                            />
+                        </HtmlTooltip>
+                        <small id="profileNameHelp" className="form-text text-muted">
+                            This will be the URL to your profile, e.g., {`${props.appConstants.URLs && props.appConstants.URLs.BASE_USERS_URL ? props.appConstants.URLs.BASE_USERS_URL : 'https://this-site.com/' }yourProfileName`}. You will not be able to change it once it is set, so choose it carefully.&nbsp;
+                            <HtmlTooltip title={
+                                    <>
+                                        We reserve the right to change your profile name at a future date if we determine you are trying to impersonate an individual or business.
+                                    </>
+                                }
+                                TransitionComponent={Zoom}
+                                enterDelay={500}
+                                arrow
+                                interactive
+                                color='rgb(255,0,0)'
+                            >
+                                <small>(<span className="text-primary text-decoration-underline" style={{cursor: 'help'}}>Note</span>)</small>
+                            </HtmlTooltip>
+                        </small>
                     </div>
                     <div className="mb-3 text-left">
                         <label htmlFor="password">Password</label>
                         <input id="password"
                             type="password"
                             required
-                            className="form-control"
+                            className="form-control mb-1"
                             placeholder="Password"
                             value={state.password || ''}
                             onChange={handleStateChange}
                         />
+                        <div style={{display: state.password ? '' : 'none'}}>
+                            <div className="progress">
+                                <div className={classNames('progress-bar bg-gradient', getPasswordStrengthClass())} role="progressbar" style={{width: getPasswordStrengthWidth()}} aria-valuenow={getPasswordStrength()} aria-valuemin="0" aria-valuemax="4"></div>
+                            </div>
+                            <p>
+                                <b>Strength:</b> {getPasswordStrengthDescription()}
+                            </p>
+                        </div>
                     </div>
                     <div className="mb-3 text-left">
                         <label htmlFor="confirmPassword">Confirm Password</label>
@@ -146,6 +279,9 @@ function RegistrationForm(props) {
                             placeholder="Confirm Password"
                             value={state.confirmPassword || ''}
                             onChange={handleStateChange}
+                            style={{
+                                backgroundColor: state.password === state.confirmPassword ? 'rgb(255,255,255)' : 'rgba(220,53,69,0.5)'
+                            }}
                         />
                     </div>
                     <button type="submit"

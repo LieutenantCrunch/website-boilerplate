@@ -8,9 +8,11 @@ export interface UserConnectionViewAttributes {
     requestedUserId: number;
     connectedUserId: number;
     isMutual: Boolean;
+    mutualConnectionId?: number;
     requestedUser?: UserInstance;
     connectedUser?: UserInstance;
     userConnection?: UserConnectionInstance;
+    mutualConnection?: UserConnectionInstance;
 };
 
 export interface UserConnectionViewInstance extends Model<UserConnectionViewAttributes>, UserConnectionViewAttributes {
@@ -19,6 +21,8 @@ export interface UserConnectionViewInstance extends Model<UserConnectionViewAttr
     getConnectedUser: BelongsToGetAssociationMixin<UserInstance>;
 
     getUserConnection: BelongsToGetAssociationMixin<UserConnectionInstance>;
+
+    getMutualConnection: BelongsToGetAssociationMixin<UserConnectionInstance>;
 };
 
 export const UserConnectionViewFactory = (sequelize: Sequelize): ModelCtor<UserConnectionViewInstance> => {
@@ -39,6 +43,10 @@ export const UserConnectionViewFactory = (sequelize: Sequelize): ModelCtor<UserC
         isMutual: {
             type: DataTypes.TINYINT,
             field: 'is_mutual'
+        },
+        mutualConnectionId: {
+            type: DataTypes.INTEGER,
+            field: 'mutual_connection_id'
         }
     };
 
@@ -69,6 +77,14 @@ export const UserConnectionViewFactory = (sequelize: Sequelize): ModelCtor<UserC
             foreignKey: {
                 name: 'id',
                 field: 'id'
+            }
+        });
+
+        UserConnectionView.belongsTo(models.UserConnection, {
+            as: 'mutualConnection', 
+            foreignKey: {
+                name: 'mutualConnectionId',
+                field: 'mutual_connection_id'
             }
         });
     };

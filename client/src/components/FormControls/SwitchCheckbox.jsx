@@ -9,6 +9,7 @@ const SwitchCheckbox = ({ label, isChecked, onSwitchChanged}) => (
                 name={label} 
                 checked={isChecked} 
                 onChange={onSwitchChanged}
+                style={{cursor: 'pointer'}}
             />
             {label}
         </label>

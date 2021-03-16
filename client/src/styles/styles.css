@@ -200,7 +200,7 @@ body {
 }
 
 .sideMenuItem:hover::after {
-    content: url('i/s/expand-right.png');
+    content: url('/i/s/expand-right.png');
     position: absolute;
     right: -12px;
 }
@@ -250,7 +250,7 @@ body {
 }
 
 .sideMenuItemIcon {
-    background-image: url('i/s/connections.png');
+    background-image: url('/i/s/connections.png');
     background-repeat: no-repeat;
     background-size: 16px 16px;
     margin: 2px;
@@ -266,7 +266,7 @@ body {
 }
 
 .sideMenuItemExpanded .sideMenuItemTab:hover::after {
-    content: url('i/s/collapse-left.png');
+    content: url('/i/s/collapse-left.png');
     position: relative;
     right: -11px;
 }

@@ -2,7 +2,7 @@ import React, {useState, useRef} from 'react';
 import AdminHeader from './AdminHeader';
 import {BrowserRouter as Router} from 'react-router-dom';
 import UserService from '../services/user.service';
-import UserSearch from './UserSearch';
+import UserSearch from './FormControls/UserSearch';
 
 export default function AdminPage() {
     const [title, setTitle] = useState('Admin Panel');

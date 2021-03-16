@@ -1,36 +1,42 @@
 declare namespace WebsiteBoilerplate {
     export interface UserDetails {
-        email?: string,
-        displayName: string,
-        displayNameIndex: number,
-        pfp: string,
-        roles: string[],
-        uniqueId: string,
-        connectionTypes?: UserConnectionTypeDictionary
+        allowPublicAccess?: Boolean;
+        connectedToCurrentUser?: Boolean;
+        connectionTypes?: UserConnectionTypeDictionary;
+        email?: string;
+        displayName: string;
+        displayNameIndex: number;
+        isBlocked: Boolean;
+        isMutual?: Boolean;
+        pfp: string;
+        pfpSmall: string;
+        profileName: string;
+        roles?: string[];
+        uniqueId: string;
     }
 
     export interface UserSearchResults {
-        currentPage: number,
-        total: number,
-        users: {
-            displayName: string,
-            displayNameIndex: number,
-            uniqueId: string,
-            pfpSmall: string
-        }[]
+        currentPage: number;
+        total: number;
+        users: UserDetails[];
     }
 
     export interface UserConnectionTypeDictionary {
-        [id: string]: boolean
+        [id: string]: boolean;
     }
 
     export interface UserConnectionDetails {
-        [id: string]: {
-            displayName: string,
-            displayNameIndex: number,
-            pfp: string
-            isMutual: Boolean,
-            connectionTypes: UserConnectionTypeDictionary
-        }
+        [id: string]: UserDetails;
+    }
+
+    export interface UpdateUserConnectionResults {
+        actionTaken: number;
+        userConnection: UserDetails;
+        success: Boolean;
+    }
+
+    export interface RemoveUserConnectionResults {
+        success: Boolean;
+        wasMutual: Boolean;
     }
 }

@@ -1,14 +1,14 @@
 import fs from 'fs';
+import memoize from 'memoizee';
+import bcrypt from 'bcryptjs';
+import NodeCache from 'node-cache';
+import { Op } from 'sequelize';
+import { Sequelize } from 'sequelize';
 import { v4 as uuidv4 } from 'uuid';
 
-import bcrypt from 'bcryptjs';
-
 import * as Constants from '../constants/constants';
-import NodeCache from 'node-cache';
 
-import { Op } from 'sequelize';
 import { db } from '../models/_index';
-import { Sequelize } from 'sequelize';
 import { UserInstance } from '../models/User';
 import { ProfilePictureInstance } from '../models/ProfilePicture';
 import { UserJWTInstance } from '../models/UserJWT';
@@ -17,6 +17,7 @@ import { DisplayNameInstance } from '../models/DisplayName';
 import { UserConnectionInstance } from '../models/UserConnection';
 import { UserConnectionTypeInstance } from '../models/UserConnectionType';
 import { PasswordResetTokenInstance } from '../models/PasswordResetToken';
+import { UserBlockInstance } from '../models/UserBlock';
 
 class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -49,6 +50,9 @@ class DatabaseHelper {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
+                attributes: [
+                    'id'
+                ],
                 where: {
                     email
                 }
@@ -66,13 +70,248 @@ class DatabaseHelper {
         return false;
     }
 
+    async userExistsForProfileName(currentUserUniqueId: string | undefined, profileName: string): Promise<{exists: Boolean, allowPublicAccess: Boolean}> {
+        try
+        {
+            let registeredUser: UserInstance | null = await db.User.findOne({
+                where: {
+                    profileName: profileName.toLowerCase()
+                },
+                attributes: [
+                    'id',
+                    'allowPublicAccess'
+                ]
+            });
+
+            if (registeredUser) {
+                let exists: Boolean = true;
+
+                if (currentUserUniqueId) {
+                    exists = !(await this.checkIfFirstUserIsBlockingSecond(registeredUser.id!, currentUserUniqueId));
+                }
+
+                return {exists, allowPublicAccess: registeredUser.allowPublicAccess!};
+            }
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with profile name ${profileName}:\n${err.message}`);
+        }
+
+        return {exists: false, allowPublicAccess: false};
+    }
+
+    async _checkIfFirstUserIsBlockingSecond(firstId: string | number, secondId: string | number): Promise<Boolean> {
+        let actualFirstId: number | undefined = undefined;
+        let actualSecondId: number | undefined = undefined;
+
+        if (typeof secondId === 'string') {
+            actualSecondId = await this.getUserIdForUniqueId(secondId);
+        }
+        else {
+            actualSecondId = secondId;
+        }
+
+        if (await this.checkUserForRole(actualSecondId, 'Administrator')) {
+            return false;
+        }
+        
+        if (typeof firstId === 'string') {
+            actualFirstId = await this.getUserIdForUniqueId(firstId);
+        }
+        else {
+            actualFirstId = firstId;
+        }
+
+        if (actualFirstId !== undefined && actualSecondId !== undefined) {
+            let results: UserBlockInstance | null = await db.UserBlock.findOne({
+                where: {
+                    registeredUserId: actualFirstId,
+                    blockedUserId: actualSecondId
+                }
+            });
+
+            if (results) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    checkIfFirstUserIsBlockingSecond = memoize(this._checkIfFirstUserIsBlockingSecond, {
+        promise: true
+    });
+
+    async getProfileInfo(currentUniqueId: string | undefined, profileName: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.UserDetails | null> {
+        try {
+            let currentUserId: number | undefined = await this.getUserIdForUniqueId(currentUniqueId || '-1');
+            let isPublicUser: Boolean = currentUserId === undefined;
+            let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = {};
+
+            let queryOptions: {[key: string]: any;} = {
+                where: {
+                    profileName: profileName.toLowerCase()
+                },
+                attributes: [
+                    'id',
+                    'allowPublicAccess',
+                    'uniqueId'
+                ],
+                include: [
+                    {
+                        model: db.DisplayName,
+                        as: 'displayNames',
+                        where: {
+                            isActive: true
+                        },
+                        attributes: [
+                            'displayName',
+                            'displayNameIndex'
+                        ]
+                    },
+                    {
+                        model: db.ProfilePicture,
+                        as: 'profilePictures',
+                        required: false,
+                        on: {
+                            id: {
+                                [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `User`.`id` order by `profile_picture`.`id` desc limit 1)')
+                            }
+                        },
+                        attributes: [
+                            'fileName',
+                            'smallFileName'
+                        ]
+                    }
+                ]
+            };
+
+            if (isPublicUser) {
+                // If there is no current user, we need to make sure the user we're looking up allows public access
+                queryOptions.where = {
+                    ...queryOptions.where,
+                    allowPublicAccess: true
+                };
+            }
+            else {
+                // If they are logged in, pull any connection info
+                connectionTypes = await this.getConnectionTypeDict();
+                
+                queryOptions.include.push({
+                    model: db.UserConnection,
+                    as: 'incomingConnections',
+                    required: false,
+                    where: {
+                        requestedUserId: currentUserId
+                    },
+                    include: [
+                        {
+                            model: db.UserConnectionType,
+                            as: 'connectionTypes',
+                            required: false
+                        }
+                    ]
+                },
+                {
+                    model: db.User,
+                    as: 'blockingUsers',
+                    required: false,
+                    attributes: [
+                        'id'
+                    ],
+                    where: {
+                        id: currentUserId
+                    }
+                });
+            }
+
+            let registeredUser: UserInstance | null = await db.User.findOne(queryOptions);
+
+            if (registeredUser) {
+                let isMutual: Boolean = false;
+
+                let displayNames: DisplayNameInstance[] | undefined = registeredUser.displayNames;
+                let displayName: DisplayNameInstance | null = displayNames && displayNames.length > 0 ? displayNames[0] : null;
+
+                let profilePictures: ProfilePictureInstance[] | undefined = registeredUser.profilePictures;
+                let profilePicture: ProfilePictureInstance | null = profilePictures && profilePictures.length > 0 ? profilePictures[0] : null;
+
+                if (isPublicUser) {
+                    return {
+                        allowPublicAccess: true,
+                        displayName: displayName ? displayName.displayName : '',
+                        displayNameIndex: displayName ? displayName.displayNameIndex : -1,
+                        isBlocked: false, /* This is a public user so they won't have been blocked */
+                        isMutual,
+                        pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
+                        pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                        profileName,
+                        uniqueId: registeredUser.uniqueId
+                    };
+                }
+                else {
+                    if (await this.checkIfFirstUserIsBlockingSecond(registeredUser.id!, currentUserId!)) {
+                        return null;
+                    }
+
+                    let connectionViewRecord: UserConnectionViewInstance | null = await db.Views.UserConnectionView.findOne({
+                        where: {
+                            requestedUserId: currentUserId,
+                            connectedUserId: registeredUser.id!
+                        }
+                    });
+
+                    isMutual = connectionViewRecord && connectionViewRecord.isMutual || false;
+
+                    let userConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = {};
+                    let blockingUsers: UserInstance[] | undefined = registeredUser.blockingUsers;
+                    let isBlocked: Boolean = blockingUsers !== undefined && blockingUsers.length > 0;
+                        
+                    if (registeredUser.incomingConnections && registeredUser.incomingConnections[0] && registeredUser.incomingConnections[0].connectionTypes) {
+                        let incomingTypes: UserConnectionTypeInstance[] = registeredUser.incomingConnections[0].connectionTypes!;
+                        userConnectionTypes = incomingTypes.reduce((previousValue, connectionType) => ({
+                            ...previousValue,
+                            [connectionType.displayName]: true
+                        }), {});
+                    }
+
+                    return {
+                        allowPublicAccess: registeredUser.allowPublicAccess,
+                        connectedToCurrentUser: (registeredUser.incomingConnections !== undefined && registeredUser.incomingConnections.length > 0),
+                        connectionTypes: {
+                            ...connectionTypes,
+                            ...userConnectionTypes
+                        },
+                        displayName: displayName ? displayName.displayName : '',
+                        displayNameIndex: displayName ? displayName.displayNameIndex : -1,
+                        isBlocked,
+                        isMutual,
+                        pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
+                        pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                        profileName,
+                        uniqueId: registeredUser.uniqueId
+                    };
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error looking up user with profile name ${profileName}: ${err.message}`);
+        }
+
+        return null;
+    }
+
     async getUserIdForUniqueId(uniqueId: string): Promise<number | undefined> {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
-                }
+                },
+                attributes: [
+                    'id'
+                ]
             });
 
             if (registeredUser) {
@@ -93,7 +332,34 @@ class DatabaseHelper {
             let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
-                }
+                },
+                include: [
+                    {
+                        model: db.DisplayName,
+                        as: 'displayNames',
+                        where: {
+                            isActive: true
+                        },
+                        attributes: [
+                            'displayName',
+                            'displayNameIndex'
+                        ]
+                    },
+                    {
+                        model: db.ProfilePicture,
+                        as: 'profilePictures',
+                        required: false,
+                        on: {
+                            id: {
+                                [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `User`.`id` order by `profile_picture`.`id` desc limit 1)')
+                            }
+                        },
+                        attributes: [
+                            'fileName',
+                            'smallFileName'
+                        ]
+                    }
+                ]
             });
 
             return registeredUser;
@@ -106,10 +372,13 @@ class DatabaseHelper {
         return null;
     }
 
-    async registerNewUser(email: string, displayName: string, password: string): Promise<{id: string | null, success: Boolean}> {
+    async registerNewUser(email: string, displayName: string, profileName: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
         {
-            if (!displayName || displayName.indexOf('#') > -1) {
+            if (!displayName || displayName.length > 100 || displayName.indexOf('#') > -1) {
+                return {id: null, success: false};
+            }
+            else if (!profileName || profileName.length > 20 || !Constants.PROFILE_NAME_REGEX.test(profileName)) {
                 return {id: null, success: false};
             }
 
@@ -120,13 +389,14 @@ class DatabaseHelper {
             let registeredUser: UserInstance | null = await db.User.create({
                 email,
                 passwordHash,
-                uniqueId
+                uniqueId,
+                profileName: profileName.toLowerCase()
             });
 
             if (registeredUser) {
                 let results: {success: Boolean, displayNameIndex?: number, message?: string} = await this.setUserDisplayName(uniqueId, displayName);
 
-                return {id: uniqueId, success: true};
+                return {id: uniqueId, success: results.success};
             }
         }
         catch (err)
@@ -195,6 +465,9 @@ class DatabaseHelper {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
+                attributes: [
+                    'id'
+                ],
                 where: {
                     email
                 },
@@ -298,6 +571,9 @@ class DatabaseHelper {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
+                attributes: [
+                    'id'
+                ],
                 where: {
                     uniqueId
                 }
@@ -351,6 +627,9 @@ class DatabaseHelper {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
+                attributes: [
+                    'id'
+                ],
                 where: {
                     uniqueId
                 },
@@ -385,6 +664,9 @@ class DatabaseHelper {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
+                attributes: [
+                    'id'
+                ],
                 where: {
                     uniqueId
                 }
@@ -442,6 +724,9 @@ class DatabaseHelper {
             }
 
             let registeredUser: UserInstance | null = await db.User.findOne({
+                attributes: [
+                    'id'
+                ],
                 where: {
                     uniqueId
                 },
@@ -492,6 +777,9 @@ class DatabaseHelper {
         try
         {   
             let registeredUser: UserInstance | null = await db.User.findOne({
+                attributes: [
+                    'email'
+                ],
                 where: {
                     uniqueId
                 }
@@ -533,6 +821,9 @@ class DatabaseHelper {
 
             if (registeredUser) {
                 let displayNames: DisplayNameInstance[] = await registeredUser.getDisplayNames({
+                    attributes: [
+                        'displayName'
+                    ],
                     where: {
                         isActive: true
                     }
@@ -557,6 +848,10 @@ class DatabaseHelper {
 
             if (!registeredUser) {
                 return {success: false, message: `No user found for when trying to change the display name`};
+            }
+
+            if (displayName.indexOf('#') > -1) {
+                return {success: false, message: `Display name does not meet requirements.`};
             }
 
             let displayNames: DisplayNameInstance[] = await registeredUser.getDisplayNames({
@@ -677,32 +972,80 @@ class DatabaseHelper {
     async getUserDetails(currentUniqueId: string | undefined, uniqueId: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.UserDetails | null> {
         try {
             let getConnectionTypes = currentUniqueId && currentUniqueId !== uniqueId;
+            let currentUser: UserInstance | null = null;
+            
+            if (currentUniqueId) {
+                if (await this.checkIfFirstUserIsBlockingSecond(uniqueId, currentUniqueId)) {
+                    return null;
+                }
+
+                currentUser = await this.getUserWithUniqueId(currentUniqueId);
+            }
 
             let registeredUser: UserInstance | null = await db.User.findOne({
                 where: {
                     uniqueId
                 },
+                attributes: [
+                    'id', /* This is necessary to select so the lazy loading of incomingConnections below will work */
+                    'allowPublicAccess',
+                    'email',
+                    'uniqueId',
+                    'profileName'
+                ],
                 include: [
                     {
                         model: db.DisplayName,
-                        as: 'displayNames'
+                        as: 'displayNames',
+                        attributes: [
+                            'displayName',
+                            'displayNameIndex'
+                        ]
                     }, 
                     {
                         model: db.ProfilePicture,
-                        as: 'profilePictures'
+                        as: 'profilePictures',
+                        attributes: [
+                            'fileName',
+                            'smallFileName'
+                        ]
                     },
                     {
                         model: db.Role,
-                        as: 'roles'
+                        as: 'roles',
+                        attributes: [
+                            'roleName'
+                        ]
                     }
                 ]
             });
   
             if (registeredUser) {
+                let isMutual: Boolean = false;
+
+                if (currentUser) {
+                    let connectionViewRecord: UserConnectionViewInstance | null = await db.Views.UserConnectionView.findOne({
+                        attributes: [
+                            'id'
+                        ],
+                        where: {
+                            requestedUserId: currentUser.id!,
+                            connectedUserId: registeredUser.id!
+                        }
+                    });
+
+                    isMutual = connectionViewRecord && connectionViewRecord.isMutual || false;
+                }
+
                 let userDetails: WebsiteBoilerplate.UserDetails = {
+                    allowPublicAccess: registeredUser.allowPublicAccess,
                     displayName: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayName : ''),
                     displayNameIndex: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayNameIndex : -1),
-                    pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `i/u/${uniqueId}/${registeredUser.profilePictures[0].fileName}` : 'i/s/pfpDefault.svgz'),
+                    isBlocked: false, /* Handled below */
+                    isMutual,
+                    pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                    pfpSmall: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                    profileName: registeredUser.profileName,
                     roles: (registeredUser.roles ? registeredUser.roles.map(role => role.roleName) : []),
                     uniqueId
                 };
@@ -712,18 +1055,18 @@ class DatabaseHelper {
                 }
 
                 if (getConnectionTypes) {
-                    let currentUserId: number | undefined = await this.getUserIdForUniqueId(currentUniqueId!);
-
-                    if (currentUserId) {
+                    if (currentUser) {
                         let incomingConnections: UserConnectionInstance[] = await registeredUser.getIncomingConnections({
                             where: {
-                                requestedUserId: currentUserId
+                                requestedUserId: currentUser.id!
                             },
                             include: {
                                 model: db.UserConnectionType,
                                 as: 'connectionTypes'
                             }
                         });
+
+                        let allConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
 
                         if (incomingConnections.length > 0) {
                             let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary;
@@ -735,11 +1078,28 @@ class DatabaseHelper {
                                 }), {});
                             }
                             else {
-                                connectionTypes = {};
+                                connectionTypes = allConnectionTypes;
                             }
 
+                            userDetails.connectedToCurrentUser = true;
                             userDetails.connectionTypes = connectionTypes;
+                            
                         }
+                        else {
+                            userDetails.connectedToCurrentUser = false;
+                            userDetails.connectionTypes = allConnectionTypes;
+                        }
+
+                        let blockedUsers: UserInstance[] = await currentUser.getBlockedUsers({
+                            attributes: [
+                                'id'
+                            ],
+                            where: {
+                                id: registeredUser.id!
+                            }
+                        });
+
+                        userDetails.isBlocked = blockedUsers.length > 0;
                     }
                 }
 
@@ -753,25 +1113,44 @@ class DatabaseHelper {
         return null;
     }
 
-    async checkUserForRole(uniqueId: string, roleName: string): Promise<Boolean> {
+    async _checkUserForRole(uniqueId: string | number | undefined, roleName: string): Promise<Boolean> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
-                where: {
-                    uniqueId
-                },
-                include: {
-                    model: db.Role,
-                    as: 'roles',
-                    required: true,
-                    where: {
-                        roleName
+            if (uniqueId) {
+                let id: number | undefined = undefined;
+
+                if (typeof uniqueId === 'string') {
+                    id = await this.getUserIdForUniqueId(uniqueId);
+                }
+                else {
+                    id = uniqueId;
+                }
+
+                if (id) {
+                    let registeredUser: UserInstance | null = await db.User.findOne({
+                        attributes: [
+                            'id'
+                        ],
+                        where: {
+                            id
+                        },
+                        include: {
+                            model: db.Role,
+                            as: 'roles',
+                            required: true,
+                            attributes: [
+                                'id'
+                            ],
+                            where: {
+                                roleName
+                            }
+                        }
+                    });
+
+                    if (registeredUser) {
+                        return true;
                     }
                 }
-            });
-
-            if (registeredUser) {
-                return true;
             }
         }
         catch (err) {
@@ -781,139 +1160,241 @@ class DatabaseHelper {
         return false;
     }
 
-    async searchUsers(userId: string, displayNameFilter: string, displayNameIndexFilter: number, pageNumber: number, excludeConnections: Boolean): Promise<WebsiteBoilerplate.UserSearchResults | null> {
+    // ##TODO: Will need to invalidate this once the ability to add and remove roles is implemented
+    checkUserForRole = memoize(this._checkUserForRole, {
+        promise: true
+    });
+
+    async searchUsers(currentUserUniqueId: string, displayNameFilter: string, displayNameIndexFilter: number, pageNumber: number, excludeConnections: Boolean): Promise<WebsiteBoilerplate.UserSearchResults | null> {
         try {
-            let queryOptions: {[key: string]: any;} = {
-                attributes: [
-                    'displayName',
-                    'displayNameIndex'
-                ],
-                where: {
-                    isActive: 1
-                },
-                include: [
-                    {
-                        model: db.User,
-                        as: 'registeredUser',
-                        required: true,
-                        attributes: ['uniqueId'],
-                        include: [
-                            {
-                                model: db.ProfilePicture,
-                                as: 'profilePictures',
-                                required: false,
-                                on: {
-                                    id: {
-                                        [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `registeredUser`.`id` order by `profile_picture`.`id` desc limit 1)')
-                                    }
-                                },
-                                attributes: [
-                                    'mimeType',
-                                    'smallFileName'
-                                ]
-                            }
-                        ]
-                    }
-                ],
-                order: [
-                    ['displayName', 'ASC'], 
-                    ['displayNameIndex', 'ASC']
-                ],
-                offset: pageNumber * Constants.DB_USER_FETCH_PAGE_SIZE,
-                limit: Constants.DB_USER_FETCH_PAGE_SIZE,
-                subQuery: false // See below
-            };
+            let currentUser: UserInstance | null = await this.getUserWithUniqueId(currentUserUniqueId);
 
-            /* subQuery
-                This field is apparently not documented, but it's required in this case due to limit being used
-                in conjunction with having the where clause on the Profile Picture Join. Without this set to
-                false, it creates a subquery for the DisplayName that it tries to select from, then for some odd
-                reason, it fails to accept the table aliases in the select in the where clause even though the
-                generated query runs fine in MySQL Workbench.
+            if (currentUser) {
+                let currentUserId: number = currentUser.id!;
 
-                https://stackoverflow.com/questions/23312868/unknown-column-error-in-sequelize-when-using-limit-and-include-options
-                https://github.com/sequelize/sequelize/issues/9869#issuecomment-469823359
+                let isAdministrator: Boolean = await this.checkUserForRole(currentUserUniqueId, 'Administrator');
 
-            */
-
-            if (displayNameFilter) {
-                queryOptions.where.displayName = {
-                    [Op.like]: `${displayNameFilter.replace(/[%_]/g,'\\$1')}%`
-                };
-            }
-
-            if (displayNameIndexFilter >= 0) {
-                queryOptions.where = {
-                    ...queryOptions.where,
-                    [Op.and]: [
-                        Sequelize.where(Sequelize.cast(Sequelize.col('displayNameIndex'), 'char'), {
-                            [Op.like]: `${displayNameIndexFilter}%`
-                        })
+                let blockingUsers: UserInstance[] = await currentUser.getBlockingUsers({
+                    attributes: [
+                        'id'
                     ]
+                });
+
+                let blockingIds: number[] = blockingUsers.map(user => user.id!);
+
+                let queryOptions: {[key: string]: any;} = {
+                    attributes: [
+                        'displayName',
+                        'displayNameIndex'
+                    ],
+                    where: {
+                        isActive: 1
+                    },
+                    include: [
+                        {
+                            model: db.User,
+                            as: 'registeredUser',
+                            required: true,
+                            attributes: [
+                                'uniqueId',
+                                'profileName'
+                            ],
+                            include: [
+                                {
+                                    model: db.ProfilePicture,
+                                    as: 'profilePictures',
+                                    required: false,
+                                    on: {
+                                        id: {
+                                            [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `registeredUser`.`id` order by `profile_picture`.`id` desc limit 1)')
+                                        }
+                                    },
+                                    attributes: [
+                                        'mimeType',
+                                        'smallFileName',
+                                        'fileName'
+                                    ]
+                                },
+                                {
+                                    model: db.User,
+                                    as: 'blockingUsers',
+                                    required: false,
+                                    attributes: [
+                                        'id'
+                                    ],
+                                    where: {
+                                        id: currentUserId
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    order: [
+                        ['displayName', 'ASC'], 
+                        ['displayNameIndex', 'ASC']
+                    ],
+                    offset: pageNumber * Constants.DB_USER_FETCH_PAGE_SIZE,
+                    limit: Constants.DB_USER_FETCH_PAGE_SIZE,
+                    subQuery: false // See below
                 };
-            }
 
-            if (excludeConnections) {
-                let userQueryOptions: {[key: string]: any;} = queryOptions.include[0];
+                /* subQuery
+                    This field is apparently not documented, but it's required in this case due to limit being used
+                    in conjunction with having the where clause on the Profile Picture Join. Without this set to
+                    false, it creates a subquery for the DisplayName that it tries to select from, then for some odd
+                    reason, it fails to accept the table aliases in the select in the where clause even though the
+                    generated query runs fine in MySQL Workbench.
 
-                userQueryOptions.include = [
-                    ...userQueryOptions.include,
-                    {
-                        model: db.UserConnection,
-                        as: 'outgoingConnections',
-                        attributes: [],
-                        required: false
-                    },
-                    {
-                        model: db.UserConnection,
-                        as: 'incomingConnections',
-                        attributes: [],
-                        required: false,
-                        include: [
-                            {
-                                model: db.User,
-                                as: 'requestedUser',
-                                attributes: [],
-                                required: false
-                            }
+                    https://stackoverflow.com/questions/23312868/unknown-column-error-in-sequelize-when-using-limit-and-include-options
+                    https://github.com/sequelize/sequelize/issues/9869#issuecomment-469823359
+
+                */
+
+                if (displayNameFilter) {
+                    queryOptions.where.displayName = {
+                        [Op.like]: `${displayNameFilter.replace(/[%_]/g,'\\$1')}%`
+                    };
+                }
+
+                if (displayNameIndexFilter >= 0) {
+                    queryOptions.where = {
+                        ...queryOptions.where,
+                        [Op.and]: [
+                            Sequelize.where(Sequelize.cast(Sequelize.col('DisplayName.display_name_index'), 'char'), {
+                                [Op.like]: `${displayNameIndexFilter}%`
+                            })
                         ]
-                    }
-                ];
+                    };
+                }
 
-                // Nested columns don't use the aliases, so you have to use the actual column names
-                queryOptions.where = {
-                    ...queryOptions.where,
-                    '$registeredUser.unique_id$': {
-                        [Op.ne]: userId
-                    },
-                    '$registeredUser.outgoingConnections.id$': {
-                        [Op.is]: null
-                    },
-                    '$registeredUser.incomingConnections.requestedUser.unique_id$': {
-                        [Op.or]: {
-                            [Op.is]: null,
-                            [Op.ne]: userId
+                if (!isAdministrator && blockingIds.length > 0) {
+                    queryOptions.where = {
+                        ...queryOptions.where,
+                        '$registeredUser.id$': {
+                            [Op.notIn]: blockingIds
                         }
                     }
-                };
-            }
+                }
 
-            let {rows, count}: {rows: DisplayNameInstance[]; count: number} = await db.DisplayName.findAndCountAll(queryOptions);
+                let connectionViewRecords: UserConnectionViewInstance[] | null = null;
 
-            let results: WebsiteBoilerplate.UserSearchResults = {
-                currentPage: pageNumber,
-                total: count,
-                users: rows.map(displayName => {
-                    return {
-                        displayName: displayName.displayName, 
-                        displayNameIndex: displayName.displayNameIndex, 
-                        uniqueId: displayName.registeredUser!.uniqueId,
-                        pfpSmall: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
+                // This will get all of the incoming connections to the current user
+                connectionViewRecords = await db.Views.UserConnectionView.findAll({
+                    where: {
+                        connectedUserId: currentUserId,
+                        isMutual: true
+                    }
+                });
+
+                if (excludeConnections) {
+                    let excludedOutgoingConnections: number[] | null = null;
+
+                    // Go through the list and put all of the ids into a new array
+                    if (connectionViewRecords && connectionViewRecords.length > 0) {
+                        excludedOutgoingConnections = connectionViewRecords.map((record) => (record.id));
+                    }
+
+                    let userQueryOptions: {[key: string]: any;} = queryOptions.include[0];
+
+                    userQueryOptions.include = [
+                        ...userQueryOptions.include,
+                        {
+                            model: db.UserConnection,
+                            as: 'outgoingConnections',
+                            attributes: [],
+                            required: false
+                        },
+                        {
+                            model: db.UserConnection,
+                            as: 'incomingConnections',
+                            attributes: [],
+                            required: false,
+                            include: [
+                                {
+                                    model: db.User,
+                                    as: 'requestedUser',
+                                    attributes: [],
+                                    required: false
+                                }
+                            ]
+                        }
+                    ];
+
+                    // Nested columns don't use the aliases, so you have to use the actual column names
+                    queryOptions.where = {
+                        ...queryOptions.where,
+                        '$registeredUser.unique_id$': {
+                            [Op.ne]: currentUserUniqueId
+                        },
+                        '$registeredUser.incomingConnections.requestedUser.unique_id$': {
+                            [Op.or]: {
+                                [Op.is]: null,
+                                [Op.ne]: currentUserUniqueId
+                            }
+                        }
                     };
-                })
-            };
 
-            return results;
+                    // Any users who don't have any outgoing connections or who aren't already a mutual connection are fine to return
+                    if (excludedOutgoingConnections) {
+                        queryOptions.where = {
+                            ...queryOptions.where,
+                            '$registeredUser.outgoingConnections.id$': {
+                                [Op.or]: {
+                                    [Op.is]: null,
+                                    [Op.notIn]: excludedOutgoingConnections
+                                }
+                            }
+                        };
+                    }
+                    else {
+                        queryOptions.where = {
+                            ...queryOptions.where,
+                            '$registeredUser.outgoingConnections.id$': {
+                                [Op.is]: null
+                            }
+                        };
+                    }
+                }
+
+                let {rows, count}: {rows: DisplayNameInstance[]; count: number} = await db.DisplayName.findAndCountAll(queryOptions);
+
+                let results: WebsiteBoilerplate.UserSearchResults = {
+                    currentPage: pageNumber,
+                    total: count,
+                    users: rows.map(displayName => {
+                        let isMutual: Boolean = false;
+                        let isBlocked: Boolean = false;
+
+                        // If excluding connections, none of them will be mutual
+                        // If not excluding connections, some of them will be mutual
+                        // In order for a connection to be mutual, an incoming connection must exist, and since connectionViewRecords contains all incoming connections, we can check their isMutual flag
+                        if (!excludeConnections && connectionViewRecords) {
+                            let connectionViewRecord: UserConnectionViewInstance | undefined = connectionViewRecords.find(record => record.requestedUserId === displayName.registeredUser!.id);
+
+                            if (connectionViewRecord) {
+                                isMutual = connectionViewRecord.isMutual;
+                            }
+                        }
+
+                        if (displayName.registeredUser!.blockingUsers && displayName.registeredUser!.blockingUsers[0]) {
+                            isBlocked = true;
+                        }
+
+                        return {
+                            displayName: displayName.displayName, 
+                            displayNameIndex: displayName.displayNameIndex, 
+                            isBlocked,
+                            isMutual,
+                            pfp: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                            pfpSmall: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                            profileName: displayName.registeredUser!.profileName,
+                            uniqueId: displayName.registeredUser!.uniqueId
+                        };
+                    })
+                };
+
+                return results;
+            }
         }
         catch (err) {
             console.error(`An error occurred while looking up users, Display Name: ${displayNameFilter}, Index: ${displayNameIndexFilter}\n${err.message}`);
@@ -922,17 +1403,88 @@ class DatabaseHelper {
         return null;        
     }
 
-    async getOutgoingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
+    async getOutgoingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserDetails[]> {
         try {
             let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
 
             let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
 
             if (registeredUserId !== undefined) {
-                let outgoingConnectionsView: UserConnectionViewInstance[] | null = await db.Views.UserConnectionView.findAll({
-                    where: {
-                        requestedUserId: registeredUserId
+                let isAdministrator: Boolean = await this.checkUserForRole(registeredUserId, 'Administrator');
+
+                let queryOptions: {[key: string]: any;} = {};
+
+                let userConnectionIncludes: {[key: string]: any;}[] = [
+                    {
+                        model: db.User,
+                        as: 'connectedUser',
+                        attributes: [
+                            'allowPublicAccess',
+                            'uniqueId',
+                            'profileName'
+                        ],
+                        required: true,
+                        include: [
+                            {
+                                model: db.DisplayName,
+                                as: 'displayNames',
+                                where: {
+                                    isActive: 1
+                                },
+                                attributes: [
+                                    'displayName',
+                                    'displayNameIndex'
+                                ],
+                                required: false
+                            },
+                            {
+                                model: db.ProfilePicture,
+                                as: 'profilePictures',
+                                attributes: [
+                                    'smallFileName'
+                                ],
+                                order: [['id', 'DESC']],
+                                required: false
+                            }
+                        ]
                     },
+                    {
+                        model: db.UserConnectionType,
+                        as: 'connectionTypes',
+                        required: false,
+                        attributes: [
+                            'displayName'
+                        ],
+                        through: {
+                            attributes: []
+                        }
+                    }
+                ];
+
+                if (isAdministrator) {
+                    queryOptions.where = {
+                        requestedUserId: registeredUserId
+                    };
+                }
+                else {
+                    // Need to filter out users that are blocking the current user if the current user is not an administrator
+                    // left join userBlock using the keys on userConnection and select the results where userBlock.registeredUserId is null
+                    userConnectionIncludes.push({
+                        model: db.UserBlock,
+                        as: 'userBlock',
+                        required: false
+                    });
+
+                    queryOptions.where = {
+                        [Op.and]: [
+                            { requestedUserId: registeredUserId },
+                            { '$userConnection.userBlock.registered_user_id$': { [Op.is]: null } }
+                        ]
+                    };
+                }
+
+                queryOptions = {
+                    ...queryOptions,
                     attributes: [
                         'isMutual'
                     ],
@@ -941,58 +1493,18 @@ class DatabaseHelper {
                             model: db.UserConnection,
                             as: 'userConnection',
                             required: true,
-                            include: [
-                                {
-                                    model: db.User,
-                                    as: 'connectedUser',
-                                    attributes: [
-                                        'uniqueId'
-                                    ],
-                                    required: true,
-                                    include: [
-                                        {
-                                            model: db.DisplayName,
-                                            as: 'displayNames',
-                                            where: {
-                                                isActive: 1
-                                            },
-                                            attributes: [
-                                                'displayName',
-                                                'displayNameIndex'
-                                            ],
-                                            required: false
-                                        },
-                                        {
-                                            model: db.ProfilePicture,
-                                            as: 'profilePictures',
-                                            attributes: [
-                                                'smallFileName'
-                                            ],
-                                            order: [['id', 'DESC']],
-                                            required: false
-                                        }
-                                    ]
-                                },
-                                {
-                                    model: db.UserConnectionType,
-                                    as: 'connectionTypes',
-                                    required: false,
-                                    attributes: [
-                                        'displayName'
-                                    ],
-                                    through: {
-                                        attributes: []
-                                    }
-                                }
-                            ]
+                            include: userConnectionIncludes
                         }
                     ]
-                });
+                };
+
+                let outgoingConnectionsView: UserConnectionViewInstance[] | null = await db.Views.UserConnectionView.findAll(queryOptions);
 
                 if (outgoingConnectionsView && outgoingConnectionsView.length > 0) {
-                    return outgoingConnectionsView.reduce((previousValue, connectionView) => {
+                    return outgoingConnectionsView.map(connectionView => {
                         let connection: UserConnectionInstance = connectionView.userConnection!;
-                        let connectedUser: UserInstance | undefined = connection.connectedUser;
+                        
+                        let connectedUser: UserInstance = connection.connectedUser!;
     
                         let userConnectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = {};
                         
@@ -1002,18 +1514,21 @@ class DatabaseHelper {
                                 [connectionType.displayName]: true
                             }), {});
                         }
-    
+
                         return {
-                            ...previousValue,
-                            [connectedUser!.uniqueId]: {
-                                displayName: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayName : ''),
-                                displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
-                                pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
-                                isMutual: connectionView.isMutual,
-                                connectionTypes: {...connectionTypes, ...userConnectionTypes}
-                            }
-                        }
-                    }, {});
+                            allowPublicAccess: connectedUser!.allowPublicAccess,
+                            connectedToCurrentUser: true, /* Outgoing connections are always connected to the user */
+                            connectionTypes: {...connectionTypes, ...userConnectionTypes},
+                            displayName: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayName : ''),
+                            displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
+                            isBlocked: false, /* Outgoing connections shouldn't be blocked */
+                            isMutual: connectionView.isMutual,
+                            pfp: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${uniqueId}/${connectedUser!.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                            pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                            profileName: connectedUser!.profileName,
+                            uniqueId: connectedUser!.uniqueId
+                        };
+                    });
                 }
             }
         }
@@ -1021,11 +1536,13 @@ class DatabaseHelper {
             console.error(`Error looking up connections for uniqueId ${uniqueId}:\n${err.message}`);
         }
 
-        return {};
+        return [];
     }
 
-    async getIncomingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserConnectionDetails> {
+    async getIncomingConnections(uniqueId: string, specificConnectionId?: string): Promise<WebsiteBoilerplate.UserDetails[]> {
         try {
+            let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = await this.getConnectionTypeDict();
+
             let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
 
             if (registeredUserId !== undefined) {
@@ -1046,7 +1563,9 @@ class DatabaseHelper {
                                     model: db.User,
                                     as: 'requestedUser',
                                     attributes: [
-                                        'uniqueId'
+                                        'allowPublicAccess',
+                                        'uniqueId',
+                                        'profileName'
                                     ],
                                     required: true,
                                     include: [
@@ -1070,9 +1589,38 @@ class DatabaseHelper {
                                             ],
                                             order: [['id', 'DESC']],
                                             required: false
+                                        },
+                                        {
+                                            model: db.User,
+                                            as: 'blockingUsers',
+                                            required: false,
+                                            attributes: [
+                                                'id'
+                                            ],
+                                            where: {
+                                                id: registeredUserId
+                                            }
                                         }
                                     ]
                                 },
+                                {
+                                    model: db.UserConnectionType,
+                                    as: 'connectionTypes',
+                                    required: false,
+                                    attributes: [
+                                        'displayName'
+                                    ],
+                                    through: {
+                                        attributes: []
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            model: db.UserConnection,
+                            as: 'mutualConnection',
+                            required: false,
+                            include: [
                                 {
                                     model: db.UserConnectionType,
                                     as: 'connectionTypes',
@@ -1090,21 +1638,34 @@ class DatabaseHelper {
                 });
 
                 if (incomingConnectionsView && incomingConnectionsView.length > 0) {
-                    return incomingConnectionsView.reduce((previousValue, connectionView) => {
-                        let connection: UserConnectionInstance = connectionView.userConnection!;
-                        let requestedUser: UserInstance = connection.requestedUser!;
-    
-                        return {
-                            ...previousValue,
-                            [requestedUser.uniqueId]: {
+                    return incomingConnectionsView.reduce((results: WebsiteBoilerplate.UserDetails[], connectionView: UserConnectionViewInstance) => {
+                        if (!connectionView.isMutual) {                          
+                            let connection: UserConnectionInstance = connectionView.userConnection!;
+                            let requestedUser: UserInstance = connection.requestedUser!;
+
+                            let isBlocked: Boolean = false;
+
+                            if (requestedUser.blockingUsers && requestedUser.blockingUsers.length > 0) {
+                                isBlocked = true;
+                            }
+
+                            results.push({
+                                allowPublicAccess: requestedUser.allowPublicAccess,
+                                connectedToCurrentUser: false, /* This list will only contain users who are not connected */
+                                connectionTypes: {...connectionTypes},    
                                 displayName: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
                                 displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
-                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : 'i/s/pfpDefault.svgz'),
-                                isMutual: connectionView.isMutual,
-                                connectionTypes: {}
-                            }
+                                isBlocked,
+                                isMutual: false, /* Incoming connections will never be mutual */
+                                pfp: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                profileName: requestedUser.profileName,
+                                uniqueId: requestedUser.uniqueId
+                            });
                         }
-                    }, {});
+
+                        return results;
+                    }, []);
                 }
             }
         }
@@ -1112,7 +1673,7 @@ class DatabaseHelper {
             console.error(`Error looking up connections for uniqueId ${uniqueId}:\n${err.message}`);
         }
 
-        return {};
+        return [];
     }
 
     async getConnectionTypeDict(): Promise<WebsiteBoilerplate.UserConnectionTypeDictionary> {
@@ -1157,7 +1718,7 @@ class DatabaseHelper {
         return [];
     }
 
-    async removeUserConnection(currentUserUniqueId: string, connectedUserUniqueId: string): Promise<Boolean> {
+    async removeUserConnection(currentUserUniqueId: string, connectedUserUniqueId: string): Promise<WebsiteBoilerplate.RemoveUserConnectionResults> {
         try
         {
             let currentUser: UserInstance | null = await this.getUserWithUniqueId(currentUserUniqueId);
@@ -1171,30 +1732,48 @@ class DatabaseHelper {
                     }
                 });
                 
+                let wasMutual: Boolean = false;
+
                 if (userConnection) {
+                    let userConnectionView: UserConnectionViewInstance | null = await db.Views.UserConnectionView.findOne({
+                        where: {
+                            id: userConnection.id!
+                        }
+                    });
+
+                    if (userConnectionView) {
+                        wasMutual = userConnectionView.isMutual;
+                    }
+
                     await userConnection.destroy();
                 }
                 
-                return true;
+                return {success: true, wasMutual};
             }
         }
         catch (err) {
             console.error(`Error removing connection:\n${err.message}`);
         }
 
-        return false;
+        return {success: false, wasMutual: false};
     }
 
-    async updateUserConnection(uniqueId: string, outgoingConnectionUpdates: WebsiteBoilerplate.UserConnectionDetails): Promise<Boolean> {
+    async updateUserConnection(currentUserUniqueId: string, connectionUpdates: WebsiteBoilerplate.UserDetails): Promise<WebsiteBoilerplate.UpdateUserConnectionResults> {
+        let results: WebsiteBoilerplate.UpdateUserConnectionResults = {
+            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.NONE,
+            success: false,
+            userConnection: connectionUpdates
+        };
+
         try
         {
-            let connectedUserUniqueId: string = Object.keys(outgoingConnectionUpdates)[0];
+            let connectedUserUniqueId: string = connectionUpdates.uniqueId;
             let connectedUser: UserInstance | null = await this.getUserWithUniqueId(connectedUserUniqueId);
 
             if (connectedUser) {
                 let currentUser: UserInstance | null = await db.User.findOne({
                     where: {
-                        uniqueId
+                        uniqueId: currentUserUniqueId
                     },
                     include: [
                         {
@@ -1213,7 +1792,20 @@ class DatabaseHelper {
                                 {
                                     model: db.User,
                                     as: 'connectedUser',
-                                    required: false
+                                    required: false,
+                                    include: [
+                                        {
+                                            model: db.User,
+                                            as: 'blockingUsers',
+                                            required: false,
+                                            attributes: [
+                                                'id'
+                                            ],
+                                            where: {
+                                                uniqueId: currentUserUniqueId
+                                            }
+                                        }
+                                    ]
                                 }
                             ]
                         }
@@ -1223,7 +1815,17 @@ class DatabaseHelper {
                 if (currentUser && currentUser.outgoingConnections) {
                     let outgoingConnections: UserConnectionInstance[] = currentUser.outgoingConnections;
                     let allConnectionTypes: UserConnectionTypeInstance[] = await this.getConnectionTypes();
-                    let { connectionTypes } : { connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary} = outgoingConnectionUpdates[connectedUserUniqueId];
+                    let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = connectionUpdates.connectionTypes!;
+
+                    let incomingConnection: UserConnectionInstance | null = await db.UserConnection.findOne({
+                        where: {
+                            requestedUserId: connectedUser.id!,
+                            connectedUserId: currentUser.id!
+                        },
+                        attributes: [
+                            'id'
+                        ]
+                    });
 
                     if (outgoingConnections.length > 0) { // This is an existing connection, modify the types if necessary
                         let existingConnection: UserConnectionInstance = outgoingConnections[0];
@@ -1259,9 +1861,34 @@ class DatabaseHelper {
                             await existingConnection.addConnectionTypes(addConnectionTypes);
                         }
 
-                        return true;
+                        let isBlocked: Boolean = false;
+
+                        if (connectedUser.blockingUsers && connectedUser.blockingUsers.length > 1) {
+                            isBlocked = true;
+                        }
+
+                        results = {
+                            ...results,
+                            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.UPDATED,
+                            success: true,
+                            userConnection: {
+                                allowPublicAccess: connectedUser.allowPublicAccess,
+                                connectedToCurrentUser: true, /* If we updated the connection, it means that they're connected to the user */
+                                connectionTypes,
+                                displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
+                                displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
+                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                isBlocked: false, /* Outgoing connections shouldn't be blocked */
+                                isMutual: incomingConnection !== null,
+                                profileName: connectedUser.profileName,
+                                uniqueId: connectedUserUniqueId
+                            }
+                        };
+
+                        return results;
                     }
-                    else {
+                    else { // Else, this is a new connection
                         let newConnection: UserConnectionInstance = await db.UserConnection.create({
                             requestedUserId: currentUser.id!,
                             connectedUserId: connectedUser.id!
@@ -1275,14 +1902,82 @@ class DatabaseHelper {
                             }
                         }
 
-                        return true;
+                        results = {
+                            ...results,
+                            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.ADDED,
+                            success: true,
+                            userConnection: {
+                                allowPublicAccess: connectedUser.allowPublicAccess,
+                                connectedToCurrentUser: true, /* They are now connected to the current user */
+                                connectionTypes,
+                                displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
+                                displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
+                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                isBlocked: false, /* Outgoing connections shouldn't be blocked */
+                                isMutual: incomingConnection !== null,
+                                profileName: connectedUser.profileName,
+                                uniqueId: connectedUserUniqueId
+                            }
+                        };
+
+                        return results;
                     }
                 }
             }
         }
         catch (err)
         {
-            console.error(`Failed to update outgoing connection for user ${uniqueId}:\n${err.message}`);
+            console.error(`Failed to update outgoing connection for user ${currentUserUniqueId}:\n${err.message}`);
+        }
+
+        return results;
+    }
+
+    // User Blocking
+    async blockUser(currentUserUniqueId: string, blockUserUniqueId: string): Promise<Boolean> {
+        try {
+            let currentUser: UserInstance | null = await this.getUserWithUniqueId(currentUserUniqueId);
+            let blockedUser: UserInstance | null = await this.getUserWithUniqueId(blockUserUniqueId);
+
+            if (currentUser && blockedUser) {
+                await currentUser.addBlockedUser(blockedUser);
+
+                // Invalidate the cache for all possible calls with the two users since the result will have changed
+                this.checkIfFirstUserIsBlockingSecond.delete(currentUser.id!, blockedUser.id!);
+                this.checkIfFirstUserIsBlockingSecond.delete(currentUser.uniqueId!, blockedUser.id!);
+                this.checkIfFirstUserIsBlockingSecond.delete(currentUser.id!, blockedUser.uniqueId!);
+                this.checkIfFirstUserIsBlockingSecond.delete(currentUser.uniqueId!, blockedUser.uniqueId!);
+
+                return true;
+            }
+        }
+        catch (err) {
+            console.error(`Error blocking user with unique id [${blockUserUniqueId}] for user with unique id [${currentUserUniqueId}]:\n${err.message}`);
+        }
+
+        return false;
+    }
+
+    async unblockUser(currentUserUniqueId: string, unblockUserUniqueId: string): Promise<Boolean> {
+        try {
+            let currentUser: UserInstance | null = await this.getUserWithUniqueId(currentUserUniqueId);
+            let blockedUser: UserInstance | null = await this.getUserWithUniqueId(unblockUserUniqueId);
+
+            if (currentUser && blockedUser) {
+                await currentUser.removeBlockedUser(blockedUser);
+
+                // Invalidate the cache for all possible calls with the two users since the result will have changed
+                this.checkIfFirstUserIsBlockingSecond.delete(currentUser.id!, blockedUser.id!);
+                this.checkIfFirstUserIsBlockingSecond.delete(currentUser.uniqueId!, blockedUser.id!);
+                this.checkIfFirstUserIsBlockingSecond.delete(currentUser.id!, blockedUser.uniqueId!);
+                this.checkIfFirstUserIsBlockingSecond.delete(currentUser.uniqueId!, blockedUser.uniqueId!);
+
+                return true;
+            }
+        }
+        catch (err) {
+            console.error(`Error unblocking user with unique id [${unblockUserUniqueId}] for user with unique id [${currentUserUniqueId}]:\n${err.message}`);
         }
 
         return false;

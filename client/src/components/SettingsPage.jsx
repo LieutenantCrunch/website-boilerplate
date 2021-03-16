@@ -2,6 +2,7 @@ import React, {useEffect, useState, useRef} from 'react';
 import {withRouter} from 'react-router-dom';
 import AuthService from '../services/auth.service';
 import UserService from '../services/user.service';
+import { HtmlTooltip } from './HtmlTooltip';
 
 function SettingsPage(props) {
     const [settingsPageAlert, setSettingsPageAlert] = useState({type: 'info', message: null});
@@ -92,6 +93,8 @@ function SettingsPage(props) {
         setSettingsPageAlert({type: 'info', message: null});
     };
 
+    //## Add Allow Public Access
+
     return (
         <>
             <div className="container-fluid">
@@ -134,8 +137,25 @@ function SettingsPage(props) {
                                 <button type="button" className="btn-close" data-dismiss="modal" arial-label="close"></button>
                             </div>
                             <div className="modal-body">
-                                <p>Please enter your new display name. Please note that you can only change your display name every {props.appConstants.displayNameChangeDays} day{props.appConstants.displayNameChangeDays === 1 ? '' : 's'}. Names must not contain # and do not have to be unique. They will be followed by a unique id number unless your account is verified.</p>
-                                <input type="text" id="displayName" className="form-control" placeholder="Display Name" aria-label="Display name input" value={state.displayName} onChange={handleStateChange} />
+                                <p>Please enter your new display name. It will be followed by a unique id number unless your account is verified.</p>
+                                <HtmlTooltip title={
+                                        <>
+                                            <b>Requirements</b>
+                                            <ul>
+                                                <li>Cannot contain '#' (pound/hash)</li>
+                                                <li>Does not have to be unique</li>
+                                                <li>Can only be changed {props.appConstants.DisplayNameChangeDays === 1 ? 'once a day' : `every ${props.appConstants.DisplayNameChangeDays} days`}</li>
+                                            </ul>
+                                        </>
+                                    }
+                                    placement="bottom-start"
+                                    enterDelay={500}
+                                    interactive
+                                    disableHoverListener
+                                    fontWeight='normal'
+                                >
+                                    <input type="text" id="displayName" className="form-control" placeholder="Display Name" aria-label="Display name input" value={state.displayName} onChange={handleStateChange} />
+                                </HtmlTooltip>
                             </div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-primary" onClick={handleDisplayNameFormSubmitClick}>Submit</button>

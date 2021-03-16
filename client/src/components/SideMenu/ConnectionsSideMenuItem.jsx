@@ -1,19 +1,40 @@
-import React, {useState, useRef} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import classNames from 'classnames';
-import UserService from '../../services/user.service';
 import ConnectionPreviewDialog from '../Dialogs/ConnectionPreview';
 import ConnectionListItem from './ConnectionListItem';
 import AddConnectionDialog from '../Dialogs/AddConnection';
 import YesNoMessageBox from '../MessageBoxes/YesNoMessageBox';
 
+import { 
+    fetchOutgoingConnections, 
+    selectAllOutgoingConnections,
+    selectOutgoingConnectionsStatus
+} from '../../redux/connections/outgoingConnectionsSlice';
+
+import {
+    fetchIncomingConnections,
+    selectAllIncomingConnections,
+    selectIncomingConnectionsStatus
+} from '../../redux/connections/incomingConnectionsSlice';
+
+import {
+    postConnectionRemove,
+    postConnectionUpdate
+} from '../../redux/connections/connectionsSlice';
+import { selectUserById } from '../../redux/users/usersSlice';
+
 export default function ConnectionsSideMenuItem(props) {
+    const dispatch = useDispatch();
+    const outgoingConnectionsStatus = useSelector(selectOutgoingConnectionsStatus);
+    const outgoingConnections = useSelector(selectAllOutgoingConnections);
+    const incomingConnectionsStatus = useSelector(selectIncomingConnectionsStatus);
+    const incomingConnections = useSelector(selectAllIncomingConnections);
+
     const [state, updateState] = useState({
         expanded: false,
         incomingExpanded: false,
-        outgoingConnections: {},
-        incomingConnections: {},
-        selectedConnection: null,
-        selectedConnectionUpdated: false,
+        selectedConnectionId: null,
         removeMessageTitle: 'Remove Connection Confirmation',
         removeMessageMessage: 'Are you sure you want to remove this connection?',
         removeMessageSubtext: 'The other user will not be notified but will be able to see that the connection is no longer mutual.',
@@ -37,35 +58,12 @@ export default function ConnectionsSideMenuItem(props) {
         return yesNoMessageBox;
     };
 
-    const getOutgoingConnections = async () => {
-        let outgoingConnections = await UserService.getOutgoingConnections(props.userDetails.uniqueId);
-
-        return outgoingConnections;
-    };
-
-    const getIncomingConnections = async () => {
-        let incomingConnections = await UserService.getIncomingConnections(props.userDetails.uniqueId);
-
-        return incomingConnections;
-    };
-
-    const updateSelectedConnection = (selectedConnection) => {
-        updateState(prevState => ({
-            ...prevState,
-            selectedConnection: {
-                ...prevState.selectedConnection,
-                ...selectedConnection
-            },
-            selectedConnectionUpdated: true
-        }));
-    }
-
     const toggleExpanded = async (event) => {
         if (event.target && event.target.className.startsWith('sideMenuItem')) {
-            if (!state.expanded) {
-                let outgoingConnections = await getOutgoingConnections();
+            if (!state.expanded && outgoingConnectionsStatus === 'idle') {
+                dispatch(fetchOutgoingConnections());
 
-                updateState(prevState => ({...prevState, expanded: true, outgoingConnections}));
+                updateState(prevState => ({...prevState, expanded: true}));
             }
             else {
                 updateState(prevState => ({...prevState, expanded: false}));
@@ -74,10 +72,10 @@ export default function ConnectionsSideMenuItem(props) {
     }
 
     const toggleIncomingExpanded = async (event) => {
-        if (!state.incomingExpanded) {
-            let incomingConnections = await getIncomingConnections();
+        if (!state.incomingExpanded && incomingConnectionsStatus === 'idle') {
+            dispatch(fetchIncomingConnections());
 
-            updateState(prevState => ({...prevState, incomingExpanded: true, incomingConnections}));
+            updateState(prevState => ({...prevState, incomingExpanded: true}));
         }
         else {
             updateState(prevState => ({...prevState, incomingExpanded: false}));
@@ -91,26 +89,24 @@ export default function ConnectionsSideMenuItem(props) {
             clickedButton = clickedButton.parentNode;
         }
 
-        let selectedConnection = {
-            id: clickedButton.dataset.connection,
-            details: state.outgoingConnections[clickedButton.dataset.connection]
-        };
+        let selectedConnectionId = clickedButton.dataset.connection;
         
-        updateState(prevState => ({...prevState, selectedConnection, selectedConnectionUpdated: false}));
+        updateState(prevState => ({
+            ...prevState, 
+            selectedConnectionId
+        }));
     };
 
     const handleRemoveConnectionClick = (event) => {
         let clickedButton = event.target;
 
-        let selectedConnection = {
-            id: clickedButton.dataset.connection,
-            details: state.outgoingConnections[clickedButton.dataset.connection]
-        };
-        
+        let selectedConnectionId = clickedButton.dataset.connection;
+        let user = selectUserById(selectedConnectionId);
+      
         updateState(prevState => ({
-            ...prevState
-            , selectedConnection
-            , removeMessageMessage: `Are you sure you want to remove your connection to ${selectedConnection.details.displayName}#${selectedConnection.details.displayNameIndex}?`
+            ...prevState,
+            selectedConnectionId,
+            removeMessageMessage: `Are you sure you want to remove your connection to ${user.displayName}#${user.displayNameIndex}?`
         }));
 
         let yesNoMessageBoxInstance = getYesNoMessageBox();
@@ -122,44 +118,63 @@ export default function ConnectionsSideMenuItem(props) {
         event.stopPropagation();
     }
 
-    const saveSelectedConnection = () => {
-        let updateConnection = state.selectedConnectionUpdated;
-
-        updateState(prevState => ({
-            ...prevState,
-            outgoingConnections: {
-                ...prevState.outgoingConnections,
-                [prevState.selectedConnection.id]: {
-                    ...prevState.selectedConnection.details
-                }
-            },
-            selectedConnectionUpdated: false
-        }));
-
-        if (updateConnection) {
-            UserService.updateOutgoingConnection({ [state.selectedConnection.id]: state.selectedConnection.details });
-        }
+    const handleAddedConnection = async (newConnection) => {
+        const result = await dispatch(postConnectionUpdate(newConnection));
     };
 
     const removeSelectedConnection = async () => {
-        let { data } = await UserService.removeOutgoingConnection({id: state.selectedConnection.id});
+        let success = await dispatch(postConnectionRemove(state.selectedConnectionId));
 
-        if (data?.success) {
-            let outgoingConnections = {...state.outgoingConnections};
-            delete outgoingConnections[state.selectedConnection.id];
+        // Should alert them that the removal failed
+        updateState(prevState => ({
+            ...prevState,
+            selectedConnectionId: null
+        }));
+    };
 
-            updateState(prevState => ({
-                ...prevState,
-                selectedConnection: null,
-                outgoingConnections
-            }));
+    const getOutgoingConnectionsList = () => {
+        switch (outgoingConnectionsStatus) {
+            case 'loading':
+                return <li key="Loading" className="list-group-item text-center" style={{fontSize: '.9em'}}>
+                        Loading...
+                    </li>;
+            case 'idle':
+                return outgoingConnections && outgoingConnections.length > 0
+                    ? outgoingConnections.map(outgoingConnection => (
+                        <ConnectionListItem key={outgoingConnection.uniqueId} connection={outgoingConnection} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
+                        )
+                    )
+                    : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>
+                        None
+                    </li>;
+            case 'failed':
+            default:
+                return <li key="Error" className="list-group-item text-center" style={{fontSize: '.9em'}}>
+                        Error
+                    </li>;
         }
-        else {
-            // Should alert them that the removal failed
-            updateState(prevState => ({
-                ...prevState,
-                selectedConnection: null
-            }));
+    };
+
+    const getIncomingConnectionsList = () => {
+        switch (incomingConnectionsStatus) {
+            case 'loading':
+                return <li key="Loading" className="list-group-item text-center" style={{fontSize: '.9em'}}>
+                        Loading...
+                    </li>;
+            case 'idle':
+                return incomingConnections && incomingConnections.length > 0
+                        ? incomingConnections.map(incomingConnection => (
+                                <ConnectionListItem key={incomingConnection.uniqueId} connection={incomingConnection} handleConnectionClick={handleConnectionClick} />
+                            )
+                        )
+                        : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>
+                            None
+                        </li>;
+            case 'failed':
+            default:
+                return <li key="Error" className="list-group-item text-center" style={{fontSize: '.9em'}}>
+                        Error
+                    </li>;
         }
     };
 
@@ -196,12 +211,7 @@ export default function ConnectionsSideMenuItem(props) {
                     }} />
                     <ul className="sideMenuItemList">
                         {
-                            Object.keys(state.outgoingConnections).length > 0
-                            ? Object.entries(state.outgoingConnections).map(([uniqueId, details]) => (
-                                    <ConnectionListItem key={uniqueId} uniqueId={uniqueId} details={details} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
-                                )
-                            )
-                            : <></>
+                            getOutgoingConnectionsList()
                         }
                         <li style={{
                             borderWidth: '2px 0',
@@ -226,14 +236,7 @@ export default function ConnectionsSideMenuItem(props) {
                             <div className={classNames('sideSubMenuItem', {'sideSubMenuItemExpanded': state.incomingExpanded})}>
                                 <ul className="list-group" style={{paddingLeft: 0}}>
                                     {
-                                        Object.keys(state.incomingConnections).length > 0
-                                        ? Object.entries(state.incomingConnections).map(([uniqueId, details]) => (
-                                                <ConnectionListItem key={uniqueId} uniqueId={uniqueId} details={details} handleConnectionClick={handleConnectionClick} />
-                                            )
-                                        )
-                                        : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>
-                                            None
-                                        </li>
+                                        getIncomingConnectionsList()
                                     }
                                 </ul>
                             </div>
@@ -243,8 +246,8 @@ export default function ConnectionsSideMenuItem(props) {
             </div>
         </div>
 
-        <ConnectionPreviewDialog id="connectionDetails" selectedConnection={state.selectedConnection} updateSelectedConnection={updateSelectedConnection} saveSelectedConnection={saveSelectedConnection} />
-        <AddConnectionDialog id="addConnection" appState={props.appState} />
+        <ConnectionPreviewDialog id="connectionDetails" userDetails={props.userDetails} connectionId={state.selectedConnectionId} />
+        <AddConnectionDialog id="addConnection" appState={props.appState} onAddedConnection={handleAddedConnection} />
         <YesNoMessageBox ref={yesNoMessageBoxRef}
                 caption={state.removeMessageTitle} 
                 message={state.removeMessageMessage} 

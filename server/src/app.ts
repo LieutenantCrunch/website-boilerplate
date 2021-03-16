@@ -45,8 +45,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 
 
-import {apiRouter} from './routers/api'
+import {apiRouter} from './routers/api';
 app.use('/api', apiRouter);
+
+import {usersRouter} from './routers/users';
+app.use('/u', usersRouter);
 
 app.get(/^\/admin$/, [AuthHelper.verifyToken, AuthHelper.verifyAdmin], (req: Request, res: Response) => {
     FileHandler.sendFileResponse(res, './dist/admin.html', 'text/html');
@@ -56,7 +59,7 @@ app.get(/^\/(index)?$/, (req: Request, res: Response) => {
     FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
 });
 
-app.get('/profile', [AuthHelper.verifyToken], (req: Request, res: Response) => {
+app.get('/profile', [AuthHelper.verifyTokenAndPassThrough], (req: Request, res: Response) => {
     FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
 });
 

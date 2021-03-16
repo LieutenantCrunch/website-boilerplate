@@ -3,10 +3,12 @@ import express, {Request, Response, Router, NextFunction} from 'express';
 import { databaseHelper } from '../../utilities/databaseHelper';
 import AuthHelper from '../../utilities/authHelper';
 import {apiUserPFPRouter} from './users/pfp';
+import {apiUserPublicRouter} from './users/public';
 
 const apiUserRouter = express.Router();
 
 apiUserRouter.use('/pfp', apiUserPFPRouter);
+apiUserRouter.use('/public', apiUserPublicRouter);
 
 apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request, res: Response) => {
     switch (req.params.methodName)
@@ -115,9 +117,17 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         return res.status(200).json({success: false, results: []});
     case 'getOutgoingConnections':
         try {
-            if (req.query.uniqueId) {
-                let uniqueId: string = req.query.uniqueId.toString();
-                let connections: WebsiteBoilerplate.UserConnectionDetails = await databaseHelper.getOutgoingConnections(uniqueId);
+            if ((req.query && req.query.uniqueId !== undefined) || req.userId !== undefined) {
+                let uniqueId: string = '';
+                
+                if (req.query && req.query.uniqueId !== undefined) {
+                    uniqueId = req.query.uniqueId.toString();
+                }
+                else {
+                    uniqueId = req.userId!;
+                }
+
+                let connections: WebsiteBoilerplate.UserDetails[] = await databaseHelper.getOutgoingConnections(uniqueId);
 
                 return res.status(200).json({success: true, connections});
             }
@@ -129,9 +139,17 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         return res.status(200).json({success: false, connections: {}});
     case 'getIncomingConnections':
         try {
-            if (req.query.uniqueId) {
-                let uniqueId: string = req.query.uniqueId.toString();
-                let connections: WebsiteBoilerplate.UserConnectionDetails = await databaseHelper.getIncomingConnections(uniqueId);
+            if ((req.query && req.query.uniqueId !== undefined) || req.userId !== undefined) {
+                let uniqueId: string = '';
+                
+                if (req.query && req.query.uniqueId !== undefined) {
+                    uniqueId = req.query.uniqueId.toString();
+                }
+                else {
+                    uniqueId = req.userId!;
+                }
+
+                let connections: WebsiteBoilerplate.UserDetails[] = await databaseHelper.getIncomingConnections(uniqueId);
 
                 return res.status(200).json({success: true, connections});
             }
@@ -161,6 +179,40 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
 apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request, res: Response) => {
     switch (req.params.methodName)
     {
+    case 'blockUser':
+        try {
+            let currentUserUniqueId = req.userId;
+            let { blockUserUniqueId } = req.body;
+
+            if (currentUserUniqueId && blockUserUniqueId) {
+                let success: Boolean = await databaseHelper.blockUser(currentUserUniqueId, blockUserUniqueId);
+
+                return res.status(200).json({ success });
+            }
+        }
+        catch (err) {
+            console.error(`Error blocking user:\n${err.message}`);
+        }
+
+        return res.status(200).json({ success: false });
+    case 'removeConnection':
+            try {
+                let uniqueId = req.userId;
+                let { connectedUserUniqueId } = req.body;
+    
+                if (uniqueId && connectedUserUniqueId) {
+                    let results: WebsiteBoilerplate.RemoveUserConnectionResults = await databaseHelper.removeUserConnection(uniqueId, connectedUserUniqueId);
+    
+                    return res.status(200).json({success: results.success, results, message: ''});
+                }
+            }
+            catch (err) {
+                console.error(`Error removing connection\n${err.message}`);
+            }
+    
+            res.status(200).json({success: false, message: 'An error occurred while removing the connection'});
+    
+            break;
     case 'setDisplayName':
         if (req.userId && req.body.displayName) {
             if (databaseHelper === undefined || databaseHelper === null) {
@@ -174,6 +226,40 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
         else {
             res.status(200).json({success: false, message: 'No user or display name found'});
         }
+        break;
+    case 'unblockUser':
+        try {
+            let currentUserUniqueId = req.userId;
+            let { unblockUserUniqueId } = req.body;
+
+            if (currentUserUniqueId && unblockUserUniqueId) {
+                let success = await databaseHelper.unblockUser(currentUserUniqueId, unblockUserUniqueId);
+
+                return res.status(200).json({ success });
+            }
+        }
+        catch (err) {
+            console.error(`Error unblocking user:\n${err.message}`);
+        }
+
+        return res.status(200).json({ success: false });
+    case 'updateConnection':
+        try {
+            let uniqueId = req.userId;
+            let { connection } = req.body;
+
+            if (uniqueId && connection) {
+                let results: WebsiteBoilerplate.UpdateUserConnectionResults = await databaseHelper.updateUserConnection(uniqueId, connection);
+
+                return res.status(200).json({success: results.success, results, message: ''});
+            }
+        }
+        catch (err) {
+            console.error(`Error updating connection\n${err.message}`);
+        }
+
+        res.status(200).json({success: false, results: null, message: 'An error occurred while updating the connection'});
+
         break;
     case 'verifyDisplayName':
         try {
@@ -195,42 +281,6 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
         res.status(200).json({success: false, message: 'An error occurred while verifying the display name. Please check the log.'});
 
         break;
-    case 'updateConnection':
-        try {
-            let uniqueId = req.userId;
-            let { outgoingConnection } = req.body;
-
-            if (uniqueId && outgoingConnection) {
-                let result: Boolean = await databaseHelper.updateUserConnection(uniqueId, outgoingConnection);
-
-                return res.status(200).json({success: result, message: ''});
-            }
-        }
-        catch (err) {
-            console.error(`Error updating connection\n${err.message}`);
-        }
-
-        res.status(200).json({success: false, message: 'An error occurred while updating the connection'});
-
-        break;
-    case 'removeConnection':
-            try {
-                let uniqueId = req.userId;
-                let { connectedUserUniqueId } = req.body;
-    
-                if (uniqueId && connectedUserUniqueId) {
-                    let result: Boolean = await databaseHelper.removeUserConnection(uniqueId, connectedUserUniqueId);
-    
-                    return res.status(200).json({success: result, message: ''});
-                }
-            }
-            catch (err) {
-                console.error(`Error removing connection\n${err.message}`);
-            }
-    
-            res.status(200).json({success: false, message: 'An error occurred while removing the connection'});
-    
-            break;
     default:
         res.status(404).send(req.params.methodName + ' is not a valid users method')
         break;

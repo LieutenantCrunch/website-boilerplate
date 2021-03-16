@@ -6,6 +6,18 @@ import * as Constants from '../constants/constants';
 const CancelToken = axios.CancelToken;
 
 export default class UserService {
+    static async blockUser(blockUserUniqueId) {
+        try
+        {
+            let payload = { blockUserUniqueId };
+
+            return await axiosApi.post(Constants.API_PATH_USERS + '/blockUser', payload);
+        }
+        catch (err) {
+            return { success: false };
+        }
+    }
+
     static async setDisplayName(displayName) {
         try
         {
@@ -19,17 +31,19 @@ export default class UserService {
         }
     }
 
-    static getCurrentDetails(successCallback) {
+    static async getCurrentDetails() {
         try {
-            axiosApi.get(Constants.API_PATH_USERS + 'currentUserDetails').then(response => {
-                if (response.data && response.data.success) {
-                    successCallback(response.data.userDetails);
-                }
-            })
+            let response = await axiosApi.get(Constants.API_PATH_USERS + 'currentUserDetails');
+
+            if (response.data && response.data.success) {
+                return response.data.userDetails;
+            }
         }
         catch (err) {
             console.error(`Error getting current user details: ${err.message}`);
         }
+
+        return null;
     }
 
     static async getUserDetails(uniqueId) {
@@ -46,6 +60,24 @@ export default class UserService {
         }
 
         return null;
+    }
+
+    static async getProfileInfo(profileName) {
+        try
+        {
+            let queryString = encodeURI(`profileName=${profileName}`);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + Constants.API_PATH_PUBLIC + `/getProfileInfo?${queryString}`);
+
+            if (response.data && response.data.success) {
+                return response.data.profileInfo;
+            }
+
+            throw new Error(`Failed to look up profile for ${profileName}${ response.data && response.data.message ? `:\n${response.data.message}` :'' }`);
+        }
+        catch (err)
+        {
+            throw new Error(`Error looking up profile for ${profileName}:\n${err.message}`);
+        }
     }
 
     static checkForRole(userDetails, roleName) {
@@ -123,8 +155,15 @@ export default class UserService {
 
     static async getIncomingConnections(uniqueId) {
         try {
-            let queryString = encodeURI(`uniqueId=${uniqueId}`);
-            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getIncomingConnections?${queryString}`);
+            let response = null;
+
+            if (uniqueId) {
+                let queryString = encodeURI(`uniqueId=${uniqueId}`);
+                response = await axiosApi.get(Constants.API_PATH_USERS + `/getIncomingConnections?${queryString}`);
+            }
+            else {
+                response = await axiosApi.get(Constants.API_PATH_USERS + `/getIncomingConnections`);
+            }
 
             if (response.data && response.data.success) {
                 return response.data.connections;
@@ -139,8 +178,15 @@ export default class UserService {
 
     static async getOutgoingConnections(uniqueId) {
         try {
-            let queryString = encodeURI(`uniqueId=${uniqueId}`);
-            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getOutgoingConnections?${queryString}`);
+            let response = null;
+
+            if (uniqueId) {
+                let queryString = encodeURI(`uniqueId=${uniqueId}`);
+                response = await axiosApi.get(Constants.API_PATH_USERS + `/getOutgoingConnections?${queryString}`);
+            }
+            else {
+                response = await axiosApi.get(Constants.API_PATH_USERS + `/getOutgoingConnections`);
+            }
 
             if (response.data && response.data.success) {
                 return response.data.connections;
@@ -171,30 +217,51 @@ export default class UserService {
         return {};
     }
 
-    static async updateOutgoingConnection(outgoingConnection) {
+    static async updateConnection(connection) {
         try {
-            let payload = {outgoingConnection};
-            axiosApi.post(Constants.API_PATH_USERS + '/updateConnection', payload);
+            let payload = {connection};
+            let response = await axiosApi.post(Constants.API_PATH_USERS + '/updateConnection', payload);
+
+            if (response.data?.success && response.data?.results) {
+                return response.data.results;
+            }
+
+            return null;
         }
         catch (err) {
             console.error(`Error updating connection:\n${err.message}`);
         }
+
+        return null;
     }
 
-    static async removeOutgoingConnection(outgoingConnection) {
+    static async removeOutgoingConnection(connectedUserUniqueId) {
         try {
-            let connectedUserUniqueId = outgoingConnection.id;
             let payload = {connectedUserUniqueId};
             
             let response = await axiosApi.post(Constants.API_PATH_USERS + '/removeConnection', payload);
 
-            return response;
+            if (response.data?.success && response.data?.results) {
+                return response.data.results;
+            }
         }
         catch (err) {
             console.error(`Error removing connection:\n${err.message}`);
         }
 
         return {};
+    }
+
+    static async unblockUser(unblockUserUniqueId) {
+        try
+        {
+            let payload = { unblockUserUniqueId };
+
+            return await axiosApi.post(Constants.API_PATH_USERS + '/unblockUser', payload);
+        }
+        catch (err) {
+            return { success: false };
+        }
     }
 };
 
