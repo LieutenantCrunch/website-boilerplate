@@ -1,5 +1,6 @@
-import { BelongsToManyRemoveAssociationsMixin } from 'sequelize';
-import { BelongsToGetAssociationMixin, BelongsToManyAddAssociationMixin, BelongsToManyAddAssociationsMixin, BelongsToManyGetAssociationsMixin, BelongsToManyRemoveAssociationMixin, DataTypes, Model, ModelCtor, Optional, Sequelize } from 'sequelize';
+import { BelongsToGetAssociationMixin, BelongsToManyAddAssociationMixin, BelongsToManyRemoveAssociationsMixin } from 'sequelize';
+import { BelongsToManyAddAssociationsMixin, BelongsToManyGetAssociationsMixin, BelongsToManyRemoveAssociationMixin } from 'sequelize';
+import { DataTypes, Model, ModelCtor, Op, Optional, Sequelize } from 'sequelize';
 import { SequelizeAttributes } from '../typings/SequelizeAttributes';
 import { UserInstance } from './User';
 import { UserConnectionTypeInstance } from './UserConnectionType';
@@ -73,6 +74,21 @@ export const UserConnectionFactory = (sequelize: Sequelize): ModelCtor<UserConne
                 name: 'registeredUserConnectionId',
                 field: 'registered_user_connection_id'
             }
+        });
+
+        // This relationship is necessary to be able to join UserBlock for determining whether an outgoingConnection
+        // is to a user that is blocking the current user.
+        // From: https://stackoverflow.com/questions/42226351/sequelize-join-with-multiple-column
+        UserConnection.hasOne(models.UserBlock, {
+            as: 'userBlock',
+            foreignKey: 'blockedUserId',
+            sourceKey: 'requestedUserId',
+            scope: {
+                [Op.and]: Sequelize.where(Sequelize.col('userConnection.connected_user_id'),
+                Op.eq,
+                Sequelize.col('`userConnection->userBlock`.registered_user_id'))
+            },
+            constraints: false
         });
     };
 

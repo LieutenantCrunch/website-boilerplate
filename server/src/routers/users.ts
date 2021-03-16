@@ -11,10 +11,10 @@ usersRouter.get('/:profileName', [AuthHelper.verifyTokenAndPassThrough], async (
     let profileName: string = req.params.profileName;
 
     if (Constants.PROFILE_NAME_REGEX.test(profileName)) {
-        let result: {exists: Boolean, allowPublicAccess: Boolean} = await databaseHelper.userExistsForProfileName(profileName);
-        let currentUserId: string | undefined = req.userId;
+        let currentUserUniqueId: string | undefined = req.userId;
+        let result: {exists: Boolean, allowPublicAccess: Boolean} = await databaseHelper.userExistsForProfileName(currentUserUniqueId, profileName);
         
-        if (result.exists && (currentUserId || result.allowPublicAccess)) {
+        if (result.exists && (currentUserUniqueId || result.allowPublicAccess)) {
             FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
         }
         else {

@@ -1,4 +1,4 @@
-import { DataTypes, Model, ModelCtor, Optional, Sequelize, HasManyGetAssociationsMixin, HasManyAddAssociationMixin, HasManyRemoveAssociationMixin, BelongsToManyGetAssociationsMixin, BelongsToManyAddAssociationMixin, BelongsToManyAddAssociationsMixin, BelongsToManyRemoveAssociationMixin, BelongsToManyRemoveAssociationsMixin, HasManyCreateAssociationMixin, HasManyRemoveAssociationsMixin, HasManyAddAssociationsMixin } from 'sequelize';
+import { DataTypes, Model, ModelCtor, Optional, Sequelize, HasManyGetAssociationsMixin, HasManyAddAssociationMixin, HasManyRemoveAssociationMixin, BelongsToManyGetAssociationsMixin, BelongsToManyAddAssociationMixin, BelongsToManyAddAssociationsMixin, BelongsToManyRemoveAssociationMixin, BelongsToManyRemoveAssociationsMixin, HasManyCreateAssociationMixin, HasManyRemoveAssociationsMixin, HasManyAddAssociationsMixin, BelongsToManyHasAssociationMixin } from 'sequelize';
 import { SequelizeAttributes } from '../typings/SequelizeAttributes';
 import { DisplayNameInstance } from './DisplayName';
 import { PasswordResetTokenInstance } from './PasswordResetToken';
@@ -22,6 +22,8 @@ export interface UserAttributes {
     roles?: RoleInstance[];
     outgoingConnections?: UserConnectionInstance[];
     incomingConnections?: UserConnectionInstance[];
+    blockedUsers?: UserInstance[];
+    blockingUsers?: UserInstance[];
 };
 
 export interface UserCreationAttributes extends Optional<UserAttributes, 'id'>, 
@@ -51,6 +53,7 @@ export interface UserInstance extends Model<UserAttributes, UserCreationAttribut
     addDisplayName: HasManyAddAssociationMixin<DisplayNameInstance, DisplayNameInstance['id']>;
 
     getRoles: BelongsToManyGetAssociationsMixin<RoleInstance>;
+    hasRole: BelongsToManyHasAssociationMixin<RoleInstance, RoleInstance['id']>;
     addRole: BelongsToManyAddAssociationMixin<RoleInstance, RoleInstance['id']>;
     addRoles: BelongsToManyAddAssociationsMixin<RoleInstance, RoleInstance['id']>;
     removeRole: BelongsToManyRemoveAssociationMixin<RoleInstance, RoleInstance['id']>;
@@ -62,9 +65,11 @@ export interface UserInstance extends Model<UserAttributes, UserCreationAttribut
     getIncomingConnections: HasManyGetAssociationsMixin<UserConnectionInstance>;
     addIncomingConnection: HasManyAddAssociationMixin<UserConnectionInstance, UserConnectionInstance['id']>;
 
-    getBlockedUsers: HasManyGetAssociationsMixin<UserInstance>;
-    addBlockedUser: HasManyAddAssociationMixin<UserInstance, UserInstance['id']>;
-    removeBlockedUser: HasManyRemoveAssociationMixin<UserInstance, UserInstance['id']>;
+    getBlockedUsers: BelongsToManyGetAssociationsMixin<UserInstance>;
+    addBlockedUser: BelongsToManyAddAssociationMixin<UserInstance, UserInstance['id']>;
+    removeBlockedUser: BelongsToManyRemoveAssociationMixin<UserInstance, UserInstance['id']>;
+
+    getBlockingUsers: BelongsToManyGetAssociationsMixin<UserInstance>;
 };
 
 export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {

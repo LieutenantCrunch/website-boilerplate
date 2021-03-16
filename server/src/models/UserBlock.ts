@@ -20,7 +20,7 @@ export const UserBlockFactory = (sequelize: Sequelize): ModelCtor<UserBlockInsta
         },
         blockedUserId: {
             type: DataTypes.INTEGER,
-            field: 'registered_user_id',
+            field: 'blocked_user_id',
             references: {
                 model: 'User',
                 key: 'id'
