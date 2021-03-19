@@ -39,4 +39,18 @@ declare namespace WebsiteBoilerplate {
         success: Boolean;
         wasMutual: Boolean;
     }
+
+    export interface Post {
+        lastEditedOn: Date | null;
+        postedOn: Date;
+        postText: string | null;
+        postType: number;
+        postedBy: {
+            displayName: string;
+            displayNameIndex: number;
+            profileName: string;
+            uniqueId: string;
+        };
+        uniqueId: string;
+    }
 }

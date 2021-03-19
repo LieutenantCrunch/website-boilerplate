@@ -1,14 +1,16 @@
 import express, {Request, Response, Router, NextFunction} from 'express';
 
-import {apiUserRouter} from './api/users';
 import {apiAuthRouter} from './api/auth';
+import { apiPostsRouter } from './api/posts';
+import {apiUserRouter} from './api/users';
 
 import * as Constants from '../constants/constants';
 
 const apiRouter = express.Router();
 
-apiRouter.use('/users', apiUserRouter);
 apiRouter.use('/auth', apiAuthRouter);
+apiRouter.use('/posts', apiPostsRouter);
+apiRouter.use('/users', apiUserRouter);
 
 apiRouter.get('/:methodName', async (req: Request, res: Response) => {
     switch (req.params.methodName)

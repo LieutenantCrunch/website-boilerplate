@@ -17,6 +17,7 @@ import { UserJWTFactory } from '../models/UserJWT';
 import { UserRoleJunctionFactory } from '../models/UserRoleJunction';
 
 // Views
+import { FeedViewFactory } from '../models/views/FeedView';
 import { UserConnectionViewFactory } from '../models/views/UserConnectionView';
 
 const dbconfig = require('../../private/dbconfig.json');
@@ -56,6 +57,7 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         UserJWT: UserJWTFactory(sequelize),
         UserRoleJunction: UserRoleJunctionFactory(sequelize),
         Views: {
+            FeedView: FeedViewFactory(sequelize),
             UserConnectionView: UserConnectionViewFactory(sequelize)
         }
     };

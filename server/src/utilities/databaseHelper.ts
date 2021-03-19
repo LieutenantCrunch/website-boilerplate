@@ -3,7 +3,7 @@ import memoize from 'memoizee';
 import bcrypt from 'bcryptjs';
 import NodeCache from 'node-cache';
 import { Op } from 'sequelize';
-import { Sequelize } from 'sequelize';
+import { Sequelize, QueryTypes } from 'sequelize';
 import { v4 as uuidv4 } from 'uuid';
 
 import * as Constants from '../constants/constants';
@@ -12,12 +12,14 @@ import { db } from '../models/_index';
 import { UserInstance } from '../models/User';
 import { ProfilePictureInstance } from '../models/ProfilePicture';
 import { UserJWTInstance } from '../models/UserJWT';
-import { UserConnectionViewInstance } from '../models/views/UserConnectionView';
 import { DisplayNameInstance } from '../models/DisplayName';
 import { UserConnectionInstance } from '../models/UserConnection';
 import { UserConnectionTypeInstance } from '../models/UserConnectionType';
 import { PasswordResetTokenInstance } from '../models/PasswordResetToken';
 import { UserBlockInstance } from '../models/UserBlock';
+
+import { FeedViewInstance } from '../models/views/FeedView';
+import { UserConnectionViewInstance } from '../models/views/UserConnectionView';
 
 class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -321,6 +323,30 @@ class DatabaseHelper {
         catch (err)
         {
             console.error(`Error looking up user with unique id ${uniqueId}: ${err.message}`);
+        }
+
+        return undefined;
+    }
+
+    async getUniqueIdForUserId(id: number): Promise<string | undefined> {
+        try
+        {
+            let registeredUser: UserInstance | null = await db.User.findOne({
+                where: {
+                    id
+                },
+                attributes: [
+                    'uniqueId'
+                ]
+            });
+
+            if (registeredUser) {
+                return registeredUser.uniqueId;
+            }
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with id ${id}: ${err.message}`);
         }
 
         return undefined;
@@ -1981,6 +2007,49 @@ class DatabaseHelper {
         }
 
         return false;
+    }
+
+    // Post Methods
+    async getFeed(uniqueId: string | number | undefined, postType: number | null, endDate: Date | null, pageNumber: number | null): Promise<{posts: WebsiteBoilerplate.Post[], total: number}> {
+        let posts: WebsiteBoilerplate.Post[] = [];
+        let total: number = 0;
+
+        if (typeof uniqueId === 'number') {
+            uniqueId = await this.getUniqueIdForUserId(uniqueId);
+        }
+
+        if (uniqueId !== undefined) {
+            const {rows, count}: {rows: FeedViewInstance[]; count: number} = await db.Views.FeedView.findAndCountAll({
+                where: {
+                    userUniqueId: uniqueId
+                },
+                order: [
+                    ['id', 'DESC']
+                ],
+                offset: (pageNumber || 0) * Constants.DB_FEED_FETCH_PAGE_SIZE,
+                limit: Constants.DB_FEED_FETCH_PAGE_SIZE
+            })
+
+            posts = rows.map(row => ({
+                lastEditedOn: row.lastEditedOn,
+                postedOn: row.postedOn,
+                postText: row.postText,
+                postTitle: row.postTitle,
+                postType: row.postType,
+                postedBy: {
+                    displayName: row.postedByDisplayName,
+                    displayNameIndex: row.postedByDisplayNameIndex,
+                    pfpSmall: row.postedByPfpSmall || '/i/s/pfpDefault.svgz',
+                    profileName: row.postedByProfileName,
+                    uniqueId: row.postedByUniqueId
+                },
+                uniqueId: row.uniqueId
+            }));
+
+            total = count;
+        }
+
+        return {posts, total};
     }
 };
 

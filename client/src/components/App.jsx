@@ -1,3 +1,4 @@
+// React
 import React, {useState, useEffect} from 'react';
 import {BrowserRouter as Router,
     Switch,
@@ -5,18 +6,22 @@ import {BrowserRouter as Router,
     Redirect
 } from 'react-router-dom';
 
+// Hooks
 import * as Hooks from '../hooks/hooks';
 
+// Components
+import Feed from './Feed';
 import Header from './Header';
 import LoginForm from './RegistrationForm/LoginForm';
 import Profile from './Profile';
 import RegistrationForm from './RegistrationForm/RegistrationForm';
-import Welcome from './Welcome';
-import SettingsPage from './SettingsPage';
 import ResetPassword from './ResetPassword';
+import SettingsPage from './SettingsPage';
 import SideMenu from './SideMenu/SideMenu';
 import UserPage from './UserPage';
+import Welcome from './Welcome';
 
+// Services
 import UserService from '../services/user.service';
 import UtilityService from '../services/utility.service';
 
@@ -128,6 +133,12 @@ export default function App() {
                                 setStatusMessage={setStatusMessage}
                                 setTitle={setTitle}
                                 setUserInfo={setUserInfo} />
+                        </Route>
+                        <Route path="/feed" exact={true}>
+                            <Feed 
+                                appConstants={appConstants}
+                                setTitle={setTitle}
+                                setUserDetails={setUserDetails} />
                         </Route>
                         <Route path="/profile" exact={true} render={() => {
                             return (checkForValidSession() ? 

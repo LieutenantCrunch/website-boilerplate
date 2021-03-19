@@ -4,6 +4,7 @@ export const BASE_USERS_URL: string = `${BASE_URL}u/`;
 
 export const API_PATH_AUTH: string = 'auth/';
 export const API_PATH_USERS: string = 'users/';
+export const API_PATH_POSTS: string = 'posts/';
 
 export const JWT_EXPIRATION_DAYS: number = 30;
 export const RPT_EXPIRATION_MINUTES: number = 5; // Reset Password Token Expiration
@@ -18,6 +19,7 @@ export const PROFILE_NAME_REGEX: RegExp = new RegExp(PROFILE_NAME_REGEX_PATTERN,
 export const CACHE_KEY_CONNECTION_TYPES_DICT: string = 'db.connectionTypesDict'; // The connection types dictionary used by databaseHelper
 
 export const DB_USER_FETCH_PAGE_SIZE: number = 5; // The number of users to fetch at one time
+export const DB_FEED_FETCH_PAGE_SIZE: number = 20; // The number of posts to fetch at one time for feeds
 
 export const INVALIDATE_TOKEN_MODE = Object.freeze({
     SPECIFIC: 0,

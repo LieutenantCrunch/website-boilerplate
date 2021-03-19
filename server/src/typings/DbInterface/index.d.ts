@@ -11,6 +11,9 @@ import { UserConnectionTypeInstance } from '../../models/UserConnectionType';
 import { UserConnectionTypeJunctionInstance } from '../../models/UserConnectionTypeJunction';
 import { UserJWTInstance } from '../../models/UserJWT';
 import { UserRoleJunctionInstance } from '../../models/UserRoleJunction';
+
+// Views
+import { FeedViewInstance } from '../../models/views/FeedView';
 import { UserConnectionViewInstance } from '../../models/views/UserConnectionView';
 
 export interface DbInterface {
@@ -27,6 +30,7 @@ export interface DbInterface {
   UserJWT: ModelCtor<UserJWTInstance>;
   UserRoleJunction: ModelCtor<UserRoleJunctionInstance>;
   Views: {
+    FeedView: ModelCtor<FeedViewInstance>;
     UserConnectionView: ModelCtor<UserConnectionViewInstance>;
   }
 }

@@ -33,6 +33,10 @@ function Header(props) {
         collapseNavbarMenu();
     };
 
+    const handleMenuClickFeed = () => {
+        collapseNavbarMenu();
+    };
+
     const handleMenuClickProfile = () => {
         collapseNavbarMenu();
     };
@@ -74,6 +78,9 @@ function Header(props) {
                                     </li>
                                     : <></>
                                 }
+                                <li className="nav-item">
+                                    <Link className="nav-link text-right" to={'/feed'} onClick={handleMenuClickFeed}>Feed</Link>
+                                </li>
                                 <li className="nav-item">
                                     <Link className="nav-link text-right" to={'/profile'} onClick={handleMenuClickProfile}>Profile</Link>
                                 </li>
