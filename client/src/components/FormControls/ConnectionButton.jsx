@@ -474,7 +474,6 @@ const ConnectionButton = ({
             <HtmlTooltip 
                 title={getCurrentTooltip()}
                 enterDelay={500}
-                interactive
                 arrow
                 placement="top"
                 color={getCurrentTooltipColor()}
@@ -491,7 +490,6 @@ const ConnectionButton = ({
             <HtmlTooltip 
                 title={getCurrentDropdownTooltip()}
                 enterDelay={500}
-                interactive
                 arrow
                 placement="top"
                 color={getCurrentTooltipColor()}
@@ -510,7 +508,6 @@ const ConnectionButton = ({
                 enterDelay={500}
                 disableHoverListener
                 disableFocusListener 
-                interactive
                 placement="top"
                 open={state.showConnectionTypesTooltip}
                 color='rgb(255,0,0)'

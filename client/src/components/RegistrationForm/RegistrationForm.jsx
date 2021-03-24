@@ -179,7 +179,6 @@ function RegistrationForm(props) {
                             }
                             placement="bottom-start"
                             enterDelay={500}
-                            interactive
                             disableHoverListener
                             fontWeight='normal'
                         >
@@ -220,7 +219,6 @@ function RegistrationForm(props) {
                             placement="bottom-start"
                             TransitionComponent={Zoom}
                             enterDelay={500}
-                            interactive
                             disableHoverListener
                             fontWeight='normal'
                         >
@@ -244,7 +242,6 @@ function RegistrationForm(props) {
                                 TransitionComponent={Zoom}
                                 enterDelay={500}
                                 arrow
-                                interactive
                                 color='rgb(255,0,0)'
                             >
                                 <small>(<span className="text-primary text-decoration-underline" style={{cursor: 'help'}}>Note</span>)</small>

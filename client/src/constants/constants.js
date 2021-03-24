@@ -9,6 +9,15 @@ export const API_PATH_POSTS = 'posts/';
 export const API_PATH_PFP = 'pfp/';
 export const API_PATH_PUBLIC = 'public/';
 
+// Static paths
+export const STATIC_IMAGE_PATH = '/i/s/';
+
+// Frequently used static images
+export const STATIC_IMAGES = Object.freeze({
+    PFP_DEFAULT: STATIC_IMAGE_PATH + 'pfpDefault.svgz',
+    WAVEFORM: STATIC_IMAGE_PATH + 'waveform.png'
+});
+
 // User Search Status
 export const USER_SEARCH_STATUS = Object.freeze({
     NO_RESULTS: 0, /* No results from the server */
@@ -29,4 +38,11 @@ export const UPDATE_USER_CONNECTION_ACTIONS = Object.freeze({
     NONE: 0,
     ADDED: 1,
     UPDATED: 2
+});
+
+export const POST_TYPES = Object.freeze({
+    TEXT: 0,
+    IMAGE: 1,
+    VIDEO: 2,
+    AUDIO: 3
 });

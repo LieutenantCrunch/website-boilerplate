@@ -90,7 +90,6 @@ const TwoClickButton = ({
         <HtmlTooltip 
             title={getCurrentValues().tooltip}
                 enterDelay={500}
-                interactive
                 arrow
                 placement="bottom"
                 color='rgb(255,0,0)'

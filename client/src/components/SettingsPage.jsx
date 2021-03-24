@@ -150,7 +150,6 @@ function SettingsPage(props) {
                                     }
                                     placement="bottom-start"
                                     enterDelay={500}
-                                    interactive
                                     disableHoverListener
                                     fontWeight='normal'
                                 >

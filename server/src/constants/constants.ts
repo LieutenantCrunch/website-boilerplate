@@ -34,3 +34,10 @@ export const UPDATE_USER_CONNECTION_ACTIONS = Object.freeze({
 });
 
 export const EMAIL_FROM: string = '"Website Boilerplate" <test@test.test>';
+
+export const POST_TYPES = Object.freeze({
+    TEXT: 0,
+    IMAGE: 1,
+    VIDEO: 2,
+    AUDIO: 3
+});
