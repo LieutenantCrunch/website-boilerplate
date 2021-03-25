@@ -3,18 +3,26 @@ import { useEffect, useRef, useState } from 'react';
 import { Avatar, Divider, Paper } from '@material-ui/core';
 import MaterialTextfield from '@material-ui/core/TextField';
 
+import PhotoOutlinedIcon from '@material-ui/icons/PhotoOutlined';
+import VideocamOutlinedIcon from '@material-ui/icons/VideocamOutlined';
+import EqualizerIcon from '@material-ui/icons/Equalizer';
+
 import { makeStyles } from '@material-ui/core/styles';
+import classNames from 'classnames';
 import * as Constants from '../constants/constants';
 
 export default function NewPostForm(props) {
     const [state, setState] = useState({
-        postType: Constants.POST_TYPES.TEXT,
+        postType: Constants.POST_TYPES.IMAGE,
         isDragging: false,
         isLoading: false,
-        singleImageSrc: ''
+        firstImage: '',
+        secondImage: '',
+        thirdImage: '',
+        fourthImage: ''
     });
 
-    const useStyles = makeStyles((theme) => ({
+    const useStyles = makeStyles(() => ({
         root: {
             position: 'relative'
         },
@@ -64,17 +72,96 @@ export default function NewPostForm(props) {
                 pointerEvents: 'none'
             }
         },
-        singleImage: {
-            height: 0,
-            paddingTop: '50%',
-            backgroundSize: 'contain',
+        previewImages: {
+            flexWrap: 'wrap',
+            justifyContent: 'space-evenly',
+            height: '100px',
+            padding: '0 16px'
+        },
+        firstImageLoaded: {
+            '& $singleImage': {
+                backgroundColor: 'rgb(255,255,255)',
+                borderStyle: 'none',
+                width: '45%'
+            },
+            '& $secondImage': {
+                display: 'revert'
+            }
+        },
+        secondImageLoaded: {
+            height: '200px',
+            '& $singleImage': {
+                borderRadius: '10px 0 0 0',
+                height: '45%'
+            },
+            '& $secondImage': {
+                height: '45%',
+                backgroundColor: 'rgb(255,255,255)',
+                borderStyle: 'none',
+            },
+            '& $thirdImage': {
+                display: 'revert'
+            }
+        },
+        thirdImageLoaded: {
+            '& $thirdImage': {
+                backgroundColor: 'rgb(255,255,255)',
+                borderStyle: 'none'
+            },
+            '& $fourthImage': {
+                display: 'revert'
+            }
+        },
+        fourthImageLoaded: {
+            '& $fourthImage': {
+                backgroundColor: 'rgb(255,255,255)',
+                borderStyle: 'none'
+            }
+        },
+        imageThumbnail: {
+            backgroundColor: 'rgb(230,230,230)',
+            backgroundSize: 'cover',
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'center',
-            margin: '0 16px'
+            borderStyle: 'solid',
+            borderWidth: '5px',
+            borderColor: 'rgb(240,240,240)',
+            position: 'relative'
+        },
+        singleImage: {
+            height: '100%',
+            width: '100%',
+
+            borderRadius: '10px 10px 0 0'
+        },
+        secondImage: {
+            height: '100%',
+            width: '45%',
+
+            borderRadius: '0 10px 0 0',
+            display: 'none'
+        },
+        thirdImage: {
+            height: '45%',
+            width: '45%',
+
+            display: 'none'
+        },
+        fourthImage: {
+            height: '45%',
+            width: '45%',
+
+            display: 'none'
+        },
+        placeholderIcon: {
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)'
         }
     }));
 
-    const classes = useStyles();
+    const classes = useStyles(state);
 
     const dropArea = useRef(null);
     const dropOverlay = useRef(null);
@@ -148,7 +235,7 @@ export default function NewPostForm(props) {
         setState(prevState => ({
             ...prevState,
             postType: Constants.POST_TYPES.AUDIO,
-            singleImageSrc: ''
+            firstImage: ''
         }));
     };
 
@@ -163,7 +250,7 @@ export default function NewPostForm(props) {
         setState(prevState => ({
             ...prevState,
             postType: Constants.POST_TYPES.TEXT,
-            singleImageSrc: ''
+            firstImage: ''
         }));
     };
 
@@ -171,7 +258,7 @@ export default function NewPostForm(props) {
         setState(prevState => ({
             ...prevState,
             postType: Constants.POST_TYPES.VIDEO,
-            singleImageSrc: ''
+            firstImage: ''
         }));
     };
 
@@ -191,6 +278,29 @@ export default function NewPostForm(props) {
 
     const getCurrentDropText = () => {
         return state.isLoading ? 'Please wait...' : 'Drop files here';
+    }
+
+    const getCurrentDropIcon = () => {
+        switch (state.postType) {
+            case Constants.POST_TYPES.AUDIO:
+                return <EqualizerIcon className={classes.placeholderIcon} style={{
+                    color: 'rgb(255,255,255)',
+                    fontSize: 75
+                }} />;
+            case Constants.POST_TYPES.IMAGE:
+                return <PhotoOutlinedIcon className={classes.placeholderIcon}  style={{
+                    color: 'rgb(255,255,255)',
+                    fontSize: 75
+                }} />;
+            case Constants.POST_TYPES.VIDEO:
+                return <VideocamOutlinedIcon className={classes.placeholderIcon}  style={{
+                    color: 'rgb(255,255,255)',
+                    fontSize: 75
+                }} />;
+            case Constants.POST_TYPES.TEXT:
+            default:
+                return <></>;
+        }
     }
 
     const handleDragEnter = (e) => {
@@ -238,10 +348,27 @@ export default function NewPostForm(props) {
                 stateUpdates.postType = Constants.POST_TYPES.IMAGE;
 
                 if (files.length === 1) {
-                    stateUpdates.singleImageSrc = URL.createObjectURL(files[0]);
+                    stateUpdates.firstImage = URL.createObjectURL(files[0]);
                 }
                 else {
-                    stateUpdates.singleImageSrc = '';
+                    for (let i = 0; i < files.length && i < 4; i++) {
+                        let fileUrl = URL.createObjectURL(files[i]);
+
+                        switch (i) {
+                            case 0:
+                                stateUpdates.firstImage = fileUrl;
+                                break;
+                            case 1:
+                                stateUpdates.secondImage = fileUrl;
+                                break;
+                            case 2:
+                                stateUpdates.thirdImage = fileUrl;
+                                break;
+                            case 3:
+                                stateUpdates.fourthImage = fileUrl;
+                                break;
+                        }
+                    }
                 }
             }
             else if (files.length === 1 && files[0].type.startsWith('video/')) {
@@ -251,16 +378,16 @@ export default function NewPostForm(props) {
                 }));
 
                 stateUpdates.postType = Constants.POST_TYPES.VIDEO;
-                stateUpdates.singleImageSrc = URL.createObjectURL(await getVideoCover(files[0]));
+                stateUpdates.firstImage = URL.createObjectURL(await getVideoCover(files[0]));
                 stateUpdates.isLoading = false;
             }
             else if (files.length === 1 && files[0].type.startsWith('audio/')) {
                 stateUpdates.postType = Constants.POST_TYPES.AUDIO;
-                stateUpdates.singleImageSrc = Constants.STATIC_IMAGES.WAVEFORM;
+                stateUpdates.firstImage = Constants.STATIC_IMAGES.WAVEFORM;
             }
             else {
                 stateUpdates.postType = Constants.POST_TYPES.TEXT;
-                stateUpdates.singleImageSrc = '';
+                stateUpdates.firstImage = '';
             }
         }
 
@@ -282,12 +409,52 @@ export default function NewPostForm(props) {
                         </div>
                     </div>
                 </div>
-                <div className={classes.singleImage} style={{
-                        backgroundImage: state.singleImageSrc === '' ? 'none' : `url(${state.singleImageSrc})`,
-                        backgroundColor: state.singleImageSrc === '' ? 'rgb(230,230,230)' : 'rgb(255,255,255)',
-                        display: state.postType === Constants.POST_TYPES.TEXT ? 'none' : ''
-                    }}>
-
+                <div className={classNames(
+                        classes.previewImages,
+                        state.firstImage !== '' ? classes.firstImageLoaded : '',
+                        state.secondImage !== '' ? classes.secondImageLoaded : '',
+                        state.thirdImage !== '' ? classes.thirdImageLoaded : '',
+                        state.fourthImage !== '' ? classes.fourthImageLoaded : ''
+                    )}
+                    style={{
+                        display: state.postType === Constants.POST_TYPES.TEXT ? 'none' : 'flex'
+                    }}
+                >
+                    <div className={classNames(classes.imageThumbnail, classes.singleImage)} style={{backgroundImage: state.firstImage === '' ? 'none' : `url('${state.firstImage}')`}}>
+                        {
+                            state.firstImage === '' ? getCurrentDropIcon() : <></>
+                        }
+                    </div>
+                    <div className={classNames(classes.imageThumbnail, classes.secondImage)} style={{backgroundImage: state.secondImage === '' ? 'none' : `url('${state.secondImage}')`}}>
+                        {
+                            state.secondImage === '' 
+                            ? <PhotoOutlinedIcon className={classes.placeholderIcon}  style={{
+                                color: 'rgb(255,255,255)',
+                                fontSize: 75
+                            }} /> 
+                            : <></>
+                        }
+                    </div>
+                    <div className={classNames(classes.imageThumbnail, classes.thirdImage)} style={{backgroundImage: state.thirdImage === '' ? 'none' : `url('${state.thirdImage}')`}}>
+                        {
+                            state.thirdImage === '' 
+                            ? <PhotoOutlinedIcon className={classes.placeholderIcon}  style={{
+                                color: 'rgb(255,255,255)',
+                                fontSize: 75
+                            }} /> 
+                            : <></>
+                        }
+                    </div>
+                    <div className={classNames(classes.imageThumbnail, classes.fourthImage)} style={{backgroundImage: state.fourthImage === '' ? 'none' : `url('${state.fourthImage}')`}}>
+                        {
+                            state.fourthImage === '' 
+                            ? <PhotoOutlinedIcon className={classes.placeholderIcon}  style={{
+                                color: 'rgb(255,255,255)',
+                                fontSize: 75
+                            }} /> 
+                            : <></>
+                        }
+                    </div>
                 </div>
                 <Divider light={true} variant='middle' />
                 <div className={classes.body}>
