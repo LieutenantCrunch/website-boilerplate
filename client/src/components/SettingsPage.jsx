@@ -26,7 +26,7 @@ function SettingsPage(props) {
         await AuthService.logout(true, true);
         let logoutConfirm = bootstrap.Modal.getInstance(document.getElementById('logoutConfirm'));
         logoutConfirm.hide();
-        props.setUserInfo(null);
+        props.setLoginDetails(null);
         props.setStatusMessage({type: 'info', message: 'You have been logged out from everywhere'});
         props.history.push('/login');
     };

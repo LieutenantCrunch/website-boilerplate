@@ -2,10 +2,10 @@
 export default function authHeader() {
     try
     {
-        const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+        const loginDetails = JSON.parse(localStorage.getItem('loginDetails'));
 
-        if (userInfo && userInfo.authToken) {
-            return { 'x-access-token': userInfo.authToken};
+        if (loginDetails && loginDetails.authToken) {
+            return { 'x-access-token': loginDetails.authToken};
         }
 
         return {};

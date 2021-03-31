@@ -145,7 +145,7 @@ export default function AdminPage() {
                                 }}
                             />
                             <h5 className="card-subtitle mb-2 font-weight-bold">{state.selectedUserDetails?.displayName}</h5>
-                            <div className="card-text text-left">
+                            <div className="card-text text-start">
                                 <span className="font-weight-bold">Display Name Index:</span> {state.selectedUserDetails?.displayNameIndex}<br />
                                 <span className="font-weight-bold">Email:</span> {state.selectedUserDetails?.email}<br/>
                                 <span className="font-weight-bold">Roles:</span><br />

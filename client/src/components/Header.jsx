@@ -48,12 +48,12 @@ function Header(props) {
     const handleMenuClickLogout = () => {
         collapseNavbarMenu();
         AuthService.logout();
-        props.setUserInfo(null);
+        props.setLoginDetails(null);
     };
 
     /* TODO: Default this better. This does not handle if they come in without a path, ex: http://localhost:3000/ */
     const title = capitalize(props.location.pathname.substring(1, props.location.pathname.length) || 'Welcome!');
-    const userInfoExists = props.userInfo !== null;
+    const loginDetailsExists = props.loginDetails !== null;
 
     return (
         /*  bg-dark sets the background color of the navbar to the dark theme (dark) color
@@ -69,7 +69,7 @@ function Header(props) {
                 <div className="collapse navbar-collapse" id="headerNavbarToggleMenu">
                     <ul className="navbar-nav mr-auto mt-2">
                         {
-                            userInfoExists 
+                            loginDetailsExists 
                             ? <>
                                 {
                                     UserService.checkForRole(props.userDetails, 'Administrator')

@@ -41,3 +41,9 @@ export const POST_TYPES = Object.freeze({
     VIDEO: 2,
     AUDIO: 3
 });
+
+export const POST_AUDIENCES = Object.freeze({
+    CONNECTIONS: 0,
+    EVERYONE: 1,
+    CUSTOM: 2
+});

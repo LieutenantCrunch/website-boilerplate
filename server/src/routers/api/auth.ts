@@ -98,7 +98,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
                                 sameSite: true,
                                 expires: expirationDate
                             })
-                            .json({success: true, message: 'Login successful', userInfo: {
+                            .json({success: true, message: 'Login successful', loginDetails: {
                                 loginDate: Date.now(), 
                                 expirationDate: expirationDate.valueOf()
                             }});

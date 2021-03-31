@@ -18,7 +18,7 @@ function Profile(props) {
 
     return (
         <>
-            <div className="card col-8 col-md-4 mt-2 mb-2 align-middle text-center">
+            <div className="card col-12 col-sm-8 col-md-6 col-xl-4 mt-2 mb-2 align-middle text-center">
                 <div className="card-header">
                     <ProfilePictureUpload profilePic={props.userDetails.pfp} setProfilePic={setProfilePic} />
                 </div>

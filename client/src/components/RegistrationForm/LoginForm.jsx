@@ -79,7 +79,7 @@ function LoginForm (props) {
                 requestedPasswordReset : false
             }));
 
-            props.setUserInfo(results.userInfo);
+            props.setLoginDetails(results.loginDetails);
             redirectToProfile();
         }
         else {
@@ -139,7 +139,7 @@ function LoginForm (props) {
                 </div>
                 <div className="card-body">
                     <form>
-                        <div className="mb-3 text-left">
+                        <div className="mb-3 text-start">
                             <label htmlFor="email">Email Address</label>
                             <input id="email"
                                 type="email"
@@ -152,7 +152,7 @@ function LoginForm (props) {
                             />
                             <small id="emailHelp" className="form-text ml-2 text-muted">Your email will not be shared with anyone else.</small>
                         </div>
-                        <div className="mb-3 text-left">
+                        <div className="mb-3 text-start">
                             <label htmlFor="password">Password</label>
                             <input id="password"
                                 type="password"

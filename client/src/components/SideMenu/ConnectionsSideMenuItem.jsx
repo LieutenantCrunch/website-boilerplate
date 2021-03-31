@@ -24,6 +24,10 @@ import {
 } from '../../redux/connections/connectionsSlice';
 import { selectUserById } from '../../redux/users/usersSlice';
 
+import {
+    fetchCurrentUser
+} from '../../redux/users/currentUserSlice';
+
 export default function ConnectionsSideMenuItem(props) {
     const dispatch = useDispatch();
     const outgoingConnectionsStatus = useSelector(selectOutgoingConnectionsStatus);
@@ -40,6 +44,8 @@ export default function ConnectionsSideMenuItem(props) {
         removeMessageSubtext: 'The other user will not be notified but will be able to see that the connection is no longer mutual.',
         yesNoMessageBox: null
     });
+
+
 
     const yesNoMessageBoxRef = useRef();
 
@@ -198,7 +204,7 @@ export default function ConnectionsSideMenuItem(props) {
                         margin: 0,
                         opacity: 1
                     }} />
-                    <button type="button" className="btn btn-sm btn-outline-primary border-0 w-100 text-left shadow-none" data-toggle="modal" data-target="#addConnection">
+                    <button type="button" className="btn btn-sm btn-outline-primary border-0 w-100 text-start shadow-none" data-toggle="modal" data-target="#addConnection">
                         <strong>Add New...</strong>
                     </button>
                     <hr style={{
@@ -219,7 +225,7 @@ export default function ConnectionsSideMenuItem(props) {
                             borderColor: 'rgb(204, 204, 204)'
                         }}>
                             <button type="button" className={
-                                    classNames("btn btn-sm btn-outline-primary border-0 w-100 text-left shadow-none dropdown-toggle", {'show': state.incomingExpanded})
+                                    classNames("btn btn-sm btn-outline-primary border-0 w-100 text-start shadow-none dropdown-toggle", {'show': state.incomingExpanded})
                                 }
                                 onClick={toggleIncomingExpanded}
                                 style={{

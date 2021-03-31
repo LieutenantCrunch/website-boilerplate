@@ -152,7 +152,7 @@ function RegistrationForm(props) {
             </div>
             <div className="card-body">
                 <form>
-                    <div className="mb-3 text-left">
+                    <div className="mb-3 text-start">
                         <label htmlFor="email">Email Address</label>
                         <input id="email"
                             type="email"
@@ -165,7 +165,7 @@ function RegistrationForm(props) {
                         />
                         <small id="emailHelp" className="form-text text-muted">Your email will not be shared with anyone else.</small>
                     </div>
-                    <div className="mb-3 text-left">
+                    <div className="mb-3 text-start">
                         <label htmlFor="displayName">Display Name</label>
                         <HtmlTooltip title={
                                 <>
@@ -194,7 +194,7 @@ function RegistrationForm(props) {
                         </HtmlTooltip>
                         <small id="displayNameHelp" className="form-text text-muted">This is the name other users will see.  It will be followed by a unique id number unless your account is verified.</small>
                     </div>
-                    <div className="mb-3 text-left">
+                    <div className="mb-3 text-start">
                         <label htmlFor="profileName">Profile Name</label>
                         <HtmlTooltip title={
                                 <>
@@ -248,7 +248,7 @@ function RegistrationForm(props) {
                             </HtmlTooltip>
                         </small>
                     </div>
-                    <div className="mb-3 text-left">
+                    <div className="mb-3 text-start">
                         <label htmlFor="password">Password</label>
                         <input id="password"
                             type="password"
@@ -267,7 +267,7 @@ function RegistrationForm(props) {
                             </p>
                         </div>
                     </div>
-                    <div className="mb-3 text-left">
+                    <div className="mb-3 text-start">
                         <label htmlFor="confirmPassword">Confirm Password</label>
                         <input id="confirmPassword"
                             type="password"

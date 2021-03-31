@@ -25,7 +25,7 @@ export default function ConnectionListItem(props) {
                     enterDelay={500}
                     arrow
                 >
-                    <button type="button" className={classNames('btn btn-outline-primary border-0 w-100 text-left', {'btn-sm': !isMobile})} data-toggle="modal" data-target="#connectionDetails" data-connection={props.connection.uniqueId} onClick={props.handleConnectionClick}>
+                    <button type="button" className={classNames('btn btn-outline-primary border-0 w-100 text-start', {'btn-sm': !isMobile})} data-toggle="modal" data-target="#connectionDetails" data-connection={props.connection.uniqueId} onClick={props.handleConnectionClick}>
                         {props.connection.displayName}<small className="text-muted">#{props.connection.displayNameIndex}</small>
                     </button>
                 </HtmlTooltip>

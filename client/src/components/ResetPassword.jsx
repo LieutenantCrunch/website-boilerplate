@@ -48,7 +48,7 @@ function ResetPassword(props) {
 
         setStatusMessage(results.statusMessage);
         if (results.success) {
-            props.setUserInfo(null);
+            props.setLoginDetails(null);
             redirectToLogin();
         }
     };
@@ -73,7 +73,7 @@ function ResetPassword(props) {
                 </div>
                 <div className="card-body">
                     <form>
-                        <div className="mb-3 text-left">
+                        <div className="mb-3 text-start">
                             <label htmlFor="email">Email Address</label>
                             <input id="email"
                                 type="email"
@@ -86,7 +86,7 @@ function ResetPassword(props) {
                             />
                             <small id="emailHelp" className="form-text text-muted">Please confirm your email</small>
                         </div>
-                        <div className="mb-3 text-left">
+                        <div className="mb-3 text-start">
                             <label htmlFor="password">New Password</label>
                             <input id="password"
                                 type="password"
@@ -97,7 +97,7 @@ function ResetPassword(props) {
                                 onChange={handleStateChange}
                             />
                         </div>
-                        <div className="mb-3 text-left">
+                        <div className="mb-3 text-start">
                             <label htmlFor="confirmPassword">Confirm New Password</label>
                             <input id="confirmPassword"
                                 type="password"

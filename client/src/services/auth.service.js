@@ -20,7 +20,7 @@ export default class AuthService {
                         type: (loginSuccess ? 'success' : 'danger'), 
                         message: (response.data.message ? response.data.message : 'Login successful, redirecting to application')
                     },
-                    userInfo: response.data.userInfo
+                    loginDetails: response.data.loginDetails
                 };
             }
             else {
@@ -30,7 +30,7 @@ export default class AuthService {
                         type: 'danger', 
                         message: 'Failed to log in: ' + (response.data.message ? response.data.message : response.status)
                     },
-                    userInfo: null
+                    loginDetails: null
                 };
             }
         }
@@ -41,7 +41,7 @@ export default class AuthService {
                     type: 'danger', 
                     message: error.message
                 },
-                userInfo: null
+                loginDetails: null
             };
         };
     }

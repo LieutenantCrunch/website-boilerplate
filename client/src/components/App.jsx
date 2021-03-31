@@ -25,11 +25,16 @@ import Welcome from './Welcome';
 import UserService from '../services/user.service';
 import UtilityService from '../services/utility.service';
 
+// Redux
+import { useSelector, useDispatch } from 'react-redux';
+import { currentUserFetched } from '../redux/users/currentUserSlice';
+
 
 export default function App() {
+    const dispatch = useDispatch();
     const [title, setTitle] = useState(null);
     const [statusMessage, setStatusMessage] = useState({type: 'info', message: null});
-    const [userInfo, setUserInfo] = Hooks.useStateWithLocalStorage('userInfo', null);
+    const [loginDetails, setLoginDetails] = Hooks.useStateWithLocalStorage('loginDetails', null);
     const [appConstants, setAppConstants] = useState({
         DisplayNameChangeDays: 30, 
         ProfileNameRegexDetails: {
@@ -53,26 +58,30 @@ export default function App() {
     })
 
     const checkForValidSession = () => {
-        if (!userInfo) {
+        if (!loginDetails) {
             return false;
         }
-        else if (userInfo.expirationDate && Date.now() > userInfo.expirationDate) {
+        else if (loginDetails.expirationDate && Date.now() > loginDetails.expirationDate) {
             setStatusMessage({type: 'warning', message: 'Please re-enter your credentials'});
-            setUserInfo(null);
+            setLoginDetails(null);
             return false;
         }
 
         return true;
     };
-    
+
     useEffect(() => {
-        // Check if the userInfo is hanging around and if it's expired, if so, delete it
+        // Probably want to implement cancels for these async calls in the cleanup function
+
+        // Check if the loginDetails is hanging around and if it's expired, if so, delete it
         // Else make sure the userDetails are populated
         if (checkForValidSession()) {
             UserService.getCurrentDetails().then(details => {
                 if (details) {
                     setUserDetails(details);
                 }
+
+                dispatch(currentUserFetched(details));
             });
             fetchConnectionTypeDict();
         }
@@ -105,7 +114,7 @@ export default function App() {
     return(
         <div className="App">
             <Router>
-                <Header title={title} userInfo={userInfo} setUserInfo={setUserInfo} userDetails={userDetails} />
+                <Header title={title} loginDetails={loginDetails} setLoginDetails={setLoginDetails} userDetails={userDetails} />
                 <div className="container-fluid d-flex align-items-center flex-column">
                     <Switch>
                         <Route path="/register" exact={true}>
@@ -122,8 +131,8 @@ export default function App() {
                                 statusMessage={statusMessage} 
                                 setTitle={setTitle} 
                                 setStatusMessage={setStatusMessage}
-                                userInfo={userInfo}
-                                setUserInfo={setUserInfo}
+                                loginDetails={loginDetails}
+                                setLoginDetails={setLoginDetails}
                             />
                         </Route>
                         <Route path="/reset-password" exact={true}>
@@ -132,7 +141,7 @@ export default function App() {
                                 statusMessage={statusMessage} 
                                 setStatusMessage={setStatusMessage}
                                 setTitle={setTitle}
-                                setUserInfo={setUserInfo} />
+                                setLoginDetails={setLoginDetails} />
                         </Route>
                         <Route path="/feed" exact={true}>
                             <Feed 
@@ -156,7 +165,7 @@ export default function App() {
                                 appConstants={appConstants}
                                 setStatusMessage={setStatusMessage}
                                 setTitle={setTitle}
-                                setUserInfo={setUserInfo}
+                                setLoginDetails={setLoginDetails}
                                 userDetails={userDetails}
                                 setUserDetails={setUserDetails}
                             /> : 
