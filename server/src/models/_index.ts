@@ -1,4 +1,4 @@
-import * as Constants from '../constants/constants';
+import * as ServerConstants from '../constants/constants.server';
 
 import { Sequelize } from 'sequelize';
 import SequelizeSimpleCache from 'sequelize-simple-cache';
@@ -40,7 +40,7 @@ const sequelizeConfig = {
 const createModels = (sequelizeConfig: any): DbInterface => {
     const sequelize = new Sequelize(sequelizeConfig);
     const cache: SequelizeSimpleCache = new SequelizeSimpleCache({
-        UserConnectionType: { ttl: Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000 }
+        UserConnectionType: { ttl: ServerConstants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000 }
     });
 
     const db: DbInterface = {

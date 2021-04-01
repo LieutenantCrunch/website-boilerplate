@@ -59,7 +59,7 @@ function User (props) {
         </div>
         {
             props.checkForValidSession()
-            ? <div className="card-footer text-right">
+            ? <div className="card-footer text-end">
                 <ConnectionButton uniqueId={state.profileInfo?.uniqueId} />
             </div>
             : <></>
@@ -73,7 +73,6 @@ function UserPage (props) {
     return <>
         <Route path={`${url}/:profileName`}>
             <User 
-                appConstants={props.appConstants}
                 checkForValidSession={props.checkForValidSession}
                 setTitle={props.setTitle}
             />

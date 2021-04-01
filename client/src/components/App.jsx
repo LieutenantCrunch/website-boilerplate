@@ -29,29 +29,11 @@ import UtilityService from '../services/utility.service';
 import { useSelector, useDispatch } from 'react-redux';
 import { currentUserFetched } from '../redux/users/currentUserSlice';
 
-
 export default function App() {
     const dispatch = useDispatch();
     const [title, setTitle] = useState(null);
     const [statusMessage, setStatusMessage] = useState({type: 'info', message: null});
     const [loginDetails, setLoginDetails] = Hooks.useStateWithLocalStorage('loginDetails', null);
-    const [appConstants, setAppConstants] = useState({
-        DisplayNameChangeDays: 30, 
-        ProfileNameRegexDetails: {
-            Pattern: '^[\-\._~]*(?:[a-z0-9][\-\._~]*){3,}',
-            Flags: 'i'
-        },
-        ProfileNameRegex: /^[\-\._~]*(?:[a-z0-9][\-\._~]*){3,}/i
-    });
-    const [userDetails, setUserDetails] = useState({
-        allowPublicAccess: false,
-        displayName: '', 
-        displayNameIndex: -1, 
-        email: '', 
-        pfp: '', 
-        roles: [], 
-        uniqueId: ''
-    });
 
     const [appState, updateAppState] = useState({
         connectionTypeDict: {}
@@ -78,24 +60,11 @@ export default function App() {
         if (checkForValidSession()) {
             UserService.getCurrentDetails().then(details => {
                 if (details) {
-                    setUserDetails(details);
+                    dispatch(currentUserFetched(details));
                 }
-
-                dispatch(currentUserFetched(details));
             });
             fetchConnectionTypeDict();
         }
-
-        UtilityService.getConstants().then(constants => {
-            if (constants.ProfileNameRegexDetails) {
-                constants.ProfileNameRegex = new RegExp(constants.ProfileNameRegexDetails.Pattern, constants.ProfileNameRegexDetails.Flags);
-            }
-
-            setAppConstants({
-                ...appConstants,
-                ...constants
-            });
-        }, () => {});
     }, []);
 
     const fetchConnectionTypeDict = async () => {
@@ -114,12 +83,11 @@ export default function App() {
     return(
         <div className="App">
             <Router>
-                <Header title={title} loginDetails={loginDetails} setLoginDetails={setLoginDetails} userDetails={userDetails} />
+                <Header title={title} loginDetails={loginDetails} setLoginDetails={setLoginDetails} />
                 <div className="container-fluid d-flex align-items-center flex-column">
                     <Switch>
                         <Route path="/register" exact={true}>
                             <RegistrationForm 
-                                appConstants={appConstants}
                                 statusMessage={statusMessage}
                                 setTitle={setTitle} 
                                 setStatusMessage={setStatusMessage} 
@@ -127,7 +95,6 @@ export default function App() {
                         </Route>
                         <Route path="/login" exact={true}>
                             <LoginForm 
-                                appConstants={appConstants}
                                 statusMessage={statusMessage} 
                                 setTitle={setTitle} 
                                 setStatusMessage={setStatusMessage}
@@ -137,7 +104,6 @@ export default function App() {
                         </Route>
                         <Route path="/reset-password" exact={true}>
                             <ResetPassword 
-                                appConstants={appConstants}
                                 statusMessage={statusMessage} 
                                 setStatusMessage={setStatusMessage}
                                 setTitle={setTitle}
@@ -145,35 +111,26 @@ export default function App() {
                         </Route>
                         <Route path="/feed" exact={true}>
                             <Feed 
-                                appConstants={appConstants}
-                                setTitle={setTitle}
-                                setUserDetails={setUserDetails} />
+                                setTitle={setTitle} />
                         </Route>
                         <Route path="/profile" exact={true} render={() => {
                             return (checkForValidSession() ? 
                             <Profile 
-                                appConstants={appConstants}
                                 setTitle={setTitle}
-                                userDetails={userDetails}
-                                setUserDetails={setUserDetails}
                             /> : 
                             <Redirect to="/login" />)
                         }} />
                         <Route path="/settings" exact={true} render={() => {
                             return (checkForValidSession() ? 
                             <SettingsPage 
-                                appConstants={appConstants}
                                 setStatusMessage={setStatusMessage}
                                 setTitle={setTitle}
                                 setLoginDetails={setLoginDetails}
-                                userDetails={userDetails}
-                                setUserDetails={setUserDetails}
                             /> : 
                             <Redirect to="/login" />)
                         }} />
                         <Route path="/u">
                             <UserPage 
-                                appConstants={appConstants}
                                 checkForValidSession={checkForValidSession}
                                 setTitle={setTitle}
                             />
@@ -186,7 +143,7 @@ export default function App() {
             </Router>
             {
                 checkForValidSession()
-                ? <SideMenu userDetails={userDetails} fetchConnectionTypeDict={fetchConnectionTypeDict} appState={appState} />
+                ? <SideMenu fetchConnectionTypeDict={fetchConnectionTypeDict} appState={appState} />
                 : <></>
             }
         </div>

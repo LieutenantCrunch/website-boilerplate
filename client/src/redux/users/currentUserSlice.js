@@ -1,13 +1,14 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import UserService from '../../services/user.service';
+import * as Constants from '../../constants/constants';
 
 const initialState = {
     allowPublicAccess: false,
     displayName: '', 
     displayNameIndex: -1, 
     email: '', 
-    pfp: '',
-    pfpSmall: '', 
+    pfp: Constants.STATIC_IMAGES.PFP_DEFAULT,
+    pfpSmall: Constants.STATIC_IMAGES.PFP_DEFAULT, 
     roles: [], 
     uniqueId: ''
 };
@@ -53,8 +54,8 @@ const currentUserSlice = createSlice({
             state.displayNameIndex = action.payload.displayNameIndex;
         },
         currentUserPfpUpdated: (state, action) => {
-            state.pfp = action.payload.pfp;
-            state.pfpSmall = action.payload.pfpSmall;
+            state.pfp = action.payload.pfp || Constants.STATIC_IMAGES.PFP_DEFAULT;
+            state.pfpSmall = action.payload.pfpSmall || Constants.STATIC_IMAGES.PFP_DEFAULT;
         },
         currentUserRoleAdded: (state, action) => {
             state.roles.push(action.payload);

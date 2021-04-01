@@ -121,7 +121,7 @@ export default function AdminPage() {
                     }}
                 >
                     <strong>{state.adminPageAlert.message}</strong>
-                    <button type="button" className="btn-close" aria-label="Close" data-target="#adminPageAlertEl" data-toggle="collapse" aria-expanded="false" aria-controls="adminPageAlert"></button>
+                    <button type="button" className="btn-close" aria-label="Close" data-bs-target="#adminPageAlertEl" data-bs-toggle="collapse" aria-expanded="false" aria-controls="adminPageAlert"></button>
                 </div>
                 <div className="container-fluid d-flex align-items-center flex-column mt-2">
                     <div className="card col-8 col-md-4 align-middle text-center">
@@ -172,8 +172,8 @@ export default function AdminPage() {
                                 <button type="button" 
                                     className="btn btn-primary"
                                     onClick={handleVerifyDisplayNameClick}
-                                    data-toggle="modal" 
-                                    data-target="#adminPageConfirm">Verify Display Name</button>
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#adminPageConfirm">Verify Display Name</button>
                             </div>
                         </div>
                         <div className="card-footer">
@@ -189,7 +189,7 @@ export default function AdminPage() {
                                 <button type="button" 
                                     className="btn-close" 
                                     onClick={handleConfirmNoClick}
-                                    data-dismiss="modal" 
+                                    data-bs-dismiss="modal" 
                                     arial-label="close"
                                 ></button>
                             </div>
@@ -200,14 +200,14 @@ export default function AdminPage() {
                                 <button type="button" 
                                     className="btn btn-primary" 
                                     onClick={handleConfirmYesClick}
-                                    data-dismiss="modal" 
+                                    data-bs-dismiss="modal" 
                                 >
                                     Yes
                                 </button>
                                 <button type="button" 
                                     className="btn btn-secondary" 
                                     onClick={handleConfirmNoClick}
-                                    data-dismiss="modal"
+                                    data-bs-dismiss="modal"
                                 >
                                     No
                                 </button>

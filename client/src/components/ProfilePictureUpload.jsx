@@ -5,32 +5,38 @@ import UploadService from '../services/upload.service';
 
 import SmallAddButton from './SmallAddButton';
 
+// Redux
+import { useDispatch, useSelector } from 'react-redux';
+import { currentUserPfpUpdated, selectCurrentUserPfpSmall } from '../redux/users/currentUserSlice';
+
 function ProfilePictureUpload (props) {
+    const dispatch = useDispatch();
     const [currentFile, setCurrentFile] = useState(undefined);
     const [progress, setProgress] = useState(0);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    useEffect(() => {
-        UploadService.getPFP().then((response) => {
-            // Don't trigger this while waiting for an upload to finish, we don't want the image to change until the temp object has loaded it
-            if (!currentFile && response.data.path) {
-                props.setProfilePic(response.data.path);
-            }
-        }, []).catch((err) => {
-            console.error(err.message);
-        });
-    }, [currentFile])
+    const currentUserPfpSmall = useSelector(selectCurrentUserPfpSmall);
 
-    const imageLoadHandler = (imageSrc) => {
+    // Load the image in the background
+    // When it's loaded, update the state with the new url
+    // Clear the current file and set is processing to false
+    const imageLoadHandler = (pfp, pfpSmall) => {
         const tempImage = new Image();
-        tempImage.src = imageSrc;
-        tempImage.onload = (event) => {
-            props.setProfilePic(imageSrc);
+        tempImage.src = pfp;
+        tempImage.onload = (e) => {
+            dispatch(currentUserPfpUpdated({pfp, pfpSmall}));
             setCurrentFile(undefined);
             setIsProcessing(false);
         };
     };
 
+    // When the user selects a file
+    // Get a reference to it
+    // Set the progress to 0
+    // Set the current file to the selected file
+    // Upload the selected file
+    // When it's finished, get the profile picture URL from the server
+    // Call the imageLoadHandler with the new URL
     const selectPicture = (event) => {
         if (event.target.files && event.target.files[0]) {
             let selectedFile = event.target.files[0];
@@ -43,10 +49,8 @@ function ProfilePictureUpload (props) {
                 }
 
                 setProgress(Math.round((100 * event.loaded) / event.total));
-            }).then((response) => {
-                return UploadService.getPFP();
-            }).then((response) => {
-                imageLoadHandler(response.data.path);
+            }).then(results => {
+                imageLoadHandler(results.pfp, results.pfpSmall);
             }).catch((err) => {
                 setProgress(0);
                 setCurrentFile(undefined);
@@ -70,7 +74,7 @@ function ProfilePictureUpload (props) {
                     position: 'relative'
                 }}>
                     <div style={{
-                        backgroundImage: `url('${props.profilePic}')`,
+                        backgroundImage: `url('${currentUserPfpSmall}')`,
                         backgroundPosition: 'center',
                         backgroundSize: 'cover',
                         bottom: 0,

@@ -1,6 +1,10 @@
-export const BASE_API_URL = 'http://localhost:3000/api/';
+// Static Paths
+export const BASE_URL = 'http://localhost:3000/';
+export const BASE_API_URL = `${BASE_URL}api/`;
+export const BASE_USERS_URL = `${BASE_URL}u/`;
+export const STATIC_IMAGE_PATH = '/i/s/';
 
-// Top level api paths
+// API Paths
 export const API_PATH_AUTH = 'auth/';
 export const API_PATH_USERS = 'users/';
 export const API_PATH_POSTS = 'posts/';
@@ -9,16 +13,19 @@ export const API_PATH_POSTS = 'posts/';
 export const API_PATH_PFP = 'pfp/';
 export const API_PATH_PUBLIC = 'public/';
 
-// Static paths
-export const STATIC_IMAGE_PATH = '/i/s/';
-
 // Frequently used static images
 export const STATIC_IMAGES = Object.freeze({
     PFP_DEFAULT: STATIC_IMAGE_PATH + 'pfpDefault.svgz',
     WAVEFORM: STATIC_IMAGE_PATH + 'waveform.png'
 });
 
-// User Search Status
+// User Settings
+export const DISPLAY_NAME_CHANGE_DAYS = 30; // The number of days a user must wait between display name changes
+export const PROFILE_NAME_REGEX_PATTERN = "^[\-\._~]*(?:[a-z0-9][\-\._~]*){3,}$";
+export const PROFILE_NAME_REGEX_FLAGS = "i";
+export const PROFILE_NAME_REGEX = new RegExp(PROFILE_NAME_REGEX_PATTERN, PROFILE_NAME_REGEX_FLAGS);
+
+// User Search
 export const USER_SEARCH_STATUS = Object.freeze({
     NO_RESULTS: 0, /* No results from the server */
     RESULTS: 1, /* Results from the server, does not guarantee users were returned */
@@ -34,12 +41,14 @@ export const USER_SEARCH_TRIGGER = Object.freeze({
     MOUSE: 1
 });
 
+// Connections
 export const UPDATE_USER_CONNECTION_ACTIONS = Object.freeze({
     NONE: 0,
     ADDED: 1,
     UPDATED: 2
 });
 
+// Posts
 export const POST_TYPES = Object.freeze({
     TEXT: 0,
     IMAGE: 1,

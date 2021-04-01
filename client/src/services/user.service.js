@@ -80,10 +80,6 @@ export default class UserService {
         }
     }
 
-    static checkForRole(userDetails, roleName) {
-        return userDetails?.roles ? userDetails.roles.includes(roleName) : false;
-    }
-
     static async searchDisplayNameAndIndex(value, pageNumber, excludeConnections) {
         if (this.userServiceCancel !== undefined) {
             this.userServiceCancel();

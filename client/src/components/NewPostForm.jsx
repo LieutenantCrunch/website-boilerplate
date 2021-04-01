@@ -12,7 +12,13 @@ import { makeStyles } from '@material-ui/core/styles';
 import classNames from 'classnames';
 import * as Constants from '../constants/constants';
 
+// Redux
+import { useSelector } from 'react-redux';
+import { selectCurrentUserPfpSmall } from '../redux/users/currentUserSlice';
+
 export default function NewPostForm(props) {
+    const currentUserPfpSmall = useSelector(selectCurrentUserPfpSmall);
+
     const [state, setState] = useState({
         postType: Constants.POST_TYPES.IMAGE,
         postAudience: Constants.POST_AUDIENCES.CONNECTIONS,
@@ -29,7 +35,7 @@ export default function NewPostForm(props) {
         header: {
             padding: '16px',
             display: 'flex',
-            alignItems: 'center'
+            alignItems: 'start'
         },
         body: {
             display: 'flex',
@@ -44,7 +50,8 @@ export default function NewPostForm(props) {
         avatar: {
             marginRight: '16px',
             flexGrow: 0,
-            flexShrink: 0
+            flexShrink: 0,
+            border: '1px solid rgb(108,117,125)'
         },
         headerContent: {
             flexGrow: 1,
@@ -482,7 +489,7 @@ export default function NewPostForm(props) {
         <form className="col-12 col-sm-8 col-md-6 col-xl-4">
             <Paper elevation={3} className={classes.root} ref={dropArea} onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}>
                 <div className={classes.header}>
-                    <Avatar className={classes.avatar}>T</Avatar>
+                    <Avatar className={classes.avatar} src={currentUserPfpSmall} />
                     <div className={classes.headerContent}>
                         <MaterialTextfield label="Post Title (optional)" size="small" variant="filled" className={classes.title} inputProps={{'maxLength': 50}} />
                         <div>

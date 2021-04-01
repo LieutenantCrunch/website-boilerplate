@@ -4,13 +4,13 @@ import cors from 'cors';
 
 import FileHandler from './utilities/fileHandler';
 
-import * as Constants from './constants/constants';
+import * as ClientConstants from './constants/constants.client';
 import AuthHelper from './utilities/authHelper';
 
 const app: express.Application = express();
 const port: number = 3000;
 const corsOptions: Object = {
-    origin: Constants.BASE_API_URL
+    origin: ClientConstants.BASE_API_URL
 };
 
 function send404Response (res: Response, message = 'Not Found'): any {

@@ -2,7 +2,7 @@
 import nodemailer from 'nodemailer';
 import Mail from 'nodemailer/lib/mailer';
 import SendmailTransport from 'nodemailer/lib/sendmail-transport';
-import * as Constants from '../constants/constants';
+import * as ServerConstants from '../constants/constants.server';
 
 export default class EmailHelper {
     private static instance: EmailHelper;
@@ -69,7 +69,7 @@ export default class EmailHelper {
         }
 
         if (!mailOptions.from) {
-            mailOptions.from = Constants.EMAIL_FROM;
+            mailOptions.from = ServerConstants.EMAIL_FROM;
         }
 
         try {

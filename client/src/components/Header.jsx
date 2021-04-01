@@ -4,7 +4,12 @@ import { withRouter, Link } from 'react-router-dom';
 import AuthService from '../services/auth.service';
 import UserService from '../services/user.service';
 
+// Redux
+import { useSelector } from 'react-redux';
+import { selectCurrentUserRoles } from '../redux/users/currentUserSlice';
+
 function Header(props) {
+    const currentRoles = useSelector(selectCurrentUserRoles);
     const capitalize = (s) => {
         if (typeof s !== 'string') {
             return '';
@@ -63,7 +68,7 @@ function Header(props) {
         <nav className="navbar fixed-top bg-dark navbar-dark">
             <div className="container-fluid">
                 <a className="navbar-brand" href="#">{props.title || title}</a>
-                <button className="navbar-toggler" type="button" data-toggle="collapse" data-target="#headerNavbarToggleMenu" aria-expanded="false" aria-label="Toggle navigation">
+                <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#headerNavbarToggleMenu" aria-expanded="false" aria-label="Toggle navigation">
                     <span className="navbar-toggler-icon"></span>
                 </button>
                 <div className="collapse navbar-collapse" id="headerNavbarToggleMenu">
@@ -72,34 +77,34 @@ function Header(props) {
                             loginDetailsExists 
                             ? <>
                                 {
-                                    UserService.checkForRole(props.userDetails, 'Administrator')
+                                    currentRoles.includes('Administrator')
                                     ? <li className="nav-item">
-                                        <a className="nav-link text-right" href="/admin" onClick={handleMenuClickAdmin}>Admin</a>
+                                        <a className="nav-link text-end" href="/admin" onClick={handleMenuClickAdmin}>Admin</a>
                                     </li>
                                     : <></>
                                 }
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/feed'} onClick={handleMenuClickFeed}>Feed</Link>
+                                    <Link className="nav-link text-end" to={'/feed'} onClick={handleMenuClickFeed}>Feed</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/profile'} onClick={handleMenuClickProfile}>Profile</Link>
+                                    <Link className="nav-link text-end" to={'/profile'} onClick={handleMenuClickProfile}>Profile</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/'} onClick={handleMenuClickHome}>Home</Link>
+                                    <Link className="nav-link text-end" to={'/'} onClick={handleMenuClickHome}>Home</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/settings'} onClick={handleMenuClickSettings}>Settings</Link>
+                                    <Link className="nav-link text-end" to={'/settings'} onClick={handleMenuClickSettings}>Settings</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/login'} onClick={handleMenuClickLogout}>Logout</Link>
+                                    <Link className="nav-link text-end" to={'/login'} onClick={handleMenuClickLogout}>Logout</Link>
                                 </li>
                             </>
                             : <>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/login'} onClick={handleMenuClickLogin}>Login</Link>
+                                    <Link className="nav-link text-end" to={'/login'} onClick={handleMenuClickLogin}>Login</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-right" to={'/'} onClick={handleMenuClickHome}>Home</Link>
+                                    <Link className="nav-link text-end" to={'/'} onClick={handleMenuClickHome}>Home</Link>
                                 </li>
                             </>
                         }

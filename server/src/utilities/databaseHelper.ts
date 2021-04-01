@@ -6,7 +6,8 @@ import { Op } from 'sequelize';
 import { Sequelize, QueryTypes } from 'sequelize';
 import { v4 as uuidv4 } from 'uuid';
 
-import * as Constants from '../constants/constants';
+import * as ClientConstants from '../constants/constants.client';
+import * as ServerConstants from '../constants/constants.server';
 
 import { db } from '../models/_index';
 import { UserInstance } from '../models/User';
@@ -404,7 +405,7 @@ class DatabaseHelper {
             if (!displayName || displayName.length > 100 || displayName.indexOf('#') > -1) {
                 return {id: null, success: false};
             }
-            else if (!profileName || profileName.length > 20 || !Constants.PROFILE_NAME_REGEX.test(profileName)) {
+            else if (!profileName || profileName.length > 20 || !ClientConstants.PROFILE_NAME_REGEX.test(profileName)) {
                 return {id: null, success: false};
             }
 
@@ -510,10 +511,10 @@ class DatabaseHelper {
             });
 
             if (registeredUser) {
-                if (registeredUser.passwordResetTokens && registeredUser.passwordResetTokens.length < Constants.RPT_MAX_ACTIVE_TOKENS) {
+                if (registeredUser.passwordResetTokens && registeredUser.passwordResetTokens.length < ServerConstants.RPT_MAX_ACTIVE_TOKENS) {
                     token = uuidv4();
 
-                    let expirationDate: Date = new Date(Date.now()).addMinutes(Constants.RPT_EXPIRATION_MINUTES);
+                    let expirationDate: Date = new Date(Date.now()).addMinutes(ServerConstants.RPT_EXPIRATION_MINUTES);
 
                     let newResetToken: PasswordResetTokenInstance = await registeredUser.createPasswordResetToken({
                         token,
@@ -568,20 +569,25 @@ class DatabaseHelper {
         return false;
     }
 
-    async addProfilePictureToUser(fileName: string, smallFileName: string, originalFileName: string, mimeType: string, userId: string): Promise<{success: Boolean}> {
+    async addProfilePictureToUser(fileName: string, smallFileName: string, originalFileName: string, mimeType: string, userUniqueId: string): Promise<{success: Boolean, pfp?: string, pfpSmall?: string}> {
         try
         {
-            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(userId);
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(userUniqueId);
             
             if (registeredUser) {
                 let newPFP: ProfilePictureInstance | null = await registeredUser.createProfilePicture({
                     fileName,
-                    smallFileName,
-                    originalFileName
+                    originalFileName,
+                    mimeType,
+                    smallFileName
                 });
 
                 if (newPFP) {
-                    return {success: true};
+                    return {
+                        success: true, 
+                        pfp: `/i/u/${userUniqueId}/${fileName}`,
+                        pfpSmall: `/i/u/${userUniqueId}/${smallFileName}`
+                    };
                 }
             }
         }
@@ -722,26 +728,26 @@ class DatabaseHelper {
         return false;
     }
 
-    async invalidateJWTsForUser(uniqueId: string, mode: number = Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, jti?: string): Promise<{success: Boolean}> {
+    async invalidateJWTsForUser(uniqueId: string, mode: number = ServerConstants.INVALIDATE_TOKEN_MODE.SPECIFIC, jti?: string): Promise<{success: Boolean}> {
         try
         {
             if (!jti) { // If we don't have an ID, then we have to expire all of them
-                mode = Constants.INVALIDATE_TOKEN_MODE.ALL;
+                mode = ServerConstants.INVALIDATE_TOKEN_MODE.ALL;
             }
 
             let additionalQueryOptions: {[key: string]: any;} = {};
             
             switch (mode) {
-                case Constants.INVALIDATE_TOKEN_MODE.ALL:
+                case ServerConstants.INVALIDATE_TOKEN_MODE.ALL:
                     break;
-                case Constants.INVALIDATE_TOKEN_MODE.OTHERS:
+                case ServerConstants.INVALIDATE_TOKEN_MODE.OTHERS:
                     additionalQueryOptions = {
                         jti: {
                             [Op.ne]: jti
                         }
                     };
                     break;
-                case Constants.INVALIDATE_TOKEN_MODE.SPECIFIC:
+                case ServerConstants.INVALIDATE_TOKEN_MODE.SPECIFIC:
                 default:
                     additionalQueryOptions = {
                         jti
@@ -894,10 +900,10 @@ class DatabaseHelper {
 
                 // Check if they haven't changed their name in at least the configured amount of days
 
-                if ((currentDate.getTime() - mostRecentChange.getTime())/(1000 * 60 * 60 * 24) <= Constants.DISPLAY_NAME_CHANGE_DAYS) {
-                    let nextAvailableChange: Date = new Date(mostRecentChange.getTime() + (1000 * 60 * 60 * 24 * Constants.DISPLAY_NAME_CHANGE_DAYS));
+                if ((currentDate.getTime() - mostRecentChange.getTime())/(1000 * 60 * 60 * 24) <= ClientConstants.DISPLAY_NAME_CHANGE_DAYS) {
+                    let nextAvailableChange: Date = new Date(mostRecentChange.getTime() + (1000 * 60 * 60 * 24 * ClientConstants.DISPLAY_NAME_CHANGE_DAYS));
                     // Fail with message
-                    return {success: false, message: `It hasn't been ${Constants.DISPLAY_NAME_CHANGE_DAYS} day${Constants.DISPLAY_NAME_CHANGE_DAYS === 1 ? '' : 's'} since the last time you changed your display name. You can change your display name again on ${nextAvailableChange.toLocaleString()}.`};
+                    return {success: false, message: `It hasn't been ${ClientConstants.DISPLAY_NAME_CHANGE_DAYS} day${ClientConstants.DISPLAY_NAME_CHANGE_DAYS === 1 ? '' : 's'} since the last time you changed your display name. You can change your display name again on ${nextAvailableChange.toLocaleString()}.`};
                 }
 
                 if (currentDisplayName) {
@@ -1259,8 +1265,8 @@ class DatabaseHelper {
                         ['displayName', 'ASC'], 
                         ['displayNameIndex', 'ASC']
                     ],
-                    offset: pageNumber * Constants.DB_USER_FETCH_PAGE_SIZE,
-                    limit: Constants.DB_USER_FETCH_PAGE_SIZE,
+                    offset: pageNumber * ServerConstants.DB_USER_FETCH_PAGE_SIZE,
+                    limit: ServerConstants.DB_USER_FETCH_PAGE_SIZE,
                     subQuery: false // See below
                 };
 
@@ -1704,7 +1710,7 @@ class DatabaseHelper {
 
     async getConnectionTypeDict(): Promise<WebsiteBoilerplate.UserConnectionTypeDictionary> {
         try {
-            let connectionTypesDict: WebsiteBoilerplate.UserConnectionTypeDictionary | undefined = this.nodeCache.get(Constants.CACHE_KEY_CONNECTION_TYPES_DICT);
+            let connectionTypesDict: WebsiteBoilerplate.UserConnectionTypeDictionary | undefined = this.nodeCache.get(ServerConstants.CACHE_KEY_CONNECTION_TYPES_DICT);
 
             if (!connectionTypesDict) {
                 let connectionTypes: UserConnectionTypeInstance[] = await this.getConnectionTypes();
@@ -1716,7 +1722,7 @@ class DatabaseHelper {
                     }
                 }, {});
 
-                this.nodeCache.set(Constants.CACHE_KEY_CONNECTION_TYPES_DICT, connectionTypesDict, Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000);
+                this.nodeCache.set(ServerConstants.CACHE_KEY_CONNECTION_TYPES_DICT, connectionTypesDict, ServerConstants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000);
             }
 
             return connectionTypesDict;
@@ -1786,7 +1792,7 @@ class DatabaseHelper {
 
     async updateUserConnection(currentUserUniqueId: string, connectionUpdates: WebsiteBoilerplate.UserDetails): Promise<WebsiteBoilerplate.UpdateUserConnectionResults> {
         let results: WebsiteBoilerplate.UpdateUserConnectionResults = {
-            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.NONE,
+            actionTaken: ClientConstants.UPDATE_USER_CONNECTION_ACTIONS.NONE,
             success: false,
             userConnection: connectionUpdates
         };
@@ -1895,7 +1901,7 @@ class DatabaseHelper {
 
                         results = {
                             ...results,
-                            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.UPDATED,
+                            actionTaken: ClientConstants.UPDATE_USER_CONNECTION_ACTIONS.UPDATED,
                             success: true,
                             userConnection: {
                                 allowPublicAccess: connectedUser.allowPublicAccess,
@@ -1930,7 +1936,7 @@ class DatabaseHelper {
 
                         results = {
                             ...results,
-                            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.ADDED,
+                            actionTaken: ClientConstants.UPDATE_USER_CONNECTION_ACTIONS.ADDED,
                             success: true,
                             userConnection: {
                                 allowPublicAccess: connectedUser.allowPublicAccess,
@@ -2026,8 +2032,8 @@ class DatabaseHelper {
                 order: [
                     ['id', 'DESC']
                 ],
-                offset: (pageNumber || 0) * Constants.DB_FEED_FETCH_PAGE_SIZE,
-                limit: Constants.DB_FEED_FETCH_PAGE_SIZE
+                offset: (pageNumber || 0) * ServerConstants.DB_FEED_FETCH_PAGE_SIZE,
+                limit: ServerConstants.DB_FEED_FETCH_PAGE_SIZE
             })
 
             posts = rows.map(row => ({

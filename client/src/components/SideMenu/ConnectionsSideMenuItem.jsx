@@ -24,10 +24,6 @@ import {
 } from '../../redux/connections/connectionsSlice';
 import { selectUserById } from '../../redux/users/usersSlice';
 
-import {
-    fetchCurrentUser
-} from '../../redux/users/currentUserSlice';
-
 export default function ConnectionsSideMenuItem(props) {
     const dispatch = useDispatch();
     const outgoingConnectionsStatus = useSelector(selectOutgoingConnectionsStatus);
@@ -44,8 +40,6 @@ export default function ConnectionsSideMenuItem(props) {
         removeMessageSubtext: 'The other user will not be notified but will be able to see that the connection is no longer mutual.',
         yesNoMessageBox: null
     });
-
-
 
     const yesNoMessageBoxRef = useRef();
 
@@ -147,7 +141,7 @@ export default function ConnectionsSideMenuItem(props) {
             case 'idle':
                 return outgoingConnections && outgoingConnections.length > 0
                     ? outgoingConnections.map(outgoingConnection => (
-                        <ConnectionListItem key={outgoingConnection.uniqueId} connection={outgoingConnection} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
+                            <ConnectionListItem key={outgoingConnection.uniqueId} connection={outgoingConnection} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
                         )
                     )
                     : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>
@@ -204,7 +198,7 @@ export default function ConnectionsSideMenuItem(props) {
                         margin: 0,
                         opacity: 1
                     }} />
-                    <button type="button" className="btn btn-sm btn-outline-primary border-0 w-100 text-start shadow-none" data-toggle="modal" data-target="#addConnection">
+                    <button type="button" className="btn btn-sm btn-outline-primary border-0 w-100 text-start shadow-none" data-bs-toggle="modal" data-bs-target="#addConnection">
                         <strong>Add New...</strong>
                     </button>
                     <hr style={{
@@ -252,7 +246,7 @@ export default function ConnectionsSideMenuItem(props) {
             </div>
         </div>
 
-        <ConnectionPreviewDialog id="connectionDetails" userDetails={props.userDetails} connectionId={state.selectedConnectionId} />
+        <ConnectionPreviewDialog id="connectionDetails" connectionId={state.selectedConnectionId} />
         <AddConnectionDialog id="addConnection" appState={props.appState} onAddedConnection={handleAddedConnection} />
         <YesNoMessageBox ref={yesNoMessageBoxRef}
                 caption={state.removeMessageTitle} 

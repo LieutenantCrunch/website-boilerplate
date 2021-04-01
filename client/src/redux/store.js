@@ -43,15 +43,12 @@ import { usersMiddleware } from './users/usersSlice';
 }
 */
 
-/*const store = configureStore({
+const store = configureStore({
     reducer: rootReducer,
     middleware: [
         connectionsMiddleware,
         usersMiddleware
     ]
-});*/
-const store = configureStore({
-    reducer: rootReducer
 });
 
 export default store;
