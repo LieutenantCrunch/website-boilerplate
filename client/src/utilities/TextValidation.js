@@ -1,0 +1,1 @@
+export const isNullOrWhiteSpaceOnly = (text) => (!text || text.trim().replace(/\u{AD}/giu).length === 0);

@@ -19,4 +19,45 @@ export default class PostService {
 
         return [];
     }
+
+    static async createNewPost(postData, onUploadProgress) {
+        try {
+            let formData = new FormData();
+            
+            Object.keys(postData).forEach(key => {
+                if (key !== 'postFiles') {
+                    console.log(`Key: ${key}, Data: ${postData[key]}`);
+                    
+                    let data = postData[key];
+
+                    if (data != null && data != undefined) {
+                        formData.append(key, data);
+                    }
+                }
+            });
+
+            // Append this last so hopefully all of the other data arrives first
+            if (postData.postFiles) {
+                postData.postFiles.forEach(file => {
+                    formData.append('postFiles', file);
+                });
+            }
+
+            let response = await axiosApi.post(Constants.API_PATH_POSTS + 'createNewPost', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }, 
+                onUploadProgress
+            });
+    
+            if (response.data && response.data.success) {
+                return {};
+            }
+        }
+        catch (err) {
+            console.error(`Error creating new post:\n${err.message}`);
+        }
+
+        return null;
+    }
 };

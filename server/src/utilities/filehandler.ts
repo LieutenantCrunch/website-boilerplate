@@ -1,5 +1,6 @@
 import express, { Response } from 'express'; // Necessary to import express, otherwise Response won't resolve
 import fs from 'fs';
+import { mkdir } from 'fs/promises';
 
 export default class FileHandler {
     /**
@@ -29,5 +30,16 @@ export default class FileHandler {
     private static _sendFile(res: Response, data: Buffer, filetype: string) {
         res.writeHead(200, {'Content-Type': filetype});
         res.write(data);
+    }
+
+    static async createDirectoryIfNotExists(dir: string) {
+        try {
+            await mkdir(dir, {
+                recursive: true
+            });
+        }
+        catch (err) {
+            // Do nothing, the directory probably already existed
+        }
     }
 }

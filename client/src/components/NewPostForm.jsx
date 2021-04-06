@@ -2,6 +2,7 @@ import React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Avatar, Divider, Paper } from '@material-ui/core';
 import MaterialTextfield from '@material-ui/core/TextField';
+import CircularProgress from '@material-ui/core/CircularProgress';
 
 import PhotoOutlinedIcon from '@material-ui/icons/PhotoOutlined';
 import VideocamOutlinedIcon from '@material-ui/icons/VideocamOutlined';
@@ -11,21 +12,30 @@ import CancelTwoToneIcon from '@material-ui/icons/CancelTwoTone';
 import { makeStyles } from '@material-ui/core/styles';
 import classNames from 'classnames';
 import * as Constants from '../constants/constants';
+import { isNullOrWhiteSpaceOnly } from '../utilities/TextValidation';
+import PostService from '../services/post.service';
 
 // Redux
 import { useSelector } from 'react-redux';
 import { selectCurrentUserPfpSmall } from '../redux/users/currentUserSlice';
 
 export default function NewPostForm(props) {
+    const MAX_ALLOWED_IMAGES = 4; // This value cannot be changed without making other changes throughout the file. It is set as a constant for readability and to make future updates a bit simpler
+    const [currentDate, setCurrentDate] = useState((new Date()).toLocaleString());
     const currentUserPfpSmall = useSelector(selectCurrentUserPfpSmall);
 
     const [state, setState] = useState({
-        postType: Constants.POST_TYPES.IMAGE,
-        postAudience: Constants.POST_AUDIENCES.CONNECTIONS,
+        customAudience: [],
+        files: [],
+        images: [],
         isDragging: false,
         isLoading: false,
-        images: [],
-        customAudience: []
+        postAudience: Constants.POST_AUDIENCES.CONNECTIONS,
+        postText: '',
+        postTextHelper: '',
+        postTitle: '',
+        postType: Constants.POST_TYPES.TEXT,
+        textError: false
     });
 
     const useStyles = makeStyles(() => ({
@@ -150,53 +160,6 @@ export default function NewPostForm(props) {
     const dropArea = useRef(null);
     const dropOverlay = useRef(null);
 
-    // Modified from https://stackoverflow.com/questions/23640869/create-thumbnail-from-video-file-via-file-input
-    const getVideoCover = (file) => {
-        return new Promise((resolve, reject) => {
-            // load the file to a video player
-            const videoPlayer = document.createElement('video');
-
-            videoPlayer.addEventListener('error', (ex) => {
-                reject("error when loading video file", ex);
-            });
-            // load metadata of the video to get video duration and dimensions
-            videoPlayer.addEventListener('loadedmetadata', () => {
-                // seek to the middle of the video
-                let seekTo = videoPlayer.duration / 2;
-
-                // delay seeking or else 'seeked' event won't fire on Safari
-                setTimeout(() => {
-                  videoPlayer.currentTime = seekTo;
-                }, 200);
-
-                // extract video thumbnail once seeking is complete
-                videoPlayer.addEventListener('seeked', () => {
-
-                    // define a canvas to have the same dimension as the video
-                    const canvas = document.createElement("canvas");
-                    canvas.width = videoPlayer.videoWidth;
-                    canvas.height = videoPlayer.videoHeight;
-
-                    // draw the video frame to canvas
-                    const ctx = canvas.getContext("2d");
-                    ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
-
-                    // return the canvas image as a blob
-                    ctx.canvas.toBlob(
-                        blob => {
-                            resolve(blob);
-                        },
-                        "image/jpeg",
-                        0.75 /* quality */
-                    );
-                });
-            });
-
-            videoPlayer.setAttribute('src', URL.createObjectURL(file));
-            videoPlayer.load();
-        });
-    }
-
     const selectAudioType = () => {
         if (state.postType !== Constants.POST_TYPES.AUDIO) {
             setState(prevState => ({
@@ -237,20 +200,6 @@ export default function NewPostForm(props) {
         }
     };
 
-    const getCurrentPostType = () => {
-        switch (state.postType) {
-            case Constants.POST_TYPES.AUDIO:
-                return 'Audio';
-            case Constants.POST_TYPES.IMAGE:
-                return 'Image';
-            case Constants.POST_TYPES.VIDEO:
-                return 'Video';
-            case Constants.POST_TYPES.TEXT:
-            default:
-                return 'Text';
-        }
-    };
-
     const selectEveryoneAudience = () => {
         setState(prevState => ({
             ...prevState,
@@ -280,108 +229,12 @@ export default function NewPostForm(props) {
         }
     };
 
-    const getCurrentAudience = () => {
-        switch (state.postAudience) {
-            case Constants.POST_AUDIENCES.EVERYONE:
-                return 'Everyone';
-            case Constants.POST_AUDIENCES.CUSTOM:
-                return 'Custom';
-            case Constants.POST_AUDIENCES.CONNECTIONS:
-            default:
-                return 'Outgoing Connections';
-        }
-    };
-
-    const getCurrentDropText = () => {
-        return state.isLoading ? 'Please wait...' : 'Drop files here';
-    }
-
-    const getPlaceholderThumbnail = () => {
-        switch (state.postType) {
-            case Constants.POST_TYPES.AUDIO:
-                if (state.images.length === 0) {
-                    return <div className={classes.imageThumbnail}>
-                        <EqualizerIcon className={classes.placeholderIcon} style={{
-                            color: 'rgb(255,255,255)',
-                            fontSize: '5vmin'
-                        }} />
-                    </div>;
-                }
-
-                break;
-            case Constants.POST_TYPES.IMAGE:
-                if (state.images.length < 4) {
-                    return <div className={classes.imageThumbnail}>
-                        <PhotoOutlinedIcon className={classes.placeholderIcon}  style={{
-                            color: 'rgb(255,255,255)',
-                            fontSize: '5vmin'
-                        }} />
-                    </div>;
-                }
-                
-                break;
-            case Constants.POST_TYPES.VIDEO:
-                if (state.images.length === 0) {
-                    return <div className={classes.imageThumbnail}>
-                        <VideocamOutlinedIcon className={classes.placeholderIcon}  style={{
-                            color: 'rgb(255,255,255)',
-                            fontSize: '5vmin'
-                        }} />
-                    </div>;
-                }
-
-                break;
-            case Constants.POST_TYPES.TEXT:
-            default:
-                break;;
-        }
-
-        return <></>;
-    }
-
-    const handleDragEnter = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (e.target !== dropOverlay.current) {
-            setState(prevState => ({
-                ...prevState,
-                isDragging: true
-            }));
-        }
-    };
-
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-    };
-
-    const handleDragLeave = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (e.target === dropOverlay.current) {
-            setState(prevState => ({
-                ...prevState,
-                isDragging: false
-            }));
-        }
-    };
-
-    const handleDrop = async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        let stateUpdates = {
-            postType: Constants.POST_TYPES.TEXT,
-            isDragging: false
-        };
-
-        const files = [...e.dataTransfer.files];
+    const filterFiles = async (files) => {
+        let stateUpdates = {};
 
         if (files && files.length > 0) {
             // First, filter the files
-            let imagesRemaining = 4 - state.images.length; // Users can only upload a maximum of 4 images
+            let imagesRemaining = MAX_ALLOWED_IMAGES - state.images.length; // Users can only upload a maximum of 4 images
 
             let filteredFiles = files.filter(file => {
                 // If the type has already been determined to be video or audio
@@ -438,29 +291,261 @@ export default function NewPostForm(props) {
                         ...imageUrls
                     ];
 
+                    stateUpdates.files = [
+                        ...state.files,
+                        ...filteredFiles
+                    ];
+
                     break;
                 case Constants.POST_TYPES.VIDEO:
-                    // Because getting the video preview is async, update the state now to show that it's loading, reset it once the video thumbnail is done
-                    setState(prevState => ({
-                        ...prevState,
-                        isLoading: true
-                    }));
-
                     stateUpdates.images = [URL.createObjectURL(await getVideoCover(filteredFiles[0]))];
-                    stateUpdates.isLoading = false;
+                    stateUpdates.files = [filteredFiles[0]];
 
                     break;
                 case Constants.POST_TYPES.AUDIO:
                     stateUpdates.images = [Constants.STATIC_IMAGES.WAVEFORM];
+                    stateUpdates.files = [filteredFiles[0]];
 
                     break;
                 case Constants.POST_TYPES.TEXT:
                 default:
                     stateUpdates.images = [];
+                    stateUpdates.files = [];
 
                     break;
             }
         }
+
+        return stateUpdates;
+    };
+
+    // Modified from https://stackoverflow.com/questions/23640869/create-thumbnail-from-video-file-via-file-input
+    const getVideoCover = (file) => {
+        return new Promise((resolve, reject) => {
+            // load the file to a video player
+            const videoPlayer = document.createElement('video');
+
+            videoPlayer.addEventListener('error', (ex) => {
+                reject("error when loading video file", ex);
+            });
+            // load metadata of the video to get video duration and dimensions
+            videoPlayer.addEventListener('loadedmetadata', () => {
+                // seek to the middle of the video
+                let seekTo = videoPlayer.duration / 2;
+
+                // delay seeking or else 'seeked' event won't fire on Safari
+                setTimeout(() => {
+                  videoPlayer.currentTime = seekTo;
+                }, 200);
+
+                // extract video thumbnail once seeking is complete
+                videoPlayer.addEventListener('seeked', () => {
+
+                    // define a canvas to have the same dimension as the video
+                    const canvas = document.createElement("canvas");
+                    canvas.width = videoPlayer.videoWidth;
+                    canvas.height = videoPlayer.videoHeight;
+
+                    // draw the video frame to canvas
+                    const ctx = canvas.getContext("2d");
+                    ctx.drawImage(videoPlayer, 0, 0, canvas.width, canvas.height);
+
+                    // return the canvas image as a blob
+                    ctx.canvas.toBlob(
+                        blob => {
+                            resolve(blob);
+                        },
+                        "image/jpeg",
+                        0.75 /* quality */
+                    );
+                });
+            });
+
+            videoPlayer.setAttribute('src', URL.createObjectURL(file));
+            videoPlayer.load();
+        });
+    };
+
+    const getCurrentPostType = () => {
+        switch (state.postType) {
+            case Constants.POST_TYPES.AUDIO:
+                return 'Audio';
+            case Constants.POST_TYPES.IMAGE:
+                return 'Image';
+            case Constants.POST_TYPES.VIDEO:
+                return 'Video';
+            case Constants.POST_TYPES.TEXT:
+            default:
+                return 'Text';
+        }
+    };
+
+    const getCurrentAudience = () => {
+        switch (state.postAudience) {
+            case Constants.POST_AUDIENCES.EVERYONE:
+                return 'Everyone';
+            case Constants.POST_AUDIENCES.CUSTOM:
+                return 'Custom';
+            case Constants.POST_AUDIENCES.CONNECTIONS:
+            default:
+                return 'Outgoing Connections';
+        }
+    };
+
+    const getCurrentDropText = () => {
+        return state.isLoading ? 'Please wait...' : 'Drop files here';
+    }
+
+    const getPlaceholderThumbnail = () => {
+        let PlaceholderComponent = null;
+
+        switch (state.postType) {
+            case Constants.POST_TYPES.AUDIO:
+                if (state.images.length === 0) {
+                    PlaceholderComponent = EqualizerIcon;
+                }
+
+                break;
+            case Constants.POST_TYPES.IMAGE:
+                if (state.images.length < MAX_ALLOWED_IMAGES) {
+                    PlaceholderComponent = PhotoOutlinedIcon;
+                }
+                
+                break;
+            case Constants.POST_TYPES.VIDEO:
+                if (state.images.length === 0) {
+                    PlaceholderComponent = VideocamOutlinedIcon;
+                }
+
+                break;
+            case Constants.POST_TYPES.TEXT:
+            default:
+                break;
+        }
+
+        if (PlaceholderComponent) {
+            return <div className={classes.imageThumbnail} style={{cursor: state.isLoading ? 'wait' : 'pointer'}}>
+                <div className={classes.placeholderIcon} style={{display: state.isLoading ? 'block' : 'none'}}>
+                    <CircularProgress />
+                </div>
+                <label style={{
+                    width: '100%', 
+                    height: '100%', 
+                    display: state.isLoading ? 'none' : 'block',
+                    cursor: state.isLoading ? 'wait' : 'pointer'
+                }}>
+                    <PlaceholderComponent className={classes.placeholderIcon} style={{
+                        color: 'rgb(255,255,255)',
+                        fontSize: '5vmin'
+                    }} />
+                    <input type='file' multiple style={{display: 'none'}} onChange={handleImageChange} />
+                </label>
+            </div>;
+        }
+
+        return <></>;
+    };
+
+    const handleImageChange = async (e) => {
+        // Set loading state right away
+        setState(prevState => ({
+            ...prevState,
+            isLoading: true
+        }));
+
+        let stateUpdates = {
+            postType: Constants.POST_TYPES.TEXT,
+            isLoading: false
+        };
+
+        let files = [...e.target.files];
+        
+        let additionalStateUpdates = await filterFiles(files);
+
+        stateUpdates = {
+            ...stateUpdates,
+            ...additionalStateUpdates
+        };
+
+        setState(prevState => ({
+            ...prevState,
+            ...stateUpdates
+        }));
+    };
+
+    const handleTextChange = (e) => {
+        const {target} = e;
+        const {name, value} = target;
+
+        let stateUpdates = {
+            [name]: value
+        };
+
+        if (name === 'postText' && state.textError && !isNullOrWhiteSpaceOnly(value)) {
+            stateUpdates.textError = false;
+            stateUpdates.postTextHelper = '';
+        }
+
+        setState(prevState => ({
+            ...prevState,
+            ...stateUpdates
+        }));
+    };
+
+    const handleDragEnter = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (e.target !== dropOverlay.current) {
+            setState(prevState => ({
+                ...prevState,
+                isDragging: true
+            }));
+        }
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (e.target === dropOverlay.current) {
+            setState(prevState => ({
+                ...prevState,
+                isDragging: false
+            }));
+        }
+    };
+
+    const handleDrop = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Set loading state right away
+        setState(prevState => ({
+            ...prevState,
+            isLoading: true
+        }));
+
+        let stateUpdates = {
+            postType: Constants.POST_TYPES.TEXT,
+            isDragging: false,
+            isLoading: false
+        };
+
+        const files = [...e.dataTransfer.files];
+
+        // Filter the files and get any additional state updates
+        let additionalStateUpdates = await filterFiles(files);
+
+        stateUpdates = {
+            ...stateUpdates,
+            ...additionalStateUpdates
+        };
 
         // Finally, update the state with all updates
         setState(prevState => ({
@@ -470,8 +555,16 @@ export default function NewPostForm(props) {
     };
 
     const handleRemoveImage = (e, i) => {
-        let { images } = state;
+        let { images, files } = state;
         let updatedImages = images.reduce((finalArray, currentItem, index) => {
+            if (index !== i) {
+                finalArray.push(currentItem);
+            }
+
+            return finalArray;
+        }, []);
+
+        let updatedFiles = files.reduce((finalArray, currentItem, index) => {
             if (index !== i) {
                 finalArray.push(currentItem);
             }
@@ -481,8 +574,105 @@ export default function NewPostForm(props) {
 
         setState(prevState => ({
             ...prevState,
-            images: updatedImages
+            images: updatedImages,
+            files: updatedFiles
         }));
+    };
+
+    const validatePost = () => {
+        switch (state.postType) {
+            case Constants.POST_TYPES.IMAGE:
+                // First make sure the number of files is between 1 and MAX_ALLOWED_IMAGES
+                if (state.files.length > 0 && state.files.length <= MAX_ALLOWED_IMAGES && state.images.length === state.files.length) {
+                    // Make sure all files are images. If they haven't been messing with the page, this should be the case
+                    if (state.files.some(file => !file.type.startsWith('image/'))) {
+                        return false;
+                    }
+                }
+                else {
+                    return false;
+                }
+
+                break;
+            case Constants.POST_TYPES.VIDEO:
+                // First make sure the number of files is 1
+                if (state.files.length === 1 && state.images.length === 1) {
+                    // Make sure the file is a video. If they haven't been messing with the page, this should be the case
+                    if (state.files.some(file => !file.type.startsWith('video/'))) {
+                        return false;
+                    }
+                }
+                else {
+                    return false;
+                }
+
+                break;
+            case Constants.POST_TYPES.AUDIO:
+                // First make sure the number of files is 1
+                if (state.files.length === 1 && state.images.length === 1) {
+                    // Make sure the file is audio. If they haven't been messing with the page, this should be the case
+                    if (state.files.some(file => !file.type.startsWith('audio/'))) {
+                        return false;
+                    }
+                }
+                else {
+                    return false;
+                }
+
+                break;
+            case Constants.POST_TYPES.TEXT:
+            default:
+                // If it's a text post, they have to fill in something, the text is not optional (the title is)
+                if (isNullOrWhiteSpaceOnly(state.postText)) {
+                    setState(prevState => ({
+                        ...prevState,
+                        textError: true,
+                        postTextHelper: `You can't post nothing!`
+                    }));
+
+                    return false;
+                }
+                else {
+                    setState(prevState => ({
+                        ...prevState,
+                        textError: false,
+                        postTextHelper: ''
+                    }));
+                }
+
+                break;
+        }
+
+        // All checks have passed
+        return true;
+    };
+
+    const validateAndPost = async () => {
+        if (validatePost()) {
+            let postData = {
+                postType: state.postType,
+                postTitle: state.postTitle,
+                postText: state.postText,
+                audience: state.postAudience
+            };
+
+            if (state.postType !== Constants.POST_TYPES.TEXT) {
+                postData.postFiles = state.files;
+            }
+
+            if (state.postAudience === Constants.POST_AUDIENCES.CUSTOM) {
+                postData.customAudience = state.customAudience;
+            }
+
+            let results = await PostService.createNewPost(postData, (event) => {
+                console.log(`Loaded: ${event.loaded}, Total ${event.total}`);
+                /*if (event.loaded === event.total) {
+                    setIsProcessing(true);
+                }
+
+                setProgress(Math.round((100 * event.loaded) / event.total));*/
+            });
+        }
     };
 
     return (
@@ -491,13 +681,13 @@ export default function NewPostForm(props) {
                 <div className={classes.header}>
                     <Avatar className={classes.avatar} src={currentUserPfpSmall} />
                     <div className={classes.headerContent}>
-                        <MaterialTextfield label="Post Title (optional)" size="small" variant="filled" className={classes.title} inputProps={{'maxLength': 50}} />
+                        <MaterialTextfield name="postTitle" label="Post Title (optional)" size="small" variant="filled" className={classes.title} inputProps={{'maxLength': 50}} value={state.postTitle} onChange={handleTextChange} />
                         <div>
-                            {(new Date()).toLocaleString()}
+                            {currentDate}
                         </div>
                     </div>
                 </div>
-                <div className={classNames(classes.previewImages, state.images.length === 4 ? classes.imagesFull : '')}
+                <div className={classNames(classes.previewImages, state.images.length === MAX_ALLOWED_IMAGES ? classes.imagesFull : '')}
                     style={{
                         display: state.postType === Constants.POST_TYPES.TEXT ? 'none' : 'flex'
                     }}
@@ -513,14 +703,15 @@ export default function NewPostForm(props) {
                                     }}>
                                     </div>
                                     <CancelTwoToneIcon style={{
-                                        position: 'absolute',
-                                        top: 0,
-                                        right: 0,
-                                        transform: 'translate(50%, -50%)',
-                                        zIndex: 10,
-                                        cursor: 'pointer'
-                                    }}
-                                    onClick={e => handleRemoveImage(e, index)} />
+                                            position: 'absolute',
+                                            top: 0,
+                                            right: 0,
+                                            transform: 'translate(50%, -50%)',
+                                            zIndex: 10,
+                                            cursor: 'pointer'
+                                        }}
+                                        onClick={e => handleRemoveImage(e, index)} 
+                                    />
                                 </div>
                             </div>
                         ))
@@ -531,7 +722,7 @@ export default function NewPostForm(props) {
                 </div>
                 <Divider light={true} variant='middle' />
                 <div className={classes.body}>
-                    <MaterialTextfield multiline variant="filled" label="Post Text (optional)" className={classes.bodyContent} inputProps={{'maxLength': 2000}} />
+                    <MaterialTextfield name="postText" multiline variant="filled" label={`Post Text${state.postType === Constants.POST_TYPES.TEXT ? '' :  ' (optional)'}`} className={classes.bodyContent} inputProps={{'maxLength': 2000}} value={state.postText} onChange={handleTextChange} error={state.textError} helperText={state.postTextHelper} />
                 </div>
                 <div className={classes.footer}>
                     <div className="dropdown">
@@ -554,7 +745,7 @@ export default function NewPostForm(props) {
                             <li><button className="dropdown-item" type="button" onClick={e => selectCustomAudience(e, 'Friends')}>Friends</button></li>
                         </ul>
                     </div>
-                    <button className="btn btn-primary" type="button">Post</button>
+                    <button className="btn btn-primary" type="button" onClick={validateAndPost}>Post</button>
                 </div>
                 <div className={classes.overlay} ref={dropOverlay} style={{ display: state.isDragging ? 'flex' : 'none' }}>
                     <div style={{
