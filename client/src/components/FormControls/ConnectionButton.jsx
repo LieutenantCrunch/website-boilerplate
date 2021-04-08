@@ -382,9 +382,19 @@ const ConnectionButton = ({
                 return 'btn btn-outline-success';
             case CS_CONNECT_PENDING:
             case CS_CONNECTED:
+                if (state.isDropdownOpen)
+                {
+                    return 'btn btn-outline-primary dropdown-toggle show';
+                }
+
                 return 'btn btn-outline-primary dropdown-toggle';
             case CS_NOT_CONNECTED:
             default:
+                if (state.isDropdownOpen)
+                {
+                    return 'btn btn-outline-success dropdown-toggle dropdown-toggle-split show';
+                }
+
                 return 'btn btn-outline-success dropdown-toggle dropdown-toggle-split';
         }
     };
@@ -397,7 +407,7 @@ const ConnectionButton = ({
             case CS_CONNECT_PENDING:
                 return user?.connectionTypes
                 ? Object.entries(user.connectionTypes).map(([connectionType, details]) => (
-                    <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
+                    <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} useListItem />
                 ))
                 : <></>;
             case CS_CONNECTED:
@@ -428,7 +438,7 @@ const ConnectionButton = ({
                         {
                             user?.connectionTypes
                             ? Object.entries(user.connectionTypes).map(([connectionType, details]) => (
-                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} />
+                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleTypeChange} useListItem />
                             ))
                             : <></>
                         }

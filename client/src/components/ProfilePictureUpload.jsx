@@ -103,6 +103,7 @@ function ProfilePictureUpload (props) {
                             aria-valuenow={progress}
                             aria-valuemin="0"
                             aria-valuemax="100"
+                            role="progressbar"
                             style={{
                                 bottom: 0,
                                 height: progress + '%', 

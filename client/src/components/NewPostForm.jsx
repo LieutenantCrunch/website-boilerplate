@@ -1,33 +1,58 @@
 import React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import classNames from 'classnames';
+import { usePopper } from 'react-popper';
+
+// Material UI Components
 import { Avatar, Divider, Paper } from '@material-ui/core';
 import MaterialTextfield from '@material-ui/core/TextField';
 import CircularProgress from '@material-ui/core/CircularProgress';
 
+// Material UI Icons
 import PhotoOutlinedIcon from '@material-ui/icons/PhotoOutlined';
 import VideocamOutlinedIcon from '@material-ui/icons/VideocamOutlined';
 import EqualizerIcon from '@material-ui/icons/Equalizer';
 import CancelTwoToneIcon from '@material-ui/icons/CancelTwoTone';
 
+// Material UI Styles
 import { makeStyles } from '@material-ui/core/styles';
-import classNames from 'classnames';
+
+// Assorted Functionality
 import * as Constants from '../constants/constants';
 import { isNullOrWhiteSpaceOnly } from '../utilities/TextValidation';
 import PostService from '../services/post.service';
 
 // Redux
 import { useSelector } from 'react-redux';
+import { selectConnectionTypes } from '../redux/connections/connectionTypesSlice';
 import { selectCurrentUserPfpSmall } from '../redux/users/currentUserSlice';
+
+// WB Components
+import SwitchCheckbox from './FormControls/SwitchCheckbox';
 
 export default function NewPostForm(props) {
     const MAX_ALLOWED_IMAGES = 4; // This value cannot be changed without making other changes throughout the file. It is set as a constant for readability and to make future updates a bit simpler
-    const [currentDate, setCurrentDate] = useState((new Date()).toLocaleString());
+    
+    // Redux
     const currentUserPfpSmall = useSelector(selectCurrentUserPfpSmall);
+    const defaultConnectionTypes = useSelector(selectConnectionTypes);
+
+    const getConnectionTypeDict = () => {
+        if (defaultConnectionTypes) {
+            return {...defaultConnectionTypes};
+        }
+        
+        return {};
+    }
+
+    // State
+    const [currentDate, setCurrentDate] = useState((new Date()).toLocaleString());
 
     const [state, setState] = useState({
         customAudience: [],
         files: [],
         images: [],
+        isAudienceOpen: false,
         isDragging: false,
         isLoading: false,
         postAudience: Constants.POST_AUDIENCES.CONNECTIONS,
@@ -35,9 +60,29 @@ export default function NewPostForm(props) {
         postTextHelper: '',
         postTitle: '',
         postType: Constants.POST_TYPES.TEXT,
-        textError: false
+        textError: false,
+        connectionTypes: {}
     });
 
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+
+    useEffect(() => {
+        if (state.connectionTypes && Object.keys(state.connectionTypes).length === 0) {
+            setState(prevState => ({
+                ...prevState,
+                connectionTypes: getConnectionTypeDict()
+            }));
+        }
+    }, [defaultConnectionTypes]);
+
+    useEffect(() => {
+        if (popperUpdate) {
+            popperUpdate();
+        }
+    }, [state.postAudience])
+
+    // Material UI Styles
     const useStyles = makeStyles(() => ({
         root: {
             position: 'relative'
@@ -86,6 +131,19 @@ export default function NewPostForm(props) {
             alignItems: 'center',
             '& *': {
                 /* This is necessary due to the dragLeave event firing when the mouse moves from the overlay to one of its children */
+                pointerEvents: 'none'
+            }
+        },
+        postProgress: {
+            backgroundColor: 'rgba(255,255,255)',
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            opacity: .75,
+            right: 0,
+            top: 0,
+            zIndex: 11,
+            '&, & *': {
                 pointerEvents: 'none'
             }
         },
@@ -157,6 +215,39 @@ export default function NewPostForm(props) {
 
     const classes = useStyles(state);
 
+    // Popper
+    const [referenceElement, setReferenceElement] = useState(null);
+    const [popperElement, setPopperElement] = useState(null);
+    const { styles: popperStyles, update: popperUpdate } = usePopper(referenceElement, popperElement, {
+        modifiers: [
+        ],
+        placement: 'bottom'
+    });
+    const dropdownMenuContainer = useRef();
+
+    useEffect(() => {
+        if (state.isAudienceOpen) {
+            document.addEventListener('click', hideAudienceDropdown);
+
+            return function cleanup() {
+                document.removeEventListener('click', hideAudienceDropdown);
+            }
+        }
+        else {
+            document.removeEventListener('click', hideAudienceDropdown);
+        }
+    }, [state.isAudienceOpen]);
+
+    const hideAudienceDropdown = (event) => {
+        if (dropdownMenuContainer && !dropdownMenuContainer.current.contains(event.target)) {
+            setState(prevState => ({
+                ...prevState,
+                isAudienceOpen: false
+            }));
+        }       
+    };
+
+    // References
     const dropArea = useRef(null);
     const dropOverlay = useRef(null);
 
@@ -204,7 +295,8 @@ export default function NewPostForm(props) {
         setState(prevState => ({
             ...prevState,
             postAudience: Constants.POST_AUDIENCES.EVERYONE,
-            customAudience: []
+            customAudience: [],
+            connectionTypes: getConnectionTypeDict() /* This will reset everything to false */
         }));
     };
 
@@ -212,21 +304,9 @@ export default function NewPostForm(props) {
         setState(prevState => ({
             ...prevState,
             postAudience: Constants.POST_AUDIENCES.CONNECTIONS,
-            customAudience: []
+            customAudience: [],
+            connectionTypes: getConnectionTypeDict() /* This will reset everything to false */
         }));
-    };
-
-    const selectCustomAudience = (e, type) => {
-        if (!state.customAudience.find(connectionType => connectionType === type)) {
-            setState(prevState => ({
-                ...prevState,
-                postAudience: Constants.POST_AUDIENCES.CUSTOM,
-                customAudience: [
-                    ...prevState.customAudience,
-                    type
-                ]
-            }));     
-        }
     };
 
     const filterFiles = async (files) => {
@@ -446,6 +526,19 @@ export default function NewPostForm(props) {
         return <></>;
     };
 
+    const handleAudienceClick = (e) => {
+        if (!state.isAudienceOpen) {
+            popperUpdate(); // This fixes the position of the dropdown menu
+        }
+
+        setState(prevState => ({
+            ...prevState,
+            isAudienceOpen: !prevState.isAudienceOpen /* Toggle whether it's open */
+        }));
+
+        e.stopPropagation();
+    };
+
     const handleImageChange = async (e) => {
         // Set loading state right away
         setState(prevState => ({
@@ -579,6 +672,69 @@ export default function NewPostForm(props) {
         }));
     };
 
+    const handleCustomChange = (event) => {
+        let { name, checked } = event.target;
+
+        let stateUpdates = {
+            postAudience: state.postAudience,
+            connectionTypes: {
+                [name]: checked
+            },
+            customAudience: state.customAudience
+        };
+
+        if (checked) {
+            if (!state.customAudience.find(connectionType => connectionType === name)) {
+                stateUpdates.postAudience = Constants.POST_AUDIENCES.CUSTOM;
+                stateUpdates.customAudience = [
+                    ...state.customAudience,
+                    name
+                ];
+            }
+        }
+        else {
+            let foundIndex = state.customAudience.findIndex(connectionType => connectionType === name);
+
+            if (foundIndex >= 0) {
+                let customAudience = state.customAudience.reduce((finalArray, currentItem, index,) => {
+                    if (index !== foundIndex) {
+                        finalArray.push(currentItem);
+                    }
+
+                    return finalArray;
+                }, []);
+
+                stateUpdates.postAudience = customAudience.length === 0 ? Constants.POST_AUDIENCES.CONNECTIONS : Constants.POST_AUDIENCES.CUSTOM;
+                stateUpdates.customAudience = customAudience;
+            }
+        }
+
+        setState(prevState => ({
+            ...prevState,
+            postAudience: stateUpdates.postAudience,
+            connectionTypes: {
+                ...prevState.connectionTypes,
+                ...stateUpdates.connectionTypes
+            },
+            customAudience: stateUpdates.customAudience
+        }));
+
+        event.stopPropagation();
+    };
+
+    const resetForm = () => {
+        setState(prevState => ({
+            ...prevState,
+            customAudience: [],
+            files: [],
+            images: [],
+            postAudience: Constants.POST_AUDIENCES.CONNECTIONS, /*## This should be based off a preference */
+            postText: '',
+            postTitle: '',
+            postType: Constants.POST_TYPES.TEXT
+        }))
+    };
+
     const validatePost = () => {
         switch (state.postType) {
             case Constants.POST_TYPES.IMAGE:
@@ -649,6 +805,9 @@ export default function NewPostForm(props) {
 
     const validateAndPost = async () => {
         if (validatePost()) {
+            setUploadProgress(0);
+            setIsUploading(true);
+
             let postData = {
                 postType: state.postType,
                 postTitle: state.postTitle,
@@ -666,12 +825,15 @@ export default function NewPostForm(props) {
 
             let results = await PostService.createNewPost(postData, (event) => {
                 console.log(`Loaded: ${event.loaded}, Total ${event.total}`);
-                /*if (event.loaded === event.total) {
-                    setIsProcessing(true);
+                if (event.loaded === event.total) {
+                    setIsUploading(false);
+                    resetForm();
                 }
 
-                setProgress(Math.round((100 * event.loaded) / event.total));*/
+                setUploadProgress(Math.round((100 * event.loaded) / event.total));
             });
+
+            // Results should contain the new post, add it to the page
         }
     };
 
@@ -734,15 +896,31 @@ export default function NewPostForm(props) {
                             <li><button className="dropdown-item" type="button" onClick={selectVideoType}>Video</button></li>
                         </ul>
                     </div>
-                    <div className="dropdown">
-                        <button className="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" id="newPostAudienceDropdown" aria-expanded="false">{getCurrentAudience()}</button>
-                        <ul className="dropdown-menu" aria-labelledby="newPostAudienceDropdown">
+                    <div ref={dropdownMenuContainer} className="dropdown">
+                        <button ref={setReferenceElement} 
+                            className={classNames("btn btn-outline-primary dropdown-toggle", {'show': state.isAudienceOpen})}
+                            type="button" 
+                            onClick={handleAudienceClick}
+                        >
+                                {getCurrentAudience()}
+                        </button>
+                        <ul ref={setPopperElement} 
+                            className={classNames('dropdown-menu', 'px-2', {'show': state.isAudienceOpen})}
+                            style={popperStyles.popper}
+                            {...popperStyles.popper}
+                        >
                             <li className="dropdown-header">Generic</li>
                             <li><button className="dropdown-item" type="button" onClick={selectEveryoneAudience}>Everyone</button></li>
                             <li><button className="dropdown-item" type="button" onClick={selectConnectionsAudience}>Outgoing Connections</button></li>
                             <li><hr className="dropdown-divider" /></li>
                             <li className="dropdown-header">Custom</li>
-                            <li><button className="dropdown-item" type="button" onClick={e => selectCustomAudience(e, 'Friends')}>Friends</button></li>
+                            {
+                                state.connectionTypes
+                                ? Object.entries(state.connectionTypes).map(([connectionType, details]) => (
+                                    <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleCustomChange} useListItem />
+                                ))
+                                : <></>
+                            }
                         </ul>
                     </div>
                     <button className="btn btn-primary" type="button" onClick={validateAndPost}>Post</button>
@@ -754,6 +932,22 @@ export default function NewPostForm(props) {
                         borderRadius: '4px'
                     }}>
                         {getCurrentDropText()}
+                    </div>
+                </div>
+                <div className={classes.postProgress} style={{ display: isUploading ? 'flex' : 'none' }}>
+                    <div className="progress-bar progress-bar-striped progress-bar-animated" 
+                        aria-valuenow={uploadProgress} 
+                        aria-valuemin="0" 
+                        aria-valuemax="100" 
+                        role="progressbar" 
+                        style={{
+                            bottom: 0,
+                            height: `${uploadProgress}%`,
+                            position: 'absolute',
+                            width: '100%'
+                        }}
+                    >
+                        Uploading... ({uploadProgress}%)
                     </div>
                 </div>
             </Paper>

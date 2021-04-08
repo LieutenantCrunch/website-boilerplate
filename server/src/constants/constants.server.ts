@@ -4,6 +4,7 @@ export const RPT_MAX_ACTIVE_TOKENS: number = 5; // The maximum allowable number 
 export const CONNECTION_TYPES_CACHE_HOURS: number = 6; // The number of hours connection types will be cached for since they won't change very often
 
 export const CACHE_KEY_CONNECTION_TYPES_DICT: string = 'db.connectionTypesDict'; // The connection types dictionary used by databaseHelper
+export const CACHE_KEY_CONNECTION_TYPES_ARRAY: string = 'db.connectionTypesArray'; // The connection types array used by databaseHelper
 
 export const DB_USER_FETCH_PAGE_SIZE: number = 5; // The number of users to fetch at one time
 export const DB_FEED_FETCH_PAGE_SIZE: number = 20; // The number of posts to fetch at one time for feeds

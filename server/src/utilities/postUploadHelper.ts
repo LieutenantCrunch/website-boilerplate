@@ -56,7 +56,6 @@ export default class PostUploadHelper {
     private static fileFilter(req: express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) {
         let errorMessage: string | null = null;
 
-        console.log('hello anybody home');
         try {
             let { postType } = req.body;
 

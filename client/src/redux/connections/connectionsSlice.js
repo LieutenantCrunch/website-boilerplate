@@ -1,20 +1,20 @@
 import { combineReducers } from 'redux';
 
-import outgoingConnectionsReducer from './outgoingConnectionsSlice';
-import incomingConnectionsReducer from './incomingConnectionsSlice';
+import connectionTypesReducer from './connectionTypesSlice';
+import outgoingConnectionsReducer, {outgoingConnectionAdded, outgoingConnectionRemoved} from './outgoingConnectionsSlice';
+import incomingConnectionsReducer, {incomingConnectionAdded, incomingConnectionRemoved} from './incomingConnectionsSlice';
 import currentConnectionReducer from './currentConnectionSlice';
 
-import {outgoingConnectionAdded, outgoingConnectionRemoved} from './outgoingConnectionsSlice';
-import {incomingConnectionAdded, incomingConnectionRemoved} from './incomingConnectionsSlice';
 import {selectUserById, upsertUser} from '../users/usersSlice';
 
 import * as Constants from '../../constants/constants';
 import UserService from '../../services/user.service';
 
 const connectionsReducer = combineReducers({
-    outgoingConnections: outgoingConnectionsReducer,
+    connectionTypes: connectionTypesReducer,
+    currentConnection: currentConnectionReducer,
     incomingConnections: incomingConnectionsReducer,
-    currentConnection: currentConnectionReducer
+    outgoingConnections: outgoingConnectionsReducer
 });
 
 // Utility functions

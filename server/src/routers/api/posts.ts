@@ -39,8 +39,6 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
             console.error(err.message);
             return res.status(500);
         }
-
-        break;
     default:
         res.status(404).send(req.params.methodName + ' is not a valid posts method.');
         break;

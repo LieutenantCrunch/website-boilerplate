@@ -27,6 +27,7 @@ import UtilityService from '../services/utility.service';
 
 // Redux
 import { useSelector, useDispatch } from 'react-redux';
+import { connectionTypesFetched } from '../redux/connections/connectionTypesSlice';
 import { currentUserFetched } from '../redux/users/currentUserSlice';
 
 export default function App() {
@@ -34,10 +35,6 @@ export default function App() {
     const [title, setTitle] = useState(null);
     const [statusMessage, setStatusMessage] = useState({type: 'info', message: null});
     const [loginDetails, setLoginDetails] = Hooks.useStateWithLocalStorage('loginDetails', null);
-
-    const [appState, updateAppState] = useState({
-        connectionTypeDict: {}
-    })
 
     const checkForValidSession = () => {
         if (!loginDetails) {
@@ -53,7 +50,7 @@ export default function App() {
     };
 
     useEffect(() => {
-        // Probably want to implement cancels for these async calls in the cleanup function
+        //## Probably want to implement cancels for these async calls in the cleanup function
 
         // Check if the loginDetails is hanging around and if it's expired, if so, delete it
         // Else make sure the userDetails are populated
@@ -63,22 +60,14 @@ export default function App() {
                     dispatch(currentUserFetched(details));
                 }
             });
-            fetchConnectionTypeDict();
+
+            UserService.getConnectionTypeDict().then(connectionTypeDict => {
+                if (connectionTypeDict) {
+                    dispatch(connectionTypesFetched(connectionTypeDict));
+                }
+            });
         }
     }, []);
-
-    const fetchConnectionTypeDict = async () => {
-        if (Object.keys(appState.connectionTypeDict).length === 0) {
-            let connectionTypeDict = await UserService.getConnectionTypeDict();
-            
-            updateAppState(prevState => ({
-                ...prevState,
-                connectionTypeDict
-            }));
-
-            return connectionTypeDict;
-        }
-    };
 
     return(
         <div className="App">
@@ -143,7 +132,7 @@ export default function App() {
             </Router>
             {
                 checkForValidSession()
-                ? <SideMenu fetchConnectionTypeDict={fetchConnectionTypeDict} appState={appState} />
+                ? <SideMenu />
                 : <></>
             }
         </div>

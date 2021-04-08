@@ -247,7 +247,7 @@ export default function ConnectionsSideMenuItem(props) {
         </div>
 
         <ConnectionPreviewDialog id="connectionDetails" connectionId={state.selectedConnectionId} />
-        <AddConnectionDialog id="addConnection" appState={props.appState} onAddedConnection={handleAddedConnection} />
+        <AddConnectionDialog id="addConnection" onAddedConnection={handleAddedConnection} />
         <YesNoMessageBox ref={yesNoMessageBoxRef}
                 caption={state.removeMessageTitle} 
                 message={state.removeMessageMessage} 
