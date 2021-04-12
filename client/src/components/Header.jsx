@@ -2,13 +2,14 @@
 import React from 'react';
 import { withRouter, Link } from 'react-router-dom';
 import AuthService from '../services/auth.service';
-import UserService from '../services/user.service';
+import { reduxLogout } from '../redux/rootReducer';
 
 // Redux
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { selectCurrentUserRoles } from '../redux/users/currentUserSlice';
 
 function Header(props) {
+    const dispatch = useDispatch();
     const currentRoles = useSelector(selectCurrentUserRoles);
     const capitalize = (s) => {
         if (typeof s !== 'string') {
@@ -54,6 +55,8 @@ function Header(props) {
         collapseNavbarMenu();
         AuthService.logout();
         props.setLoginDetails(null);
+        console.log(reduxLogout());
+        dispatch(reduxLogout());
     };
 
     /* TODO: Default this better. This does not handle if they come in without a path, ex: http://localhost:3000/ */

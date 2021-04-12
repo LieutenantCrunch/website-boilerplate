@@ -19,6 +19,9 @@ export const STATIC_IMAGES = Object.freeze({
     WAVEFORM: STATIC_IMAGE_PATH + 'waveform.png'
 });
 
+// Generic Constants
+export const MAX_UPLOAD_SIZE = 128; /* 128 Megabytes */
+
 // User Settings
 export const DISPLAY_NAME_CHANGE_DAYS: number = 30; // The number of days a user must wait between display name changes
 export const PROFILE_NAME_REGEX_PATTERN: string = "^[\-\._~]*(?:[a-z0-9][\-\._~]*){3,}$";

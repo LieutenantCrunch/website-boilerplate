@@ -67,7 +67,7 @@ export default function App() {
                 }
             });
         }
-    }, []);
+    }, [loginDetails]);
 
     return(
         <div className="App">

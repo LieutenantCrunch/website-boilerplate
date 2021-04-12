@@ -741,9 +741,24 @@ export default function NewPostForm(props) {
             case Constants.POST_TYPES.IMAGE:
                 // First make sure the number of files is between 1 and MAX_ALLOWED_IMAGES
                 if (state.files.length > 0 && state.files.length <= MAX_ALLOWED_IMAGES && state.images.length === state.files.length) {
+                    let totalFileSize = 0;
+
                     // Make sure all files are images. If they haven't been messing with the page, this should be the case
-                    if (state.files.some(file => !file.type.startsWith('image/'))) {
-                        return false;
+                    for (let file of state.files) {
+                        if (!file.type.startsWith('image/'))
+                        {
+                            return false;
+                        }
+
+                        if (file.name.length > 150) {
+                            return false;
+                        }
+
+                        totalFileSize += file.size;
+
+                        if (totalFileSize > Constants.MAX_UPLOAD_SIZE) {
+                            return false;
+                        }
                     }
                 }
                 else {
@@ -754,8 +769,18 @@ export default function NewPostForm(props) {
             case Constants.POST_TYPES.VIDEO:
                 // First make sure the number of files is 1
                 if (state.files.length === 1 && state.images.length === 1) {
+                    let file = state.files[0];
+
                     // Make sure the file is a video. If they haven't been messing with the page, this should be the case
-                    if (state.files.some(file => !file.type.startsWith('video/'))) {
+                    if (!file.type.startsWith('video/')) {
+                        return false;
+                    }
+
+                    if (file.name.length > 150) {
+                        return false;
+                    }
+
+                    if (file.size > Constants.MAX_UPLOAD_SIZE * 1024 * 1024) {
                         return false;
                     }
                 }
@@ -767,8 +792,18 @@ export default function NewPostForm(props) {
             case Constants.POST_TYPES.AUDIO:
                 // First make sure the number of files is 1
                 if (state.files.length === 1 && state.images.length === 1) {
+                    let file = state.files[0];
+
                     // Make sure the file is audio. If they haven't been messing with the page, this should be the case
-                    if (state.files.some(file => !file.type.startsWith('audio/'))) {
+                    if (!file.type.startsWith('audio/')) {
+                        return false;
+                    }
+
+                    if (file.name.length > 150) {
+                        return false;
+                    }
+
+                    if (file.size > Constants.MAX_UPLOAD_SIZE * 1024 * 1024) {
                         return false;
                     }
                 }
