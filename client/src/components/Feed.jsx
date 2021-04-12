@@ -24,7 +24,7 @@ function Feed(props) {
     }, []);
 
     return (
-        <div className="align-middle">
+        <div className="align-middle mt-2">
             {
                 state.posts.map(post => (
                     <PostCard key={post.uniqueId} post={post} />

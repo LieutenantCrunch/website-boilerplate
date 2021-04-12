@@ -19,7 +19,11 @@ module.exports = {
             },
             {
                 test: /\.css$/i,
-                exclude: /node_modules/,
+                /*exclude: /node_modules/,*/
+                include: [
+                    path.resolve(__dirname, 'src/styles/styles.css'),
+                    path.resolve(__dirname, 'node_modules/react-image-lightbox/style.css')
+                ],
                 use: [
                     {
                         loader: 'style-loader'

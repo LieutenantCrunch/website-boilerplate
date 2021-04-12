@@ -1,15 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import classNames from 'classnames';
-import { Avatar, Card, CardContent, CardHeader, Divider } from '@material-ui/core';
+import Lightbox from 'react-image-lightbox';
 import * as Constants from '../constants/constants';
 
-// Material UI Styles
+// Material UI
+import { Avatar, Card, CardContent, CardHeader, Divider } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
 
 export default function PostCard(props) {
     const { post } = props;
     const { postedBy, postFiles, postType } = post;
     const postDate = new Date(post.postedOn);
+
+    const [state, setState] = useState({
+        lightboxOpen: false,
+        lightboxIndex: 0
+    });
 
     // Material UI Styles
     const useStyles = makeStyles(() => ({
@@ -51,10 +57,22 @@ export default function PostCard(props) {
 
     const classes = useStyles();
 
+    const handleImageClick = (e, index) => {
+        setState(prevState => ({
+            ...prevState,
+            lightboxOpen: true,
+            lightboxIndex: index
+        }));
+    };
+
     const getPostFilesSection = () => {
         if (postFiles && postFiles.length > 0) {
             return postFiles.map((postFile, index) => (
-                <div key={postFile.fileName} className={classes.imageThumbnail} style={{backgroundImage: `url('${postFile.fileName}')`}}>
+                <div key={postFile.fileName} 
+                    className={classes.imageThumbnail} 
+                    style={{backgroundImage: `url('${postFile.fileName}')`}}
+                    onClick={e => handleImageClick(e, index)}
+                >
                 </div>
             ))
         }
@@ -84,6 +102,29 @@ export default function PostCard(props) {
             <CardContent>
                 {post.postText}
             </CardContent>
+            {
+                state.lightboxOpen && (
+                    <Lightbox 
+                        mainSrc={postFiles ? postFiles[state.lightboxIndex].fileName : ''}
+                        nextSrc={postFiles ? postFiles[(state.lightboxIndex + 1) % postFiles.length].fileName : ''}
+                        prevSrc={postFiles ? postFiles[(state.lightboxIndex + postFiles.length - 1) % postFiles.length].fileName : ''}
+                        onCloseRequest={() =>
+                            setState(prevState => ({...prevState, lightboxOpen: false}))
+                        }
+                        onMovePrevRequest={() => 
+                            setState(prevState => ({...prevState, lightboxIndex: (prevState.lightboxIndex + postFiles.length - 1) % postFiles.length}))
+                        }
+                        onMoveNextRequest={() => 
+                            setState(prevState => ({...prevState, lightboxIndex: (prevState.lightboxIndex + 1) % postFiles.length}))
+                        }
+                        reactModalStyle={{
+                            overlay: {
+                                zIndex: 2000 /* Fight with Bootstrap's fixed-top class, which sets the z-index to 1030 */
+                            }
+                        }}
+                    />
+                )
+            }
         </Card>
     );
 }
