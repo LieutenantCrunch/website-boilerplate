@@ -4,16 +4,22 @@ import { Sequelize } from 'sequelize';
 import SequelizeSimpleCache from 'sequelize-simple-cache';
 import { DbInterface } from '../typings/DbInterface';
 
+// Main Tables
 import { DisplayNameFactory } from '../models/DisplayName';
 import { PasswordResetTokenFactory } from '../models/PasswordResetToken';
+import { PostFactory } from '../models/Post';
+import { PostFileFactory } from '../models/PostFile';
 import { ProfilePictureFactory } from '../models/ProfilePicture';
 import { RoleFactory } from '../models/Role';
 import { UserFactory } from '../models/User';
 import { UserBlockFactory } from '../models/UserBlock';
 import { UserConnectionFactory } from '../models/UserConnection';
 import { UserConnectionTypeFactory } from '../models/UserConnectionType';
-import { UserConnectionTypeJunctionFactory } from '../models/UserConnectionTypeJunction';
 import { UserJWTFactory } from '../models/UserJWT';
+
+// Junction Tables
+import { PostCustomAudienceFactory } from '../models/PostCustomAudience';
+import { UserConnectionTypeJunctionFactory } from '../models/UserConnectionTypeJunction';
 import { UserRoleJunctionFactory } from '../models/UserRoleJunction';
 
 // Views
@@ -47,6 +53,9 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         sequelize,
         DisplayName: DisplayNameFactory(sequelize),
         PasswordResetToken: PasswordResetTokenFactory(sequelize),
+        Post: PostFactory(sequelize),
+        PostCustomAudience: PostCustomAudienceFactory(sequelize),
+        PostFile: PostFileFactory(sequelize),
         ProfilePicture: ProfilePictureFactory(sequelize),
         Role: RoleFactory(sequelize),
         User: UserFactory(sequelize),

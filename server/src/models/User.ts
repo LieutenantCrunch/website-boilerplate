@@ -2,6 +2,8 @@ import { DataTypes, Model, ModelCtor, Optional, Sequelize, HasManyGetAssociation
 import { SequelizeAttributes } from '../typings/SequelizeAttributes';
 import { DisplayNameInstance } from './DisplayName';
 import { PasswordResetTokenInstance } from './PasswordResetToken';
+import { PostInstance } from './Post';
+import { PostFileInstance } from './PostFile';
 import { ProfilePictureInstance } from './ProfilePicture';
 import { RoleInstance } from './Role';
 import { UserConnectionInstance } from './UserConnection';
@@ -14,26 +16,24 @@ export interface UserAttributes {
     uniqueId: string;
     profileName: string;
     allowPublicAccess?: Boolean;
-    profilePictures?: ProfilePictureInstance[];
     activeJWTs?: UserJWTInstance[];
-    inactiveJWTs?: UserJWTInstance[];
-    passwordResetTokens?: PasswordResetTokenInstance[];
-    displayNames?: DisplayNameInstance[];
-    roles?: RoleInstance[];
-    outgoingConnections?: UserConnectionInstance[];
-    incomingConnections?: UserConnectionInstance[];
     blockedUsers?: UserInstance[];
     blockingUsers?: UserInstance[];
+    displayNames?: DisplayNameInstance[];
+    inactiveJWTs?: UserJWTInstance[];
+    incomingConnections?: UserConnectionInstance[];
+    outgoingConnections?: UserConnectionInstance[];
+    passwordResetTokens?: PasswordResetTokenInstance[];
+    posts?: PostInstance[];
+    postFiles?: PostFileInstance[];
+    profilePictures?: ProfilePictureInstance[];
+    roles?: RoleInstance[];
 };
 
 export interface UserCreationAttributes extends Optional<UserAttributes, 'id'>, 
     Optional<UserAttributes, 'allowPublicAccess'> {};
 
 export interface UserInstance extends Model<UserAttributes, UserCreationAttributes>, UserAttributes {
-    getProfilePictures: HasManyGetAssociationsMixin<ProfilePictureInstance>;
-    addProfilePicture: HasManyAddAssociationMixin<ProfilePictureInstance, ProfilePictureInstance['id']>;
-    createProfilePicture: HasManyCreateAssociationMixin<ProfilePictureInstance>;
-
     getActiveJWTs: HasManyGetAssociationsMixin<UserJWTInstance>;
     addActiveJWT: HasManyAddAssociationMixin<UserJWTInstance, UserJWTInstance['id']>;
     addActiveJWTs: HasManyAddAssociationsMixin<UserJWTInstance, UserJWTInstance['id']>;
@@ -41,16 +41,36 @@ export interface UserInstance extends Model<UserAttributes, UserCreationAttribut
     removeActiveJWT: HasManyRemoveAssociationMixin<UserJWTInstance, UserJWTInstance['id']>;
     removeActiveJWTs: HasManyRemoveAssociationsMixin<UserJWTInstance, UserJWTInstance['id']>;
 
+    getBlockedUsers: BelongsToManyGetAssociationsMixin<UserInstance>;
+    addBlockedUser: BelongsToManyAddAssociationMixin<UserInstance, UserInstance['id']>;
+    removeBlockedUser: BelongsToManyRemoveAssociationMixin<UserInstance, UserInstance['id']>;
+
+    getBlockingUsers: BelongsToManyGetAssociationsMixin<UserInstance>;
+
+    getDisplayNames: HasManyGetAssociationsMixin<DisplayNameInstance>;
+    addDisplayName: HasManyAddAssociationMixin<DisplayNameInstance, DisplayNameInstance['id']>;
+
     getInactiveJWTs: HasManyGetAssociationsMixin<UserJWTInstance>;
     addInactiveJWT: HasManyAddAssociationMixin<UserJWTInstance, UserJWTInstance['id']>;
     addInactiveJWTs: HasManyAddAssociationsMixin<UserJWTInstance, UserJWTInstance['id']>;
+
+    getIncomingConnections: HasManyGetAssociationsMixin<UserConnectionInstance>;
+    addIncomingConnection: HasManyAddAssociationMixin<UserConnectionInstance, UserConnectionInstance['id']>;
+
+    getOutgoingConnections: HasManyGetAssociationsMixin<UserConnectionInstance>;
+    addOutgoingConnection: HasManyAddAssociationMixin<UserConnectionInstance, UserConnectionInstance['id']>;
 
     getPasswordResetTokens: HasManyGetAssociationsMixin<PasswordResetTokenInstance>;
     addPasswordResetToken: HasManyAddAssociationMixin<PasswordResetTokenInstance, PasswordResetTokenInstance['id']>;
     createPasswordResetToken: HasManyCreateAssociationMixin<PasswordResetTokenInstance>;
 
-    getDisplayNames: HasManyGetAssociationsMixin<DisplayNameInstance>;
-    addDisplayName: HasManyAddAssociationMixin<DisplayNameInstance, DisplayNameInstance['id']>;
+    getPosts: HasManyGetAssociationsMixin<PostInstance>;
+    
+    getPostFiles: HasManyGetAssociationsMixin<PostFileInstance>;
+
+    getProfilePictures: HasManyGetAssociationsMixin<ProfilePictureInstance>;
+    addProfilePicture: HasManyAddAssociationMixin<ProfilePictureInstance, ProfilePictureInstance['id']>;
+    createProfilePicture: HasManyCreateAssociationMixin<ProfilePictureInstance>;
 
     getRoles: BelongsToManyGetAssociationsMixin<RoleInstance>;
     hasRole: BelongsToManyHasAssociationMixin<RoleInstance, RoleInstance['id']>;
@@ -58,18 +78,6 @@ export interface UserInstance extends Model<UserAttributes, UserCreationAttribut
     addRoles: BelongsToManyAddAssociationsMixin<RoleInstance, RoleInstance['id']>;
     removeRole: BelongsToManyRemoveAssociationMixin<RoleInstance, RoleInstance['id']>;
     removeRoles: BelongsToManyRemoveAssociationsMixin<RoleInstance, RoleInstance['id']>;
-
-    getOutgoingConnections: HasManyGetAssociationsMixin<UserConnectionInstance>;
-    addOutgoingConnection: HasManyAddAssociationMixin<UserConnectionInstance, UserConnectionInstance['id']>;
-
-    getIncomingConnections: HasManyGetAssociationsMixin<UserConnectionInstance>;
-    addIncomingConnection: HasManyAddAssociationMixin<UserConnectionInstance, UserConnectionInstance['id']>;
-
-    getBlockedUsers: BelongsToManyGetAssociationsMixin<UserInstance>;
-    addBlockedUser: BelongsToManyAddAssociationMixin<UserInstance, UserInstance['id']>;
-    removeBlockedUser: BelongsToManyRemoveAssociationMixin<UserInstance, UserInstance['id']>;
-
-    getBlockingUsers: BelongsToManyGetAssociationsMixin<UserInstance>;
 };
 
 export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
@@ -111,68 +119,11 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
 
     // @ts-ignore
     User.associate = (models: {[key: string]: ModelCtor<Model<any, any>>}): void => {
-        User.hasMany(models.ProfilePicture, {
-            as: 'profilePictures',
-            foreignKey: {
-                name: 'registeredUserId',
-                field: 'registered_user_id'
-            }
-        });
-        
         User.hasMany(models.UserJWT, {
             as: 'activeJWTs',
             foreignKey: {
                 name: 'registeredUserId',
                 field: 'registered_user_id'
-            }
-        });
-        
-        User.hasMany(models.UserJWT, {
-            as: 'inactiveJWTs',
-            foreignKey: {
-                name: 'formerRegisteredUserId',
-                field: 'former_registered_user_id'
-            }
-        });
-        
-        User.hasMany(models.PasswordResetToken, {
-            as: 'passwordResetTokens',
-            foreignKey: {
-                name: 'registeredUserId',
-                field: 'registered_user_id'
-            }
-        });
-        
-        User.hasMany(models.DisplayName, {
-            as: 'displayNames',
-            foreignKey: {
-                name: 'registeredUserId',
-                field: 'registered_user_id'
-            }
-        });
-        
-        User.belongsToMany(models.Role, {
-            as: 'roles',
-            through: models.UserRoleJunction,
-            foreignKey: {
-                name: 'registeredUserId',
-                field: 'registered_user_id'
-            }
-        });
-        
-        User.hasMany(models.UserConnection, {
-            as: 'outgoingConnections',
-            foreignKey: {
-                name: 'requestedUserId',
-                field: 'requested_user_id'
-            }
-        });
-        
-        User.hasMany(models.UserConnection, {
-            as: 'incomingConnections',
-            foreignKey: {
-                name: 'connectedUserId',
-                field: 'connected_user_id'
             }
         });
 
@@ -191,6 +142,79 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
             foreignKey: {
                 name: 'blockedUserId',
                 field: 'blocked_user_id'
+            }
+        });
+
+        User.hasMany(models.DisplayName, {
+            as: 'displayNames',
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
+            }
+        });
+
+        User.hasMany(models.UserJWT, {
+            as: 'inactiveJWTs',
+            foreignKey: {
+                name: 'formerRegisteredUserId',
+                field: 'former_registered_user_id'
+            }
+        });
+        
+        User.hasMany(models.UserConnection, {
+            as: 'incomingConnections',
+            foreignKey: {
+                name: 'connectedUserId',
+                field: 'connected_user_id'
+            }
+        });
+
+        User.hasMany(models.UserConnection, {
+            as: 'outgoingConnections',
+            foreignKey: {
+                name: 'requestedUserId',
+                field: 'requested_user_id'
+            }
+        });
+        
+        User.hasMany(models.PasswordResetToken, {
+            as: 'passwordResetTokens',
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
+            }
+        });
+
+        User.hasMany(models.Post, {
+            as: 'posts',
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
+            }
+        });
+
+        User.hasMany(models.PostFile, {
+            as: 'postFiles',
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
+            }
+        });
+
+        User.hasMany(models.ProfilePicture, {
+            as: 'profilePictures',
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
+            }
+        });
+        
+        User.belongsToMany(models.Role, {
+            as: 'roles',
+            through: models.UserRoleJunction,
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
             }
         });
     };

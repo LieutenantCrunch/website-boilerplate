@@ -52,5 +52,13 @@ declare namespace WebsiteBoilerplate {
             uniqueId: string;
         };
         uniqueId: string;
+        postFiles: PostFileInfo[] | undefined;
+    }
+
+    export interface PostFileInfo {
+        fileName: string;
+        mimeType: string;
+        originalFileName: string;
+        size: number;
     }
 }

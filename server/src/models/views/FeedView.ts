@@ -1,5 +1,6 @@
-import { DataTypes, Model, ModelCtor, Sequelize } from 'sequelize';
+import { DataTypes, HasManyGetAssociationsMixin, Model, ModelCtor, Sequelize } from 'sequelize';
 import { SequelizeAttributes } from '../../typings/SequelizeAttributes';
+import { PostFileInstance } from '../PostFile';
 
 export interface FeedViewAttributes {
     id: number;
@@ -15,10 +16,12 @@ export interface FeedViewAttributes {
     lastEditedOn: Date | null;
     uniqueId: string;
     userUniqueId: string;
+    postFiles?: PostFileInstance[];
 };
 
 export interface FeedViewInstance extends Model<FeedViewAttributes>, FeedViewAttributes {
     // This is a View, do not expose anything but get methods
+    getPostFiles: HasManyGetAssociationsMixin<PostFileInstance>;
 };
 
 export const FeedViewFactory = (sequelize: Sequelize): ModelCtor<FeedViewInstance> => {
@@ -96,6 +99,13 @@ export const FeedViewFactory = (sequelize: Sequelize): ModelCtor<FeedViewInstanc
 
     // @ts-ignore
     FeedView.associate = (models: {[key: string]: ModelCtor<Model<any, any>>}): void => {
+        FeedView.hasMany(models.PostFile, {
+            as: 'postFiles',
+            foreignKey: {
+                name: 'postId',
+                field: 'post_id'
+            }
+        });
     };
 
     return FeedView;

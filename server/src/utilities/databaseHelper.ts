@@ -21,6 +21,8 @@ import { UserBlockInstance } from '../models/UserBlock';
 
 import { FeedViewInstance } from '../models/views/FeedView';
 import { UserConnectionViewInstance } from '../models/views/UserConnectionView';
+import { PostInstance } from '../models/Post';
+import { PostFileInstance } from '../models/PostFile';
 
 class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -2032,30 +2034,186 @@ class DatabaseHelper {
                 order: [
                     ['id', 'DESC']
                 ],
+                include: [
+                    {
+                        model: db.PostFile,
+                        as: 'postFiles'
+                    }
+                ],
                 offset: (pageNumber || 0) * ServerConstants.DB_FEED_FETCH_PAGE_SIZE,
                 limit: ServerConstants.DB_FEED_FETCH_PAGE_SIZE
-            })
+            });
 
-            posts = rows.map(row => ({
-                lastEditedOn: row.lastEditedOn,
-                postedOn: row.postedOn,
-                postText: row.postText,
-                postTitle: row.postTitle,
-                postType: row.postType,
-                postedBy: {
-                    displayName: row.postedByDisplayName,
-                    displayNameIndex: row.postedByDisplayNameIndex,
-                    pfpSmall: row.postedByPfpSmall || '/i/s/pfpDefault.svgz',
-                    profileName: row.postedByProfileName,
-                    uniqueId: row.postedByUniqueId
-                },
-                uniqueId: row.uniqueId
-            }));
+            posts = rows.map(row => {
+                let dbPostFiles: PostFileInstance[] | undefined = row.postFiles;
+                let postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined = undefined;
+
+                if (dbPostFiles && dbPostFiles.length > 0) {
+                    let filePath: string = `/i/u/${row.postedByUniqueId}/`;
+
+                    switch (row.postType) {
+                        case ClientConstants.POST_TYPES.AUDIO:
+                            filePath += 'a/';
+                            break;
+                        case ClientConstants.POST_TYPES.IMAGE:
+                            filePath += 'i/';
+                            break;
+                        case ClientConstants.POST_TYPES.VIDEO:
+                            filePath += 'v/';
+                            break;
+                        default:
+                            break;
+                    }
+
+                    postFiles = dbPostFiles.map(dbPostFile => ({
+                        fileName: `${filePath}${dbPostFile.fileName}`,
+                        mimeType: dbPostFile.mimeType,
+                        originalFileName: dbPostFile.originalFileName,
+                        size: dbPostFile.fileSize
+                    }));
+                }
+
+                return {
+                    lastEditedOn: row.lastEditedOn,
+                    postedOn: row.postedOn,
+                    postText: row.postText,
+                    postTitle: row.postTitle,
+                    postType: row.postType,
+                    postedBy: {
+                        displayName: row.postedByDisplayName,
+                        displayNameIndex: row.postedByDisplayNameIndex,
+                        pfpSmall: row.postedByPfpSmall || '/i/s/pfpDefault.svgz',
+                        profileName: row.postedByProfileName,
+                        uniqueId: row.postedByUniqueId
+                    },
+                    uniqueId: row.uniqueId,
+                    postFiles
+                };
+            });
 
             total = count;
         }
 
         return {posts, total};
+    }
+
+    async addNewPost(uniqueId: string, postType: number, postTitle: string | undefined, postText: string | undefined, audience: number, customAudience: string | undefined, postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined) {
+        try
+        {
+            let userId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+
+            if (userId) {
+                // First, run server-side validation as a last minute check to try to prevent bad posts
+
+                // If there are files, verify only the allowed amounts are present and that the mimetypes are correct
+                let fileCount: number = 0;
+                if (postFiles) {
+                    fileCount = postFiles.length;
+
+                    // Last minute check to prevent uploading more files than allowed
+                    if (fileCount > 0) {
+                        switch (postType) {
+                            case ClientConstants.POST_TYPES.AUDIO: {
+                                if (fileCount > 1) {
+                                    postFiles.splice(1);
+                                }
+
+                                if (!postFiles[0].mimeType.startsWith('audio/')) {
+                                    postFiles = [];
+                                }
+
+                                break;
+                            }
+                            case ClientConstants.POST_TYPES.IMAGE: {
+                                if (fileCount > 4) {
+                                    postFiles.splice(4);
+                                }
+    
+                                if (postFiles.some(postFile => !postFile.mimeType.startsWith('image/'))) {
+                                    postFiles = [];
+                                }
+
+                                break;
+                            }
+                            case ClientConstants.POST_TYPES.VIDEO: {
+                                if (fileCount > 1) {
+                                    postFiles.splice(1);
+                                }
+
+                                if (!postFiles[0].mimeType.startsWith('video/')) {
+                                    postFiles = [];
+                                }
+
+                                break;
+                            }
+                            case ClientConstants.POST_TYPES.TEXT:
+                            default: {
+                                postFiles = [];
+
+                                break;
+                            }
+                        }
+                    }
+
+                    fileCount = postFiles.length;
+                }
+
+                if (fileCount === 0 && !postText) {
+                    return; //## Error
+                }
+
+                let postedOn: Date = new Date(Date.now());
+                let postUniqueId: string = uuidv4();
+
+                let newPost: PostInstance | null = await db.Post.create({
+                    audience,
+                    postedOn,
+                    postText,
+                    postTitle,
+                    postType,
+                    registeredUserId: userId,
+                    uniqueId: postUniqueId
+                });
+
+                if (newPost) {
+                    let parsedConnectionTypes: string [] = [];
+
+                    if (customAudience) {
+                        parsedConnectionTypes = customAudience.split(',');
+
+                        let connectionTypes: UserConnectionTypeInstance[] = await db.UserConnectionType.findAll({
+                            where: {
+                                displayName: {
+                                    [Op.in]: parsedConnectionTypes
+                                }
+                            }
+                        });
+
+                        if (connectionTypes.length > 0) {
+                            await newPost.addConnectionTypes(connectionTypes);
+                        }
+                    }
+
+                    
+                    if (fileCount > 0) {
+                        for (let postFile of postFiles!) {
+                            await db.PostFile.create({
+                                postId: newPost!.id,
+                                registeredUserId: userId!,
+                                fileName: postFile.fileName,
+                                fileSize: postFile.size,
+                                mimeType: postFile.mimeType,
+                                originalFileName: postFile.originalFileName
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        catch(err)
+        {
+            console.error(`Error adding new post:\n${err.message}`);
+        }
     }
 };
 

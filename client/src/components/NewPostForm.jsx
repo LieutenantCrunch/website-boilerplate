@@ -173,6 +173,7 @@ export default function NewPostForm(props) {
                 height: '20vmin',
                 borderRadius: '10px 10px 0 0'
             },
+            /* Style to apply to the first and second thumbnail when there are 2 thumbnails */
             '&:first-child:nth-last-child(2), &:first-child:nth-last-child(2) + $imageThumbnail': {
                 height: '20vmin'
             },
