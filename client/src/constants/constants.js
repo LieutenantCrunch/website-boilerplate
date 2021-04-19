@@ -1,6 +1,6 @@
 // Static Paths
 export const BASE_URL = 'http://localhost:3000/';
-export const BASE_API_URL = `${BASE_URL}api/`;
+export const BASE_API_URL = `/api/`;
 export const BASE_USERS_URL = `${BASE_URL}u/`;
 export const STATIC_IMAGE_PATH = '/i/s/';
 
@@ -21,6 +21,10 @@ export const STATIC_IMAGES = Object.freeze({
 
 // Generic Constants
 export const MAX_UPLOAD_SIZE = 128; /* 128 Megabytes */
+export const AUDIO_WAVEFORM_DIMS = Object.freeze({ /* Dimensions of Audio Waveform images */
+    WIDTH: 640,
+    HEIGHT: 120
+});
 
 // User Settings
 export const DISPLAY_NAME_CHANGE_DAYS = 30; // The number of days a user must wait between display name changes

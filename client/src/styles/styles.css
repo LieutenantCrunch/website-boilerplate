@@ -193,6 +193,7 @@ body {
     position: fixed;
     top: 100px;
     transition: max-width .1s ease-in-out;
+    z-index: 10;
 }
 
 .sideMenuItem:hover {

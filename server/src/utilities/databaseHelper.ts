@@ -2069,7 +2069,8 @@ class DatabaseHelper {
                         fileName: `${filePath}${dbPostFile.fileName}`,
                         mimeType: dbPostFile.mimeType,
                         originalFileName: dbPostFile.originalFileName,
-                        size: dbPostFile.fileSize
+                        size: dbPostFile.fileSize,
+                        thumbnailFileName: dbPostFile.thumbnailFileName ? `${filePath}${dbPostFile.thumbnailFileName}` : undefined
                     }));
                 }
 
@@ -2168,8 +2169,8 @@ class DatabaseHelper {
                 let newPost: PostInstance | null = await db.Post.create({
                     audience,
                     postedOn,
-                    postText,
-                    postTitle,
+                    postText: postText || null,
+                    postTitle: postTitle || null,
                     postType,
                     registeredUserId: userId,
                     uniqueId: postUniqueId
@@ -2203,7 +2204,8 @@ class DatabaseHelper {
                                 fileName: postFile.fileName,
                                 fileSize: postFile.size,
                                 mimeType: postFile.mimeType,
-                                originalFileName: postFile.originalFileName
+                                originalFileName: postFile.originalFileName,
+                                thumbnailFileName: postFile.thumbnailFileName || null
                             });
                         }
                     }

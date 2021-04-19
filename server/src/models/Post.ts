@@ -24,8 +24,8 @@ export interface PostAttributes {
     audience: number;
     flagType?: number;
     lastEditedOn?: Date;
-    postText?: string;
-    postTitle?: string;
+    postText?: string | null;
+    postTitle?: string | null;
     postType: number;
     postedOn: Date;
     uniqueId: string;

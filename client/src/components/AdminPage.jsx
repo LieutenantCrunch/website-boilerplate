@@ -38,8 +38,6 @@ export default function AdminPage() {
             selectedUserDetails = await UserService.getUserDetails(selectedUserId);
         }
 
-        console.log(`selectedUserDetails: ${selectedUserDetails}`);
-
         setState(prevState => {
             return {...prevState, selectedUserDetails};
         });

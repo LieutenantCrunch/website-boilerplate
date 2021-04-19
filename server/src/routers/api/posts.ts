@@ -1,9 +1,12 @@
 import express, {Request, Response, Router} from 'express';
+import path from 'path';
 
 import AuthHelper from '../../utilities/authHelper';
 import PostUploadHelper from '../../utilities/postUploadHelper';
 import { databaseHelper } from '../../utilities/databaseHelper';
 import * as ClientConstants from '../../constants/constants.client';
+
+import { generateAudioThumbnail, generateVideoThumbnail } from '../../utilities/ffmpegHelper';
 
 const apiPostsRouter: Router = express.Router();
 
@@ -57,7 +60,20 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                         mimeType: file.mimetype,
                         originalFileName: file.originalname,
                         size: file.size
-                    }))
+                    }));
+
+                    if (postType === ClientConstants.POST_TYPES.VIDEO) {
+                        let file: Express.Multer.File = req.files[0];
+                        let thumbnailFileName: string = await generateVideoThumbnail(file.destination, file.filename);
+
+                        postFiles[0].thumbnailFileName = thumbnailFileName;
+                    }
+                    else if (postType === ClientConstants.POST_TYPES.AUDIO) {
+                        let file: Express.Multer.File = req.files[0];
+                        let thumbnailFileName: string = await generateAudioThumbnail(file.destination, file.filename);
+
+                        postFiles[0].thumbnailFileName = thumbnailFileName;
+                    }
                 }
 
                 await databaseHelper.addNewPost(req.userId, postType, postTitle, postText, audience, customAudience, postFiles);

@@ -28,7 +28,7 @@ export default class AuthService {
                     success: false, 
                     statusMessage: {
                         type: 'danger', 
-                        message: 'Failed to log in: ' + (response.data.message ? response.data.message : response.status)
+                        message: `Failed to log in: ${response.data.message ? response.data.message : response.status}`
                     },
                     loginDetails: null
                 };
@@ -39,7 +39,7 @@ export default class AuthService {
                 success: false,
                 statusMessage: {
                     type: 'danger', 
-                    message: error.message
+                    message: `Error: ${error.message}`
                 },
                 loginDetails: null
             };

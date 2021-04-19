@@ -11,6 +11,7 @@ export interface PostFileAttributes {
     fileSize: number;
     mimeType: string;
     originalFileName: string;
+    thumbnailFileName?: string | null;
     user?: UserInstance;
     post?: PostInstance;
 };
@@ -60,6 +61,10 @@ export const PostFileFactory = (sequelize: Sequelize): ModelCtor<PostFileInstanc
             type: DataTypes.STRING(150),
             field: 'original_file_name',
             allowNull: false
+        },
+        thumbnailFileName: {
+            type: DataTypes.STRING(204),
+            field: 'thumbnail_file_name'
         }
     };
 

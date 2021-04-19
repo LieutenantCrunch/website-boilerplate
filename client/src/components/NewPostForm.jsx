@@ -30,6 +30,138 @@ import { selectCurrentUserPfpSmall } from '../redux/users/currentUserSlice';
 // WB Components
 import SwitchCheckbox from './FormControls/SwitchCheckbox';
 
+// Material UI Styles
+const useStyles = makeStyles(() => ({
+    root: {
+        position: 'relative'
+    },
+    header: {
+        padding: '16px',
+        display: 'flex',
+        alignItems: 'start'
+    },
+    body: {
+        display: 'flex',
+        alignItems: 'center',
+        padding: '16px'
+    },
+    footer: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        padding: '0 16px 16px'
+    },
+    avatar: {
+        marginRight: '16px',
+        flexGrow: 0,
+        flexShrink: 0,
+        border: '1px solid rgb(108,117,125)'
+    },
+    headerContent: {
+        flexGrow: 1,
+        flexShrink: 1
+    },
+    title: {
+        width: '100%'
+    },
+    bodyContent: {
+        flexGrow: 1,
+        flexShrink: 1
+    },
+    overlay: {
+        backgroundColor: 'rgba(255,255,255,.75)',
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        top: 0,
+        zIndex: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        '& *': {
+            /* This is necessary due to the dragLeave event firing when the mouse moves from the overlay to one of its children */
+            pointerEvents: 'none'
+        }
+    },
+    postProgress: {
+        backgroundColor: 'rgba(255,255,255)',
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        opacity: .75,
+        right: 0,
+        top: 0,
+        zIndex: 11,
+        '&, & *': {
+            pointerEvents: 'none'
+        }
+    },
+    removeControls: {
+        display: 'none',
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        right: 0
+    },
+    imageThumbnail: {
+        backgroundColor: 'rgb(230,230,230)',
+        backgroundSize: 'cover',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        borderStyle: 'none',
+        borderWidth: '5px',
+        borderColor: 'rgb(240,240,240)',
+        position: 'relative',
+        height: '10vmin',
+        width: '48%',
+        margin: '1%',
+        /* When there aren't any images loaded and only one preview thumbnail exists */
+        '&:only-child': {
+            width: '100%',
+            height: '20vmin',
+            borderRadius: '10px 10px 0 0'
+        },
+        /* Style to apply to the first and second thumbnail when there are 2 thumbnails */
+        '&:first-child:nth-last-child(2), &:first-child:nth-last-child(2) + $imageThumbnail': {
+            height: '20vmin'
+        },
+        /* Style to apply to the first thumbnail when there are 2-4 thumbnails */ 
+        '&:first-child:nth-last-child(2), &:first-child:nth-last-child(3), &:first-child:nth-last-child(4)': {
+            borderRadius: '10px 0 0 0'
+        },
+        /* Style to apply to the second thumbnail when there are 2-4 thumbnails */
+        '&:first-child:nth-last-child(2) + $imageThumbnail, &:first-child:nth-last-child(3) + $imageThumbnail, &:first-child:nth-last-child(4) + $imageThumbnail': {
+            borderRadius: '0 10px 0 0'
+        },
+        /* Style to apply to the last thumbnail, which will be the placeholder thumbnail except when 4 images are loaded, this will be overridden below */
+        '&:last-child': {
+            borderStyle: 'solid'
+        }
+    },
+    imageLoaded: {
+        '&:hover $removeControls': {
+            display: 'block'
+        }
+    },
+    previewImages: {
+        flexWrap: 'wrap',
+        justifyContent: 'space-evenly',
+        padding: '0 16px',
+    },
+    imagesFull: {
+        /* Style to apply to the last thumbnail once all images have been loaded */
+        '& $imageThumbnail:last-child': {
+            borderStyle: 'none'
+        }
+    },
+    placeholderIcon: {
+        position: 'absolute',
+        left: '50%',
+        top: '50%',
+        transform: 'translate(-50%, -50%)'
+    }
+}));
+
 export default function NewPostForm(props) {
     const MAX_ALLOWED_IMAGES = 4; // This value cannot be changed without making other changes throughout the file. It is set as a constant for readability and to make future updates a bit simpler
     
@@ -81,138 +213,6 @@ export default function NewPostForm(props) {
             popperUpdate();
         }
     }, [state.postAudience])
-
-    // Material UI Styles
-    const useStyles = makeStyles(() => ({
-        root: {
-            position: 'relative'
-        },
-        header: {
-            padding: '16px',
-            display: 'flex',
-            alignItems: 'start'
-        },
-        body: {
-            display: 'flex',
-            alignItems: 'center',
-            padding: '16px'
-        },
-        footer: {
-            display: 'flex',
-            justifyContent: 'space-between',
-            padding: '0 16px 16px'
-        },
-        avatar: {
-            marginRight: '16px',
-            flexGrow: 0,
-            flexShrink: 0,
-            border: '1px solid rgb(108,117,125)'
-        },
-        headerContent: {
-            flexGrow: 1,
-            flexShrink: 1
-        },
-        title: {
-            width: '100%'
-        },
-        bodyContent: {
-            flexGrow: 1,
-            flexShrink: 1
-        },
-        overlay: {
-            backgroundColor: 'rgba(255,255,255,.75)',
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            top: 0,
-            zIndex: 10,
-            justifyContent: 'center',
-            alignItems: 'center',
-            '& *': {
-                /* This is necessary due to the dragLeave event firing when the mouse moves from the overlay to one of its children */
-                pointerEvents: 'none'
-            }
-        },
-        postProgress: {
-            backgroundColor: 'rgba(255,255,255)',
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            opacity: .75,
-            right: 0,
-            top: 0,
-            zIndex: 11,
-            '&, & *': {
-                pointerEvents: 'none'
-            }
-        },
-        removeControls: {
-            display: 'none',
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
-            right: 0
-        },
-        imageThumbnail: {
-            backgroundColor: 'rgb(230,230,230)',
-            backgroundSize: 'cover',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center',
-            borderStyle: 'none',
-            borderWidth: '5px',
-            borderColor: 'rgb(240,240,240)',
-            position: 'relative',
-            height: '10vmin',
-            width: '48%',
-            margin: '1%',
-            /* When there aren't any images loaded and only one preview thumbnail exists */
-            '&:only-child': {
-                width: '100%',
-                height: '20vmin',
-                borderRadius: '10px 10px 0 0'
-            },
-            /* Style to apply to the first and second thumbnail when there are 2 thumbnails */
-            '&:first-child:nth-last-child(2), &:first-child:nth-last-child(2) + $imageThumbnail': {
-                height: '20vmin'
-            },
-            /* Style to apply to the first thumbnail when there are 2-4 thumbnails */ 
-            '&:first-child:nth-last-child(2), &:first-child:nth-last-child(3), &:first-child:nth-last-child(4)': {
-                borderRadius: '10px 0 0 0'
-            },
-            /* Style to apply to the second thumbnail when there are 2-4 thumbnails */
-            '&:first-child:nth-last-child(2) + $imageThumbnail, &:first-child:nth-last-child(3) + $imageThumbnail, &:first-child:nth-last-child(4) + $imageThumbnail': {
-                borderRadius: '0 10px 0 0'
-            },
-            /* Style to apply to the last thumbnail, which will be the placeholder thumbnail except when 4 images are loaded, this will be overridden below */
-            '&:last-child': {
-                borderStyle: 'solid'
-            }
-        },
-        imageLoaded: {
-            '&:hover $removeControls': {
-                display: 'block'
-            }
-        },
-        previewImages: {
-            flexWrap: 'wrap',
-            justifyContent: 'space-evenly',
-            padding: '0 16px',
-        },
-        imagesFull: {
-            /* Style to apply to the last thumbnail once all images have been loaded */
-            '& $imageThumbnail:last-child': {
-                borderStyle: 'none'
-            }
-        },
-        placeholderIcon: {
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)'
-        }
-    }));
 
     const classes = useStyles(state);
 
@@ -860,7 +860,6 @@ export default function NewPostForm(props) {
             }
 
             let results = await PostService.createNewPost(postData, (event) => {
-                console.log(`Loaded: ${event.loaded}, Total ${event.total}`);
                 if (event.loaded === event.total) {
                     setIsUploading(false);
                     resetForm();

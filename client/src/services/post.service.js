@@ -26,8 +26,6 @@ export default class PostService {
             
             Object.keys(postData).forEach(key => {
                 if (key !== 'postFiles') {
-                    console.log(`Key: ${key}, Data: ${postData[key]}`);
-                    
                     let data = postData[key];
 
                     if (data != null && data != undefined) {

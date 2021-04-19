@@ -55,7 +55,6 @@ function Header(props) {
         collapseNavbarMenu();
         AuthService.logout();
         props.setLoginDetails(null);
-        console.log(reduxLogout());
         dispatch(reduxLogout());
     };
 

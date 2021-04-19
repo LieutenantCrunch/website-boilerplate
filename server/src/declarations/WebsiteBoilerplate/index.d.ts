@@ -60,5 +60,6 @@ declare namespace WebsiteBoilerplate {
         mimeType: string;
         originalFileName: string;
         size: number;
+        thumbnailFileName?: string;
     }
 }
