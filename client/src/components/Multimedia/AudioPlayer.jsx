@@ -25,13 +25,13 @@ const useStyles = makeStyles(() => ({
     },
     audioThumbnail: {
         backgroundColor: 'rgb(255,255,255)',
-        backgroundSize: 'contain',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
         borderStyle: 'none',
         cursor: 'pointer',
         position: 'relative',
-        height: '120px',
+        width: '100%'
+    },
+    actualThumbnail: {
+        pointerEvents: 'none',
         width: '100%'
     },
     controls: {
@@ -113,6 +113,10 @@ export const AudioPlayer = ({sourceFile, thumbnail}) => {
     useEffect(() => {
         if (sourceFile !== null) {
             const handleAudioEnded = (e) => {
+                if (progressDiv.current) {
+                    progressDiv.current.style.left = '100%';
+                }
+
                 setState(prevState => ({
                     ...prevState,
                     paused: true
@@ -279,8 +283,6 @@ export const AudioPlayer = ({sourceFile, thumbnail}) => {
         }
     };
 
-    const outputDiv = useRef(null);
-
     const handleThumbnailMouseEnter = (e) => {
         if (!isMobile && progressScrubberDiv.current) {
             let { x: thumbnailX } = e.target.getBoundingClientRect();
@@ -378,7 +380,7 @@ export const AudioPlayer = ({sourceFile, thumbnail}) => {
             }
             catch(err)
             {
-                outputDiv.current.innerText = err.message;
+                ;
             }
         }
     };
@@ -411,7 +413,6 @@ export const AudioPlayer = ({sourceFile, thumbnail}) => {
 
     return <div className={classes.borderDiv}>
         <div className={classes.audioThumbnail} 
-            style={{backgroundImage: `url('${thumbnail}')`}}
             onMouseEnter={handleThumbnailMouseEnter}
             onClick={handleThumbnailMouseClick}
             onMouseLeave={handleThumbnailMouseLeave}
@@ -421,6 +422,7 @@ export const AudioPlayer = ({sourceFile, thumbnail}) => {
             onTouchMove={handleThumbnailTouchMove}
             onTouchStart={handleThumbnailTouchStart}
         >
+            <img src={thumbnail} className={classes.actualThumbnail} />
             <div ref={progressDiv} className={classes.progress} style={{left: 0}}></div>
             <div ref={progressScrubberDiv} className={classes.progressScrubber}></div>
         </div>
@@ -441,9 +443,6 @@ export const AudioPlayer = ({sourceFile, thumbnail}) => {
             {
                 !isMobile && <input className={classes.volumeRange} type="range" min="0" max="1" step="0.01" value={state.volume} onChange={handleVolumeChange} />
             }
-        </div>
-        <div ref={outputDiv} style={{width: '100%'}}>
-
         </div>
     </div>;
 };

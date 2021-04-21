@@ -9,6 +9,12 @@ export const logFilters = () => {
     });
 };
 
+// Might want to move this into a utility file somewhere
+// Source: https://www.w3schools.com/JS/js_random.asp
+const randomInt = (min: number, max: number): number => {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
 export const generateAudioThumbnail = async (pathName: string, fileName: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         try {
@@ -47,10 +53,11 @@ export const generateAudioThumbnail = async (pathName: string, fileName: string)
 export const generateVideoThumbnail = async (pathName: string, fileName: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         let outputFiles: string[] = [];
+        let screenshotTimestamp: number = randomInt(25, 75); // This is done so they can't easily fake the thumbnail like people used to do on Youtube
 
         ffmpeg(path.join(pathName, fileName))
         .screenshot({
-            timestamps: ['50%'],
+            timestamps: [`${screenshotTimestamp}%`],
             filename: '%f.png',
             folder: pathName
         })

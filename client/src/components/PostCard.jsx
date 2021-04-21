@@ -9,6 +9,7 @@ import { makeStyles } from '@material-ui/core/styles';
 
 // Multimedia Components
 import { AudioPlayer } from './Multimedia/AudioPlayer';
+import { VideoPlayer } from './Multimedia/VideoPlayer';
 
 // Material UI Styles
 const useStyles = makeStyles(() => ({
@@ -101,10 +102,11 @@ export default function PostCard(props) {
                     </div>
                 ));
             case Constants.POST_TYPES.VIDEO:
-                return <div className={classes.videoThumbnail} 
+                return <VideoPlayer sourceFile={postFiles[0].fileName} thumbnail={postFiles[0].thumbnailFileName} />;
+                /*return <div className={classes.videoThumbnail} 
                         style={{backgroundImage: `url('${postFiles[0].thumbnailFileName}')`}}
                     >
-                    </div>;
+                    </div>;*/
             case Constants.POST_TYPES.TEXT:
             default:
                 return <></>;
@@ -115,7 +117,7 @@ export default function PostCard(props) {
     }
 
     return (
-        <Card className="mb-2">
+        <Card className="col-12 col-sm-8 col-md-6 col-xl-4 mb-2">
             <CardHeader
                 avatar={
                     <Avatar alt={`${postedBy.displayName}#${postedBy.displayNameIndex}`} src={postedBy.pfpSmall} />
