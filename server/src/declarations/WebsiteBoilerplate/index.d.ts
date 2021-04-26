@@ -42,12 +42,14 @@ declare namespace WebsiteBoilerplate {
 
     export interface Post {
         lastEditedOn: Date | null;
+        commentCount: number;
         postedOn: Date;
         postText: string | null;
         postType: number;
         postedBy: {
             displayName: string;
             displayNameIndex: number;
+            pfpSmall: string;
             profileName: string;
             uniqueId: string;
         };
@@ -61,5 +63,26 @@ declare namespace WebsiteBoilerplate {
         originalFileName: string;
         size: number;
         thumbnailFileName?: string;
+    }
+
+    export interface PostComment {
+        commentText: string;
+        parentComment?: {
+            commentText: string;
+            postedBy: {
+                displayName: string;
+                displayNameIndex: number;
+            };
+            uniqueId: string;
+        }
+        postedBy: {
+            displayName: string;
+            displayNameIndex: number;
+            pfpSmall: string;
+            profileName: string;
+            uniqueId: string;
+        };
+        uniqueId: string;
+        childComments?: PostComment[];
     }
 }

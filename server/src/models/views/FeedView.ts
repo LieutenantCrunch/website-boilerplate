@@ -4,16 +4,17 @@ import { PostFileInstance } from '../PostFile';
 
 export interface FeedViewAttributes {
     id: number;
-    postedByUniqueId: string;
-    postedByProfileName: string;
+    commentCount: number;
+    lastEditedOn: Date | null;
     postedByDisplayName: string;
     postedByDisplayNameIndex: number;
     postedByPfpSmall: string | null;
+    postedByProfileName: string;
+    postedByUniqueId: string;
+    postedOn: Date;
     postText: string | null;
     postTitle: string | null;
     postType: number;
-    postedOn: Date;
-    lastEditedOn: Date | null;
     uniqueId: string;
     userUniqueId: string;
     postFiles?: PostFileInstance[];
@@ -30,6 +31,11 @@ export const FeedViewFactory = (sequelize: Sequelize): ModelCtor<FeedViewInstanc
             type: DataTypes.NUMBER,
             allowNull: false,
             primaryKey: true
+        },
+        commentCount: {
+            type: DataTypes.NUMBER,
+            allowNull: false,
+            field: 'comment_count'
         },
         uniqueId: {
             type: DataTypes.STRING(36),

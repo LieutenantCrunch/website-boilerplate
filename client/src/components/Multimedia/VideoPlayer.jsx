@@ -25,7 +25,6 @@ const useStyles = makeStyles(() => ({
         flexDirection: 'column',
         flexWrap: 'wrap',
         justifyContent: 'flex-end',
-        marginBottom: '1em',
         overflow: 'hidden',
         position: 'relative',
         '&:fullscreen': {

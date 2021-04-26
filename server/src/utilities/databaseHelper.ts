@@ -23,6 +23,7 @@ import { FeedViewInstance } from '../models/views/FeedView';
 import { UserConnectionViewInstance } from '../models/views/UserConnectionView';
 import { PostInstance } from '../models/Post';
 import { PostFileInstance } from '../models/PostFile';
+import { PostCommentInstance } from '../models/PostComment';
 
 class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -2076,6 +2077,7 @@ class DatabaseHelper {
 
                 return {
                     lastEditedOn: row.lastEditedOn,
+                    commentCount: row.commentCount,
                     postedOn: row.postedOn,
                     postText: row.postText,
                     postTitle: row.postTitle,
@@ -2215,6 +2217,206 @@ class DatabaseHelper {
         catch(err)
         {
             console.error(`Error adding new post:\n${err.message}`);
+        }
+    }
+
+    async getCommentsForPost(userUniqueId: string, postUniqueId: string, pageNumber: number | undefined): Promise<{comments: WebsiteBoilerplate.PostComment[], total: number}> {
+        let comments: WebsiteBoilerplate.PostComment[] = [];
+        let total: number = 0;
+
+        try {
+            // Validate that this user can actually view the post
+            let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
+                attributes: [
+                    'id'
+                ],
+                where: {
+                    userUniqueId,
+                    uniqueId: postUniqueId
+                }
+            });
+
+            if (postInfo) {
+                const {rows, count}: {rows: PostCommentInstance[]; count: number} = await db.PostComment.findAndCountAll({
+                    where: {
+                        postId: postInfo.id!
+                    },
+                    order: [
+                        ['id', 'DESC']
+                    ],
+                    include: [
+                        {
+                            model: db.User,
+                            as: 'registeredUser',
+                            attributes: [
+                                'id',
+                                'profileName',
+                                'uniqueId'
+                            ],
+                            include: [
+                                /* Include DisplayName and ProfilePicture for top-level comments */
+                                {
+                                    model: db.DisplayName,
+                                    as: 'displayNames',
+                                    where: {
+                                        isActive: true
+                                    },
+                                    attributes: [
+                                        'displayName',
+                                        'displayNameIndex'
+                                    ]
+                                },
+                                {
+                                    model: db.ProfilePicture,
+                                    as: 'profilePictures',
+                                    required: false,
+                                    on: {
+                                        id: {
+                                            [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `registeredUser`.`id` order by `profile_picture`.`id` desc limit 1)')
+                                        }
+                                    },
+                                    attributes: [
+                                        'smallFileName'
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            model: db.PostComment,
+                            as: 'parentComment',
+                            required: false,
+                            attributes: [
+                                'commentText',
+                                'uniqueId'
+                            ],
+                            include: [
+                                {
+                                    model: db.User,
+                                    as: 'registeredUser',
+                                    attributes: [
+                                        'id'
+                                    ],
+                                    include: [
+                                        {
+                                            /* Include DisplayName only for parentComment previews */
+                                            model: db.DisplayName,
+                                            as: 'displayNames',
+                                            where: {
+                                                isActive: true
+                                            },
+                                            attributes: [
+                                                'displayName',
+                                                'displayNameIndex'
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    offset: (pageNumber || 0) * ServerConstants.DB_COMMENT_FETCH_PAGE_SIZE,
+                    limit: ServerConstants.DB_COMMENT_FETCH_PAGE_SIZE,
+                    subQuery: false // See subquery note
+                });
+
+                comments = rows.map(row => {
+                    let commenter: UserInstance = row.registeredUser!;
+                    let displayNames: DisplayNameInstance[] = commenter.displayNames!;
+                    let pfps: ProfilePictureInstance[] | undefined = commenter.profilePictures;
+                    let parentComment: {
+                        commentText: string;
+                        postedBy: {
+                            displayName: string;
+                            displayNameIndex: number;
+                        };
+                        uniqueId: string;
+                    } | undefined = undefined;
+
+                    if (row.parentComment) {
+                        let tempComment: PostCommentInstance = row.parentComment;
+                        let parentCommenter: UserInstance = tempComment.registeredUser!;
+                        let parentDisplayNames: DisplayNameInstance[] = parentCommenter.displayNames!;
+
+                        parentComment = {
+                            commentText: tempComment.commentText,
+                            postedBy: {
+                                displayName: parentDisplayNames[0].displayName,
+                                displayNameIndex: parentDisplayNames[0].displayNameIndex
+                            },
+                            uniqueId: tempComment.uniqueId
+                        }
+                    }
+
+                    return {
+                        commentText: row.commentText,
+                        parentComment,
+                        postedBy: {
+                            displayName: displayNames[0].displayName,
+                            displayNameIndex: displayNames[0].displayNameIndex,
+                            pfpSmall: pfps && pfps[0] ? `/i/u/${commenter.uniqueId}/${pfps[0].smallFileName}` : '/i/s/pfpDefault.svgz',
+                            profileName: commenter.profileName,
+                            uniqueId: commenter.uniqueId
+                        },
+                        uniqueId: row.uniqueId
+                    };
+                });
+
+                total = count;
+            }
+        }
+        catch (err) {
+            console.error(`Error looking up comments for post:\n${err.message}`);
+        }
+
+        return {comments, total};
+    }
+
+    async addNewPostComment(userUniqueId: string, postUniqueId: string, commentText: string, parentCommentUniqueId: string | undefined) {
+        try {
+            // Validate that this user can actually comment on the post
+            let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
+                attributes: [
+                    'id'
+                ],
+                where: {
+                    userUniqueId,
+                    uniqueId: postUniqueId
+                }
+            });
+
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(userUniqueId);
+            
+            if (postInfo && registeredUserId) {
+                let parentCommentId: number | undefined = undefined;
+
+                if (parentCommentUniqueId) {
+                    let parentComment: PostCommentInstance | null = await db.PostComment.findOne({
+                        attributes: [
+                            'id'
+                        ],
+                        where: {
+                            uniqueId: parentCommentUniqueId
+                        }
+                    });
+
+                    if (parentComment) {
+                        parentCommentId = parentComment.id!;
+                    }
+                }
+
+                let uniqueId: string = uuidv4();
+
+                let newPostComment: PostCommentInstance | null = await db.PostComment.create({
+                    postId: postInfo.id!,
+                    registeredUserId,
+                    commentText,
+                    uniqueId,
+                    parentCommentId
+                });
+            }
+        }
+        catch (err) {
+            console.error(`Error adding new comment:\n${err.message}`);
         }
     }
 };

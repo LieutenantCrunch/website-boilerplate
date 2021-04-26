@@ -7,6 +7,7 @@ import { usePopper } from 'react-popper';
 import { Avatar, Divider, Paper } from '@material-ui/core';
 import MaterialTextfield from '@material-ui/core/TextField';
 import CircularProgress from '@material-ui/core/CircularProgress';
+import LinearProgress from '@material-ui/core/LinearProgress';
 
 // Material UI Icons
 import PhotoOutlinedIcon from '@material-ui/icons/PhotoOutlined';
@@ -41,8 +42,9 @@ const useStyles = makeStyles(() => ({
         alignItems: 'start'
     },
     body: {
-        display: 'flex',
         alignItems: 'center',
+        display: 'flex',
+        flexWrap: 'wrap',
         padding: '16px'
     },
     footer: {
@@ -64,8 +66,13 @@ const useStyles = makeStyles(() => ({
         width: '100%'
     },
     bodyContent: {
-        flexGrow: 1,
-        flexShrink: 1
+        width: '100%'
+    },
+    textProgress: {
+        width: '100%'
+    },
+    titleProgress: {
+        width: '100%'
     },
     overlay: {
         backgroundColor: 'rgba(255,255,255,.75)',
@@ -138,6 +145,9 @@ const useStyles = makeStyles(() => ({
             borderStyle: 'solid'
         }
     },
+    contentError: {
+        borderColor: 'rgba(255,0,0,.50)'
+    },
     imageLoaded: {
         '&:hover $removeControls': {
             display: 'block'
@@ -163,6 +173,8 @@ const useStyles = makeStyles(() => ({
 }));
 
 export default function NewPostForm(props) {
+    const MAX_TEXT_LENGTH = 2000;
+    const MAX_TITLE_LENGTH = 50;
     const MAX_ALLOWED_IMAGES = 4; // This value cannot be changed without making other changes throughout the file. It is set as a constant for readability and to make future updates a bit simpler
     
     // Redux
@@ -181,6 +193,7 @@ export default function NewPostForm(props) {
     const [currentDate, setCurrentDate] = useState((new Date()).toLocaleString());
 
     const [state, setState] = useState({
+        contentError: false,
         customAudience: [],
         files: [],
         images: [],
@@ -191,8 +204,12 @@ export default function NewPostForm(props) {
         postText: '',
         postTextHelper: '',
         postTitle: '',
+        postTitleHelper: '',
         postType: Constants.POST_TYPES.TEXT,
         textError: false,
+        textLimit: 0,
+        titleError: false,
+        titleLimit: 0,
         connectionTypes: {}
     });
 
@@ -505,7 +522,7 @@ export default function NewPostForm(props) {
         }
 
         if (PlaceholderComponent) {
-            return <div className={classes.imageThumbnail} style={{cursor: state.isLoading ? 'wait' : 'pointer'}}>
+            return <div className={classNames(classes.imageThumbnail, state.contentError ? classes.contentError : '')} style={{cursor: state.isLoading ? 'wait' : 'pointer'}}>
                 <div className={classes.placeholderIcon} style={{display: state.isLoading ? 'block' : 'none'}}>
                     <CircularProgress />
                 </div>
@@ -525,6 +542,18 @@ export default function NewPostForm(props) {
         }
 
         return <></>;
+    };
+
+    const getTextProgressColor = () => {
+        return state.textLimit <= 90 ? 'primary' :
+            state.textLimit < 100 ? 'warning' :
+            'error';
+    };
+
+    const getTitleProgressColor = () => {
+        return state.titleLimit <= 90 ? 'primary' :
+            state.titleLimit < 100 ? 'warning' :
+            'error';
     };
 
     const handleAudienceClick = (e) => {
@@ -575,9 +604,35 @@ export default function NewPostForm(props) {
             [name]: value
         };
 
-        if (name === 'postText' && state.textError && !isNullOrWhiteSpaceOnly(value)) {
-            stateUpdates.textError = false;
-            stateUpdates.postTextHelper = '';
+        if (name === 'postText') {
+            if (state.textError && !isNullOrWhiteSpaceOnly(value)) {
+                stateUpdates.textError = false;
+                stateUpdates.postTextHelper = '';
+            }
+
+            let textLength = value.length;
+
+            if (textLength <= MAX_TEXT_LENGTH) {
+                stateUpdates.textLimit = Math.floor((textLength / MAX_TEXT_LENGTH) * 100);
+            }
+            else {
+                stateUpdates.textLimit = 100;
+            }
+        }
+        else if (name === 'postTitle') {
+            if (state.titleError && !isNullOrWhiteSpaceOnly(value)) {
+                stateUpdates.titleError = false;
+                stateUpdates.postTitleHelper = '';
+            }
+
+            let titleLength = value.length;
+
+            if (titleLength <= MAX_TITLE_LENGTH) {
+                stateUpdates.titleLimit = Math.floor((titleLength / MAX_TITLE_LENGTH) * 100);
+            }
+            else {
+                stateUpdates.titleLimit = 100;
+            }
         }
 
         setState(prevState => ({
@@ -737,8 +792,13 @@ export default function NewPostForm(props) {
     };
 
     const validatePost = () => {
+        let validationPassed = true;
+        let stateUpdates = {};
+
         switch (state.postType) {
-            case Constants.POST_TYPES.IMAGE:
+            case Constants.POST_TYPES.IMAGE: {
+                let contentError = false;
+
                 // First make sure the number of files is between 1 and MAX_ALLOWED_IMAGES
                 if (state.files.length > 0 && state.files.length <= MAX_ALLOWED_IMAGES && state.images.length === state.files.length) {
                     let totalFileSize = 0;
@@ -747,96 +807,167 @@ export default function NewPostForm(props) {
                     for (let file of state.files) {
                         if (!file.type.startsWith('image/'))
                         {
-                            return false;
+                            contentError = true;
+                            break;
                         }
 
                         if (file.name.length > 150) {
-                            return false;
+                            contentError = true;
+                            break;
                         }
 
                         totalFileSize += file.size;
 
                         if (totalFileSize > Constants.MAX_UPLOAD_SIZE) {
-                            return false;
+                            contentError = true;
+                            break;
                         }
                     }
                 }
                 else {
-                    return false;
+                    contentError = true;
                 }
 
+                if (contentError) {
+                    validationPassed = false;
+                }
+
+                stateUpdates = {
+                    contentError,
+                    textError: false,
+                    titleError: false,
+                    postTextHelper: '',
+                    postTitleHelper: ''
+                };
+
                 break;
-            case Constants.POST_TYPES.VIDEO:
+            }
+            case Constants.POST_TYPES.VIDEO: {
+                let contentError = false;
+
                 // First make sure the number of files is 1
                 if (state.files.length === 1 && state.images.length === 1) {
                     let file = state.files[0];
 
                     // Make sure the file is a video. If they haven't been messing with the page, this should be the case
                     if (!file.type.startsWith('video/')) {
-                        return false;
+                        contentError = true;
                     }
 
                     if (file.name.length > 150) {
-                        return false;
+                        contentError = true;
                     }
 
                     if (file.size > Constants.MAX_UPLOAD_SIZE * 1024 * 1024) {
-                        return false;
+                        contentError = true;
                     }
                 }
                 else {
-                    return false;
+                    contentError = true;
+                }
+
+                if (contentError) {
+                    validationPassed = false;
+                }
+
+                stateUpdates = {
+                    contentError,
+                    textError: false,
+                    postTextHelper: false
+                };
+
+                // Make sure they have a title
+                if (isNullOrWhiteSpaceOnly(state.postTitle)) {
+                    stateUpdates.titleError = true;
+                    stateUpdates.postTitleHelper = `Please fill in a title`;
+
+                    validationPassed = false;
+                }
+                else {
+                    stateUpdates.titleError = false;
+                    stateUpdates.postTitleHelper = '';
                 }
 
                 break;
-            case Constants.POST_TYPES.AUDIO:
+            }
+            case Constants.POST_TYPES.AUDIO: {
+                let contentError = false;
+
                 // First make sure the number of files is 1
                 if (state.files.length === 1 && state.images.length === 1) {
                     let file = state.files[0];
 
                     // Make sure the file is audio. If they haven't been messing with the page, this should be the case
                     if (!file.type.startsWith('audio/')) {
-                        return false;
+                        contentError = true;
                     }
 
                     if (file.name.length > 150) {
-                        return false;
+                        contentError = true;
                     }
 
                     if (file.size > Constants.MAX_UPLOAD_SIZE * 1024 * 1024) {
-                        return false;
+                        contentError = true;
                     }
                 }
                 else {
-                    return false;
+                    contentError = true;
                 }
 
-                break;
-            case Constants.POST_TYPES.TEXT:
-            default:
-                // If it's a text post, they have to fill in something, the text is not optional (the title is)
-                if (isNullOrWhiteSpaceOnly(state.postText)) {
-                    setState(prevState => ({
-                        ...prevState,
-                        textError: true,
-                        postTextHelper: `You can't post nothing!`
-                    }));
+                if (contentError) {
+                    validationPassed = false;
+                }
 
-                    return false;
+                stateUpdates = {
+                    contentError,
+                    textError: false,
+                    postTextHelper: false
+                };
+
+                // Make sure they have a title
+                if (isNullOrWhiteSpaceOnly(state.postTitle)) {
+                    stateUpdates.titleError = true;
+                    stateUpdates.postTitleHelper = `Please fill in a title`;
+
+                    validationPassed = false;
                 }
                 else {
-                    setState(prevState => ({
-                        ...prevState,
-                        textError: false,
-                        postTextHelper: ''
-                    }));
+                    stateUpdates.titleError = false;
+                    stateUpdates.postTitleHelper = '';
                 }
 
                 break;
+            }
+            case Constants.POST_TYPES.TEXT:
+            default: {
+                stateUpdates = {
+                    contentError: false,
+                    titleError: false,
+                    postTitleHelper: ''
+                };
+
+                // If it's a text post, they have to fill in something, the text is not optional (the title is)
+                if (isNullOrWhiteSpaceOnly(state.postText)) {
+                    stateUpdates.textError = true;
+                    stateUpdates.postTextHelper = `You can't post nothing!`;
+
+                    validationPassed = false;
+                }
+                else {
+                    stateUpdates.textError = false;
+                    stateUpdates.postTextHelper = '';
+                }
+
+                break;
+            }
         }
 
-        // All checks have passed
-        return true;
+        setState(prevState => ({
+            ...prevState,
+            ...stateUpdates
+        }));
+
+        return validationPassed;
     };
 
     const validateAndPost = async () => {
@@ -878,7 +1009,8 @@ export default function NewPostForm(props) {
                 <div className={classes.header}>
                     <Avatar className={classes.avatar} src={currentUserPfpSmall} />
                     <div className={classes.headerContent}>
-                        <MaterialTextfield name="postTitle" label="Post Title (optional)" size="small" variant="filled" className={classes.title} inputProps={{'maxLength': 50}} value={state.postTitle} onChange={handleTextChange} />
+                        <MaterialTextfield name="postTitle" label={`Post Title${state.postType === Constants.POST_TYPES.AUDIO || state.postType === Constants.POST_TYPES.VIDEO ? '' :  ' (optional)'}`} size="small" variant="filled" className={classes.title} inputProps={{'maxLength': MAX_TITLE_LENGTH}} value={state.postTitle} onChange={handleTextChange} error={state.titleError} helperText={state.postTitleHelper} />
+                        <LinearProgress className={classes.titleProgress} variant="determinate" value={state.titleLimit} color={getTitleProgressColor()} aria-valuetext={`${state.titleLimit} Percent of Title Characters Used`} />
                         <div>
                             {currentDate}
                         </div>
@@ -919,7 +1051,8 @@ export default function NewPostForm(props) {
                 </div>
                 <Divider light={true} variant='middle' />
                 <div className={classes.body}>
-                    <MaterialTextfield name="postText" multiline variant="filled" label={`Post Text${state.postType === Constants.POST_TYPES.TEXT ? '' :  ' (optional)'}`} className={classes.bodyContent} inputProps={{'maxLength': 2000}} value={state.postText} onChange={handleTextChange} error={state.textError} helperText={state.postTextHelper} />
+                    <MaterialTextfield name="postText" className={classes.bodyContent} multiline variant="filled" label={`Post Text${state.postType === Constants.POST_TYPES.TEXT ? '' :  ' (optional)'}`} inputProps={{'maxLength': MAX_TEXT_LENGTH}} value={state.postText} onChange={handleTextChange} error={state.textError} helperText={state.postTextHelper} />
+                    <LinearProgress className={classes.textProgress} variant="determinate" value={state.textLimit} color={getTextProgressColor()} aria-valuetext={`${state.textLimit} Percent of Text Characters Used`} />
                 </div>
                 <div className={classes.footer}>
                     <div className="dropdown">

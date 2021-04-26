@@ -4,6 +4,7 @@ import { Sequelize, Model, ModelCtor } from 'sequelize';
 import { DisplayNameInstance } from '../../models/DisplayName';
 import { PasswordResetTokenInstance } from '../../models/PasswordResetToken';
 import { PostInstance } from '../../models/PostFile';
+import { PostCommentInstance } from '../../models/PostComment';
 import { PostFileInstance } from '../../models/PostFile';
 import { ProfilePictureInstance } from '../../models/ProfilePicture';
 import { RoleInstance } from '../../models/Role';
@@ -27,6 +28,7 @@ export interface DbInterface {
   DisplayName: ModelCtor<DisplayNameInstance>;
   PasswordResetToken: ModelCtor<PasswordResetTokenInstance>;
   Post: ModelCtor<PostInstance>;
+  PostComment: ModelCtor<PostCommentInstance>;
   PostCustomAudience: ModelCtor<PostCustomAudienceInstance>;
   PostFile: ModelCtor<PostFileInstance>;
   ProfilePicture: ModelCtor<ProfilePictureInstance>;

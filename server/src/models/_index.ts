@@ -8,6 +8,7 @@ import { DbInterface } from '../typings/DbInterface';
 import { DisplayNameFactory } from '../models/DisplayName';
 import { PasswordResetTokenFactory } from '../models/PasswordResetToken';
 import { PostFactory } from '../models/Post';
+import { PostCommentFactory } from '../models/PostComment';
 import { PostFileFactory } from '../models/PostFile';
 import { ProfilePictureFactory } from '../models/ProfilePicture';
 import { RoleFactory } from '../models/Role';
@@ -54,6 +55,7 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         DisplayName: DisplayNameFactory(sequelize),
         PasswordResetToken: PasswordResetTokenFactory(sequelize),
         Post: PostFactory(sequelize),
+        PostComment: PostCommentFactory(sequelize),
         PostCustomAudience: PostCustomAudienceFactory(sequelize),
         PostFile: PostFileFactory(sequelize),
         ProfilePicture: ProfilePictureFactory(sequelize),

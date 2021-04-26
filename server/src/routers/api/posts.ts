@@ -26,6 +26,24 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
         }
 
         return res.status(200).json({success: false});
+    case 'getPostComments':
+        try {
+            if (req.userId !== undefined) {
+                let postUniqueId: string | undefined = req.query.postUniqueId?.toString();
+                let pageNumber: number | undefined = req.query.pageNumber ? parseInt(req.query.pageNumber.toString()) : undefined;
+
+                if (postUniqueId) {
+                    let {comments, total}: {comments: WebsiteBoilerplate.PostComment[], total: number} = await databaseHelper.getCommentsForPost(req.userId, postUniqueId, pageNumber);
+
+                    return res.status(200).json({success: true, comments, total});
+                }
+            }
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return res.status(200).json({success: false});
     default:
         res.status(404).send(req.params.methodName + ' is not a valid users method')
         break;
@@ -79,11 +97,33 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                 await databaseHelper.addNewPost(req.userId, postType, postTitle, postText, audience, customAudience, postFiles);
                 return res.status(200).json({success: true});
             }
+
+            return res.status(200).json({success: false});
         }
         catch (err) {
             console.error(err.message);
             return res.status(500);
         }
+    case 'createNewPostComment': {
+        try {
+            if (req.userId) {
+                let { postUniqueId, commentText, parentCommentUniqueId}: { postUniqueId: string | undefined, commentText: string | undefined, parentCommentUniqueId: string | undefined} = req.body;
+
+                if (postUniqueId && commentText && commentText.length <= 500) {
+                    await databaseHelper.addNewPostComment(req.userId, postUniqueId, commentText, parentCommentUniqueId);
+
+                    return res.status(200).json({success: true});                    
+                }
+            }
+
+            return res.status(200).json({success: false});
+        }
+        catch (err) {
+            console.error(err.message);
+            return res.status(500);
+        }
+        break;
+    }
     default:
         res.status(404).send(req.params.methodName + ' is not a valid posts method.');
         break;

@@ -1,13 +1,34 @@
 import React, {useState, useEffect} from 'react';
+import classNames from 'classnames';
 import {isMobile} from 'react-device-detect';
 
 import UploadService from '../services/upload.service';
 
-import SmallAddButton from './SmallAddButton';
+//import SmallAddButton from './SmallAddButton';
+import AddCircleTwoToneIcon from '@material-ui/icons/AddCircleTwoTone';
+
+// Material UI Styles
+import { makeStyles } from '@material-ui/core/styles';
 
 // Redux
 import { useDispatch, useSelector } from 'react-redux';
 import { currentUserPfpUpdated, selectCurrentUserPfpSmall } from '../redux/users/currentUserSlice';
+
+// Material UI Styles
+const useStyles = makeStyles(() => ({
+    mainLabel: {
+        '&:hover $addIcon': {
+            display: 'block'
+        }
+    },
+    addIcon: {
+        cursor: 'pointer',
+        display: 'none',
+        position: 'absolute',
+        right: 0,
+        top: 0       
+    }
+}));
 
 function ProfilePictureUpload (props) {
     const dispatch = useDispatch();
@@ -16,6 +37,8 @@ function ProfilePictureUpload (props) {
     const [isProcessing, setIsProcessing] = useState(false);
 
     const currentUserPfpSmall = useSelector(selectCurrentUserPfpSmall);
+
+    const classes = useStyles();
 
     // Load the image in the background
     // When it's loaded, update the state with the new url
@@ -61,11 +84,11 @@ function ProfilePictureUpload (props) {
 
     /* width: 100% + padding-top: 100% for aspect ratio: https://www.w3schools.com/howto/howto_css_aspect_ratio.asp */
     return (
-        <label className="w-25" style={{
+        <label className={classNames('w-25', classes.mainLabel)} style={{
             cursor: currentFile ? 'wait' : 'pointer',
             position: 'relative'
         }} title={`${isMobile ? 'Tap' : 'Click'} to add a new Profile Picture`}>
-            <div className="border border-secondary rounded-circle" style={{
+            <div className='border border-secondary rounded-circle' style={{
             overflow: 'hidden'
             }}>
                 <div style={{
@@ -115,11 +138,9 @@ function ProfilePictureUpload (props) {
                         </div>
                     )}
                 </div>
-                <SmallAddButton width={15} height={15} style={{
-                    position: 'absolute',
-                    top: 0,
-                    right: 0
-                }} />
+                <span className={classes.addIcon}>
+                    <AddCircleTwoToneIcon />
+                </span>
             </div>
         </label>
     );

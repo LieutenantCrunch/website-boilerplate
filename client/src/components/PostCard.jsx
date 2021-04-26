@@ -1,15 +1,25 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import classNames from 'classnames';
 import Lightbox from 'react-image-lightbox';
 import * as Constants from '../constants/constants';
+import PostService from '../services/post.service';
 
 // Material UI
-import { Avatar, Card, CardContent, CardHeader, Divider } from '@material-ui/core';
+import { Avatar, Card, CardActions, CardContent, CardHeader, Divider } from '@material-ui/core';
+import LinearProgress from '@material-ui/core/LinearProgress';
+import MaterialButton from '@material-ui/core/Button';
+import MaterialTextfield from '@material-ui/core/TextField';
 import { makeStyles } from '@material-ui/core/styles';
+
+// Material UI Icons
+import CancelTwoToneIcon from '@material-ui/icons/CancelTwoTone';
 
 // Multimedia Components
 import { AudioPlayer } from './Multimedia/AudioPlayer';
 import { VideoPlayer } from './Multimedia/VideoPlayer';
+
+// Other Components
+import { PostComment } from './PostComment';
 
 // Material UI Styles
 const useStyles = makeStyles(() => ({
@@ -19,6 +29,7 @@ const useStyles = makeStyles(() => ({
         backgroundRepeat: 'no-repeat',
         backgroundPosition: 'center',
         borderStyle: 'none',
+        cursor: 'pointer',
         position: 'relative',
         height: '10vmin',
         width: '48%',
@@ -44,33 +55,51 @@ const useStyles = makeStyles(() => ({
     },
     previewImages: {
         flexWrap: 'wrap',
-        justifyContent: 'space-evenly',
-        padding: '0 16px',
+        justifyContent: 'space-evenly'
     },
-    videoThumbnail: {
-        backgroundColor: 'rgb(255,255,255)',
-        backgroundSize: 'contain',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        borderStyle: 'none',
+    commentProgress: {
+        width: '100%'
+    },
+    commentList: {
+        listStyle: 'none',
+        paddingLeft: '.5em',
+        width: '100%'
+    },
+    parentCommentHeader: {
+        display: 'flex',
+        fontSize: '.75em',
+        opacity: .6,
+        overflow: 'hidden', 
         position: 'relative',
-        height: '30vmin',
-        width: '48%',
-        margin: '1%'
+        textOverflow: 'ellipsis', 
+        whiteSpace: 'nowrap',
+        width: '100%',
+        '&::before': {
+            content: '\'↱\'' /* The content has to be wrapped in quotes in order for it to be considered a string */
+        }
+    },
+    parentCommenter: {
+        fontWeight: 'bold'
     }
 }));
 
 export default function PostCard(props) {
+    const MAX_COMMENT_LENGTH = 500;
     const { post } = props;
-    const { postedBy, postFiles, postType } = post;
+    const { commentCount, postedBy, postFiles, postType, uniqueId } = post;
     const postDate = new Date(post.postedOn);
 
     const [state, setState] = useState({
+        comments: [],
+        commentLimit: 0,
+        commentText: '',
         lightboxOpen: false,
-        lightboxIndex: 0
+        lightboxIndex: 0,
+        replyToComment: null
     });
 
     const classes = useStyles();
+    const commentTextfield = useRef(null);
 
     const handleImageClick = (e, index) => {
         if (postType === Constants.POST_TYPES.IMAGE) {
@@ -82,16 +111,80 @@ export default function PostCard(props) {
         }
     };
 
+    const handleCommentChange = (e) => {
+        let { value: commentText } = e.target;
+        let commentLength = commentText.length;
+        let commentLimit = 0;
+
+        if (commentLength <= MAX_COMMENT_LENGTH) {
+            commentLimit = Math.floor((commentLength / MAX_COMMENT_LENGTH) * 100);
+        }
+        else {
+            commentLimit = 100;
+        }
+
+        setState(prevState => ({
+            ...prevState,
+            commentText,
+            commentLimit
+        }));
+    };
+
+    const handlePostClick = async (e) => {
+        if (state.commentText && state.commentText.length > 0 && state.commentText.length <= MAX_COMMENT_LENGTH) {
+            let parentCommentUniqueId = undefined;
+
+            if (state.replyToComment) {
+                parentCommentUniqueId = state.replyToComment.uniqueId;
+            }
+
+            let response = await PostService.createNewPostComment(uniqueId, state.commentText, parentCommentUniqueId);
+
+            if (response.success) {
+                setState(prevState => ({
+                    ...prevState,
+                    commentText: '',
+                    commentLimit: 0,
+                    replyToComment: null
+                }));
+            }
+        }
+    };
+
+    const handleViewCommentsClick = async (e) => {
+        let response = await PostService.getPostComments(uniqueId);
+
+        if (response.comments) {
+            setState(prevState => ({
+                ...prevState,
+                comments: response.comments
+            }));
+        }
+    };
+
+    const handleReplyClick = (e, replyToComment) => {
+        setState(prevState => ({
+            ...prevState,
+            replyToComment
+        }));
+
+        if (commentTextfield.current) {
+            commentTextfield.current.focus();
+        }
+    };
+
+    const handleCancelReply = (e) => {
+        setState(prevState => ({
+            ...prevState,
+            replyToComment: null
+        }));
+    };
+
     const getPostFilesSection = () => {
         if (postFiles && postFiles.length > 0) {
             switch (postType) {
             case Constants.POST_TYPES.AUDIO:
                 return <AudioPlayer sourceFile={postFiles[0].fileName} thumbnail={postFiles[0].thumbnailFileName} />
-                /*return <div key={postFiles[0].thumbnailFileName} 
-                        className={classes.audioThumbnail} 
-                        style={{backgroundImage: `url('${postFiles[0].thumbnailFileName}')`}}
-                    >
-                    </div>;*/
             case Constants.POST_TYPES.IMAGE:
                 return postFiles.map((postFile, index) => (
                     <div key={postFile.fileName} 
@@ -103,10 +196,6 @@ export default function PostCard(props) {
                 ));
             case Constants.POST_TYPES.VIDEO:
                 return <VideoPlayer sourceFile={postFiles[0].fileName} thumbnail={postFiles[0].thumbnailFileName} />;
-                /*return <div className={classes.videoThumbnail} 
-                        style={{backgroundImage: `url('${postFiles[0].thumbnailFileName}')`}}
-                    >
-                    </div>;*/
             case Constants.POST_TYPES.TEXT:
             default:
                 return <></>;
@@ -116,28 +205,88 @@ export default function PostCard(props) {
         return <></>;
     }
 
+    const getCommentProgressColor = () => {
+        return state.commentLimit <= 90 ? 'primary' :
+            state.commentLimit < 100 ? 'warning' :
+            'error';
+    };
+
     return (
         <Card className="col-12 col-sm-8 col-md-6 col-xl-4 mb-2">
             <CardHeader
                 avatar={
-                    <Avatar alt={`${postedBy.displayName}#${postedBy.displayNameIndex}`} src={postedBy.pfpSmall} />
+                    <Avatar alt={`${postedBy.displayName}#${postedBy.displayNameIndex}`} src={postedBy.pfpSmall} style={{border: '1px solid rgba(0, 0, 0, 0.08)'}} />
                 }
                 subheader={postDate.toLocaleString()}
                 title={post.postTitle}
             />
-            <div className={classes.previewImages}
-                style={{
-                    display: postType === Constants.POST_TYPES.TEXT ? 'none' : 'flex'
-                }}
-            >
-            {
-                getPostFilesSection()
-            }
-            </div>
-            <Divider light={true} variant='middle' />
             <CardContent>
-                {post.postText}
+                <div className={classes.previewImages}
+                    style={{
+                        display: postType === Constants.POST_TYPES.TEXT ? 'none' : 'flex'
+                    }}
+                >
+                    {
+                        getPostFilesSection()
+                    }
+                </div>
+                {
+                    post.postText && <p>
+                        {post.postText}
+                    </p>
+                }
             </CardContent>
+            <Divider light={true} variant='middle' />
+            <CardActions style={{flexWrap: 'wrap', padding: '16px'}}>
+                <div className="d-flex mb-2 w-100">
+                    <div style={{flexGrow: 1}}>
+                        {
+                            state.replyToComment &&
+                            <div className={classes.parentCommentHeader}>
+                                <div style={{flexGrow: 1}}>
+                                    <span className={classes.parentCommenter}>
+                                        {state.replyToComment.postedBy.displayName}
+                                        {
+                                            state.replyToComment.postedBy.displayNameIndex !== 0 &&
+                                            `#${state.replyToComment.postedBy.displayNameIndex}`
+                                        }
+                                    </span>
+                                    {`: ${state.replyToComment.commentText}`}
+                                </div>
+                                <div style={{alignContent: 'center', display: 'flex'}}>
+                                    <CancelTwoToneIcon style={{
+                                            cursor: 'pointer',
+                                            fontSize: 'small',
+                                            height: '100%'
+                                        }}
+                                        onClick={handleCancelReply}
+                                        titleAccess="Cancel reply" 
+                                    />
+                                </div>
+                            </div>
+                        }
+                        <MaterialTextfield inputRef={commentTextfield} style={{width: '100%'}} label={`Add a ${state.replyToComment ? 'reply' : 'comment'}`} multiline variant="filled" size="small" inputProps={{'maxLength': MAX_COMMENT_LENGTH}} onChange={handleCommentChange} value={state.commentText}></MaterialTextfield>
+                        <LinearProgress className={classes.commentProgress} variant="determinate" value={state.commentLimit} color={getCommentProgressColor()} aria-valuetext={`${state.commentLimit} Percent of Comment Characters Used`} />
+                    </div>
+                    <button className="btn btn-primary ms-2" type="button" onClick={handlePostClick}>Post</button>
+                </div>
+                {
+                    commentCount > 0 && state.comments.length === 0 &&
+                    <div className="d-flex justify-content-end w-100">
+                        <button className="btn btn-link border-0 dropdown-toggle text-decoration-none" type="button" onClick={handleViewCommentsClick}>View Comments ({commentCount})</button>
+                    </div>
+                }
+                {
+                    state.comments.length > 0 && 
+                    <ul className={classes.commentList}>
+                    {
+                        state.comments.map(comment => {
+                            return <PostComment key={comment.uniqueId} comment={comment} handleReplyClick={handleReplyClick} />;
+                        })
+                    }
+                    </ul>
+                }
+            </CardActions>
             {
                 state.lightboxOpen && (
                     <Lightbox 

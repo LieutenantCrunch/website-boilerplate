@@ -58,4 +58,46 @@ export default class PostService {
 
         return null;
     }
+
+    static async createNewPostComment(postUniqueId, commentText, parentCommentUniqueId) {
+        try {
+            let payload = {postUniqueId, commentText, parentCommentUniqueId};
+
+            let response = await axiosApi.post(Constants.API_PATH_POSTS + 'createNewPostComment', payload);
+    
+            if (response.data && response.data.success) {
+                return {success: true};
+            }
+        }
+        catch (err) {
+            console.error(`Error creating new post comment:\n${err.message}`);
+        }
+
+        return {success: false};
+    }
+
+    static async getPostComments(postUniqueId, pageNumber) {
+        try {
+            let queryParameters = { postUniqueId };
+
+            if (pageNumber) {
+                queryParameters.pageNumber = pageNumber;
+            }
+
+            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
+
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + `/getPostComments?${queryString}`);
+
+            if (response.data && response.data.success) {
+                let { comments, total } = response.data;
+
+                return { comments, total };
+            }
+        }
+        catch (err) {
+            console.error(`Error getting post comments:\n${err.message}`);
+        }
+
+        return {};
+    }
 };

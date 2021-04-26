@@ -20,8 +20,7 @@ const useStyles = makeStyles(() => ({
         display: 'flex',
         width: '100%',
         height: '100%',
-        flexWrap: 'wrap',
-        marginBottom: '1em'
+        flexWrap: 'wrap'
     },
     audioThumbnail: {
         backgroundColor: 'rgb(255,255,255)',
