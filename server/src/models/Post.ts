@@ -17,6 +17,7 @@ import { SequelizeAttributes } from '../typings/SequelizeAttributes';
 import { UserInstance } from './User';
 import { PostFileInstance } from './PostFile';
 import { UserConnectionTypeInstance } from './UserConnectionType';
+import { PostCommentInstance } from './PostComment';
 
 export interface PostAttributes {
     id?: number;
@@ -30,7 +31,9 @@ export interface PostAttributes {
     postedOn: Date;
     uniqueId: string;
     user?: UserInstance;
+    postComments?: PostCommentInstance[];
     postFiles?: PostFileInstance[];
+    commentCount?: number;
 };
 
 export interface PostCreationAttributes extends Optional<PostAttributes, 'id'>,
@@ -40,6 +43,8 @@ export interface PostCreationAttributes extends Optional<PostAttributes, 'id'>,
 export interface PostInstance extends Model<PostAttributes, PostCreationAttributes>, PostAttributes {
     getRegisteredUser: BelongsToGetAssociationMixin<UserInstance>;
     
+    getPostComments: HasManyGetAssociationsMixin<PostCommentInstance>;
+
     addPostFile: HasManyAddAssociationMixin<PostFileInstance, PostFileInstance['id']>;
     addPostFiles: HasManyAddAssociationsMixin<PostFileInstance, PostFileInstance['id']>;
     getPostFiles: HasManyGetAssociationsMixin<PostFileInstance>;
@@ -113,6 +118,14 @@ export const PostFactory = (sequelize: Sequelize): ModelCtor<PostInstance> => {
         Post.belongsToMany(models.UserConnectionType, {
             as: 'connectionTypes',
             through: models.PostCustomAudience,
+            foreignKey: {
+                name: 'postId',
+                field: 'post_id'
+            }
+        });
+
+        Post.hasMany(models.PostComment, {
+            as: 'postComments',
             foreignKey: {
                 name: 'postId',
                 field: 'post_id'

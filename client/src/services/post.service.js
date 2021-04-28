@@ -3,9 +3,40 @@ import 'regenerator-runtime'; /* Necessary for async/await to not throw an error
 import * as Constants from '../constants/constants';
 
 export default class PostService {
-    static async getFeed() {
+    static async getMyPosts(pageNumber, endDate) {
         try {
-            let response = await axiosApi.get(Constants.API_PATH_POSTS + `/getFeed`);
+            let queryParameters = {
+                pageNumber,
+                endDate
+            };
+
+            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
+
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + `/getMyPosts?${queryString}`);
+
+            if (response.data && response.data.success) {
+                const {posts, total} = response.data;
+
+                return {posts, total};
+            }
+        }
+        catch (err) {
+            console.error(`Error getting my posts:\n${err.message}`);
+        }
+
+        return {posts: [], total: 0};
+    }
+
+    static async getFeed(pageNumber, endDate) {
+        try {
+            let queryParameters = {
+                pageNumber,
+                endDate
+            };
+
+            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
+            
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + `/getFeed?${queryString}`);
 
             if (response.data && response.data.success) {
                 const {posts, total} = response.data;
@@ -17,7 +48,7 @@ export default class PostService {
             console.error(`Error getting posts:\n${err.message}`);
         }
 
-        return [];
+        return {posts: [], total: 0};
     }
 
     static async createNewPost(postData, onUploadProgress) {
@@ -76,13 +107,13 @@ export default class PostService {
         return {success: false};
     }
 
-    static async getPostComments(postUniqueId, pageNumber) {
+    static async getPostComments(postUniqueId, pageNumber, endDate) {
         try {
-            let queryParameters = { postUniqueId };
-
-            if (pageNumber) {
-                queryParameters.pageNumber = pageNumber;
-            }
+            let queryParameters = {
+                postUniqueId,
+                pageNumber,
+                endDate
+            };
 
             let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
 

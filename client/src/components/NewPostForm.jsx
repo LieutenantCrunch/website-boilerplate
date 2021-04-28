@@ -8,6 +8,7 @@ import { Avatar, Divider, Paper } from '@material-ui/core';
 import MaterialTextfield from '@material-ui/core/TextField';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import LinearProgress from '@material-ui/core/LinearProgress';
+import Typography from '@material-ui/core/Typography';
 
 // Material UI Icons
 import PhotoOutlinedIcon from '@material-ui/icons/PhotoOutlined';
@@ -34,23 +35,22 @@ import SwitchCheckbox from './FormControls/SwitchCheckbox';
 // Material UI Styles
 const useStyles = makeStyles(() => ({
     root: {
-        position: 'relative'
+        position: 'relative',
+        border: '1px solid rgb(153,217,234)'
     },
     header: {
-        padding: '16px',
+        padding: '8px 16px 16px',
         display: 'flex',
-        alignItems: 'start'
+        flexWrap: 'wrap'
     },
-    body: {
-        alignItems: 'center',
-        display: 'flex',
-        flexWrap: 'wrap',
-        padding: '16px'
+    mainTitle: {
+        textAlign: 'center',
+        width: '100%'
     },
-    footer: {
+    headerDetails: {
         display: 'flex',
-        justifyContent: 'space-between',
-        padding: '0 16px 16px'
+        alignItems: 'start',
+        width: '100%'
     },
     avatar: {
         marginRight: '16px',
@@ -64,6 +64,17 @@ const useStyles = makeStyles(() => ({
     },
     title: {
         width: '100%'
+    },
+    body: {
+        alignItems: 'center',
+        display: 'flex',
+        flexWrap: 'wrap',
+        padding: '16px'
+    },
+    footer: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        padding: '0 16px 16px'
     },
     bodyContent: {
         width: '100%'
@@ -1004,15 +1015,22 @@ export default function NewPostForm(props) {
     };
 
     return (
-        <form className="col-12 col-sm-8 col-md-6 col-xl-4">
+        <form className="col-12 col-sm-8 col-md-6 col-xl-4 mb-2">
             <Paper elevation={3} className={classes.root} ref={dropArea} onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}>
                 <div className={classes.header}>
-                    <Avatar className={classes.avatar} src={currentUserPfpSmall} />
-                    <div className={classes.headerContent}>
-                        <MaterialTextfield name="postTitle" label={`Post Title${state.postType === Constants.POST_TYPES.AUDIO || state.postType === Constants.POST_TYPES.VIDEO ? '' :  ' (optional)'}`} size="small" variant="filled" className={classes.title} inputProps={{'maxLength': MAX_TITLE_LENGTH}} value={state.postTitle} onChange={handleTextChange} error={state.titleError} helperText={state.postTitleHelper} />
-                        <LinearProgress className={classes.titleProgress} variant="determinate" value={state.titleLimit} color={getTitleProgressColor()} aria-valuetext={`${state.titleLimit} Percent of Title Characters Used`} />
-                        <div>
-                            {currentDate}
+                    <div className={classes.mainTitle}>
+                        <Typography variant="h6" gutterBottom>
+                            New Post
+                        </Typography>
+                    </div>
+                    <div className={classes.headerDetails}>
+                        <Avatar className={classes.avatar} src={currentUserPfpSmall} />
+                        <div className={classes.headerContent}>
+                            <MaterialTextfield name="postTitle" label={`Post Title${state.postType === Constants.POST_TYPES.AUDIO || state.postType === Constants.POST_TYPES.VIDEO ? '' :  ' (optional)'}`} size="small" variant="filled" className={classes.title} inputProps={{'maxLength': MAX_TITLE_LENGTH}} value={state.postTitle} onChange={handleTextChange} error={state.titleError} helperText={state.postTitleHelper} />
+                            <LinearProgress className={classes.titleProgress} variant="determinate" value={state.titleLimit} color={getTitleProgressColor()} aria-valuetext={`${state.titleLimit} Percent of Title Characters Used`} />
+                            <div>
+                                {currentDate}
+                            </div>
                         </div>
                     </div>
                 </div>

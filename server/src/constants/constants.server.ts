@@ -7,8 +7,8 @@ export const CACHE_KEY_CONNECTION_TYPES_DICT: string = 'db.connectionTypesDict';
 export const CACHE_KEY_CONNECTION_TYPES_ARRAY: string = 'db.connectionTypesArray'; // The connection types array used by databaseHelper
 
 export const DB_USER_FETCH_PAGE_SIZE: number = 5; // The number of users to fetch at one time
-export const DB_FEED_FETCH_PAGE_SIZE: number = 20; // The number of posts to fetch at one time for feeds
-export const DB_COMMENT_FETCH_PAGE_SIZE: number = 20; // The number of post comments to fetch at one time
+export const DB_FEED_FETCH_PAGE_SIZE: number = 5; // The number of posts to fetch at one time for feeds
+export const DB_COMMENT_FETCH_PAGE_SIZE: number = 2; // The number of post comments to fetch at one time
 
 export const INVALIDATE_TOKEN_MODE = Object.freeze({
     SPECIFIC: 0,

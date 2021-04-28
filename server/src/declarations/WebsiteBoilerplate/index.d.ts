@@ -45,6 +45,7 @@ declare namespace WebsiteBoilerplate {
         commentCount: number;
         postedOn: Date;
         postText: string | null;
+        postTitle: string | null;
         postType: number;
         postedBy: {
             displayName: string;

@@ -16,7 +16,42 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
     case 'getFeed':
         try {
             if (req.userId !== undefined) {               
-                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getFeed(req.userId, null, null, null);
+                let pageNumber: number | undefined = req.query.pageNumber ? parseInt(req.query.pageNumber.toString()) : undefined;
+                let endDate: Date | undefined = undefined;
+                
+                try
+                {
+                    endDate = req.query.endDate ? new Date(parseInt(req.query.endDate.toString())) : undefined;
+                }
+                catch (err) {
+
+                }
+
+                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getFeed(req.userId, null, endDate, pageNumber);
+
+                return res.status(200).json({success: true, posts, total});
+            }
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return res.status(200).json({success: false});
+    case 'getMyPosts':
+        try {
+            if (req.userId !== undefined) {
+                let pageNumber: number | undefined = req.query.pageNumber ? parseInt(req.query.pageNumber.toString()) : undefined;
+                let endDate: Date | undefined = undefined;
+                
+                try
+                {
+                    endDate = req.query.endDate ? new Date(parseInt(req.query.endDate.toString())) : undefined;
+                }
+                catch (err) {
+
+                }
+
+                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsForUser(req.userId, null, endDate, pageNumber);
 
                 return res.status(200).json({success: true, posts, total});
             }
@@ -31,9 +66,18 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
             if (req.userId !== undefined) {
                 let postUniqueId: string | undefined = req.query.postUniqueId?.toString();
                 let pageNumber: number | undefined = req.query.pageNumber ? parseInt(req.query.pageNumber.toString()) : undefined;
+                let endDate: Date | undefined = undefined;
+                
+                try
+                {
+                    endDate = req.query.endDate ? new Date(parseInt(req.query.endDate.toString())) : undefined;
+                }
+                catch (err) {
+
+                }
 
                 if (postUniqueId) {
-                    let {comments, total}: {comments: WebsiteBoilerplate.PostComment[], total: number} = await databaseHelper.getCommentsForPost(req.userId, postUniqueId, pageNumber);
+                    let {comments, total}: {comments: WebsiteBoilerplate.PostComment[], total: number} = await databaseHelper.getCommentsForPost(req.userId, postUniqueId, endDate, pageNumber);
 
                     return res.status(200).json({success: true, comments, total});
                 }

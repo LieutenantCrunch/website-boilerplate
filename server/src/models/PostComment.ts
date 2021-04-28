@@ -5,10 +5,11 @@ import { PostInstance } from './Post';
 
 export interface PostCommentAttributes {
     id?: number;
+    commentText: string;
+    parentCommentId?: number;
+    postedOn: Date;
     postId?: number;
     registeredUserId: number;
-    parentCommentId?: number;
-    commentText: string;
     uniqueId: string;
     registeredUser?: UserInstance;
     post?: PostInstance;
@@ -35,6 +36,21 @@ export const PostCommentFactory = (sequelize: Sequelize): ModelCtor<PostCommentI
             primaryKey: true,
             autoIncrement: true
         },
+        commentText: {
+            type: DataTypes.STRING(500),
+            field: 'comment_text',
+            allowNull: false
+        },
+        parentCommentId: {
+            type: DataTypes.INTEGER,
+            field: 'parent_comment_id',
+            allowNull: true
+        },
+        postedOn: {
+            type: DataTypes.DATE,
+            field: 'posted_on',
+            allowNull: false
+        },
         postId: {
             type: DataTypes.INTEGER,
             field: 'post_id',
@@ -43,16 +59,6 @@ export const PostCommentFactory = (sequelize: Sequelize): ModelCtor<PostCommentI
         registeredUserId: {
             type: DataTypes.INTEGER,
             field: 'registered_user_id',
-            allowNull: false
-        },
-        parentCommentId: {
-            type: DataTypes.INTEGER,
-            field: 'parent_comment_id',
-            allowNull: true
-        },
-        commentText: {
-            type: DataTypes.STRING(500),
-            field: 'comment_text',
             allowNull: false
         },
         uniqueId: {

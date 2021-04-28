@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
-import { isMobile } from 'react-device-detect';
+import { isIOS } from 'react-device-detect';
 
 // Material UI
 import { makeStyles } from '@material-ui/core/styles';
@@ -205,7 +205,7 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
 
             videoEl.current.addEventListener('ended', handleVideoEnded);
 
-            if (isMobile) {
+            if (isIOS) {
                 videoEl.current.addEventListener('pause', handleVideoPause);
                 videoEl.current.addEventListener('play', handleVideoPlay);
             }
@@ -214,7 +214,7 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
                 if (videoEl.current) {
                     videoEl.current.removeEventListener('ended', handleVideoEnded);
 
-                    if (isMobile) {
+                    if (isIOS) {
                         videoEl.current.removeEventListener('pause', handleVideoPause);
                         videoEl.current.removeEventListener('play', handleVideoPlay);
                     }
@@ -306,7 +306,7 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
             if (isMuted) {
                 videoEl.current.muted = false;
 
-                if (!isMobile) {
+                if (!isIOS) {
                     videoEl.current.volume = state.previousVolume;
                 }
 
@@ -319,7 +319,7 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
             else {
                 videoEl.current.muted = true;
 
-                if (!isMobile) {
+                if (!isIOS) {
                     videoEl.current.volume = 0;
                 }
 
@@ -372,13 +372,13 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
     };
 
     const handleVideoClick = (e) => {
-        if (!isMobile) {
+        if (!isIOS) {
             togglePaused();
         }
     };
 
     const handleProgressBarMouseEnter = (e) => {
-        if (!isMobile && progressScrubberDiv.current) {
+        if (!isIOS && progressScrubberDiv.current) {
             let { x: progressBarX } = e.target.getBoundingClientRect();
             let { clientX: mouseX } = e;
 
@@ -389,7 +389,7 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
     };
 
     const handleProgressBarTouchStart = (e) => {
-        if (isMobile && state.playedOnce && progressScrubberDiv.current) {
+        if (isIOS && state.playedOnce && progressScrubberDiv.current) {
             let { x: progressBarX } = e.touches[0].target.getBoundingClientRect();
             let { clientX: mouseX } = e.touches[0];
 
@@ -402,7 +402,7 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
     };
 
     const handleProgressBarTouchMove = (e) => {
-        if (isMobile && state.playedOnce && progressScrubberDiv.current) {
+        if (isIOS && state.playedOnce && progressScrubberDiv.current) {
             let { x: progressBarX, width: progressBarW } = e.touches[0].target.getBoundingClientRect();
             let { clientX: mouseX } = e.touches[0];
 
@@ -422,7 +422,7 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
     };
 
     const handleProgressBarMouseClick = (e) => {
-        if (!isMobile) {
+        if (!isIOS) {
             let { x: progressBarX, width: progressBarW } = e.target.getBoundingClientRect();
             let { clientX: mouseX } = e;
             let { duration } = videoEl.current;
@@ -440,19 +440,19 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
     };
 
     const handleProgressBarMouseLeave = (e) => {
-        if (!isMobile && progressScrubberDiv.current) {
+        if (!isIOS && progressScrubberDiv.current) {
             progressScrubberDiv.current.style.left = '';
         }
     };
 
     const handleProgressBarTouchCancel = (e) => {
-        if (isMobile && progressScrubberDiv.current) {
+        if (isIOS && progressScrubberDiv.current) {
             progressScrubberDiv.current.style.left = '';
         }
     };
 
     const handleProgressBarTouchEnd = (e) => {
-        if (isMobile && state.playedOnce) { /* iOS is stupid and doesn't let you mess around with the currentTime until the video has played at least once */
+        if (isIOS && state.playedOnce) { /* iOS is stupid and doesn't let you mess around with the currentTime until the video has played at least once */
             try
             {
                 let { width: progressBarW } = e.target.getBoundingClientRect();
@@ -480,7 +480,7 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
     };
 
     const handleProgressBarMouseMove = (e) => {
-        if (!isMobile && progressScrubberDiv.current) {
+        if (!isIOS && progressScrubberDiv.current) {
             let { x: progressBarX } = e.target.getBoundingClientRect();
             let { clientX: mouseX } = e;
 
@@ -556,11 +556,11 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
         className={classNames(classes.borderDiv, state.mouseMoving ? 'mouseMoving' : '')}
         onMouseMove={handleBorderDivMouseMove}
     >
-        <video ref={videoEl} className={classes.video} poster={thumbnail} onClick={handleVideoClick} controls={isMobile} playsInline={isMobile}>
+        <video ref={videoEl} className={classes.video} poster={thumbnail} onClick={handleVideoClick} controls={isIOS} playsInline={isIOS}>
             <source src={sourceFile} type="video/mp4" />
         </video>
         {
-            !isMobile && <div className={classes.controls}>
+            !isIOS && <div className={classes.controls}>
                 <div className={classes.progressBar}
                     onMouseEnter={handleProgressBarMouseEnter}
                     onClick={handleProgressBarMouseClick}
@@ -590,7 +590,7 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
                             : <VolumeUpRoundedIcon onClick={toggleMute} style={{cursor: 'pointer', position: 'relative', fontSize: '2em'}} titleAccess="Mute video" />
                         }
                         {
-                            !isMobile && <input className={classes.volumeRange} type="range" min="0" max="1" step="0.01" value={state.volume} onChange={handleVolumeChange} title="Adjust volume" />
+                            !isIOS && <input className={classes.volumeRange} type="range" min="0" max="1" step="0.01" value={state.volume} onChange={handleVolumeChange} title="Adjust volume" />
                         }
                     </div>
                     <div className={classes.rightControls}>

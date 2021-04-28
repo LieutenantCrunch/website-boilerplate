@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import classNames from 'classnames';
+import { isMobile } from 'react-device-detect';
 import Lightbox from 'react-image-lightbox';
 import * as Constants from '../constants/constants';
 import PostService from '../services/post.service';
@@ -80,6 +81,10 @@ const useStyles = makeStyles(() => ({
     },
     parentCommenter: {
         fontWeight: 'bold'
+    },
+    moreCommentsDiv: {
+        textAlign: 'center',
+        width: '100%'
     }
 }));
 
@@ -93,9 +98,12 @@ export default function PostCard(props) {
         comments: [],
         commentLimit: 0,
         commentText: '',
+        fetchDate: null,
         lightboxOpen: false,
         lightboxIndex: 0,
-        replyToComment: null
+        pageNumber: 0,
+        replyToComment: null,
+        total: 0
     });
 
     const classes = useStyles();
@@ -152,12 +160,16 @@ export default function PostCard(props) {
     };
 
     const handleViewCommentsClick = async (e) => {
-        let response = await PostService.getPostComments(uniqueId);
+        let fetchDate = Date.now();
 
-        if (response.comments) {
+        let response = await PostService.getPostComments(uniqueId, 0, fetchDate);
+
+        if (response) {
             setState(prevState => ({
                 ...prevState,
-                comments: response.comments
+                comments: response.comments,
+                fetchDate,
+                total: response.total
             }));
         }
     };
@@ -178,6 +190,23 @@ export default function PostCard(props) {
             ...prevState,
             replyToComment: null
         }));
+    };
+
+    const handleMoreResultsClick = async (e) => {
+        let pageNumber = state.pageNumber + 1;
+
+        PostService.getPostComments(uniqueId, pageNumber, state.fetchDate || Date.now()).then(response => {
+            if (response.comments.length > 0) {
+                setState(prevState => ({
+                    ...prevState,
+                    pageNumber,
+                    comments: [
+                        ...prevState.comments,
+                        ...response.comments
+                    ]
+                }));
+            }
+        }).catch(err => console.error(err));
     };
 
     const getPostFilesSection = () => {
@@ -209,6 +238,10 @@ export default function PostCard(props) {
         return state.commentLimit <= 90 ? 'primary' :
             state.commentLimit < 100 ? 'warning' :
             'error';
+    };
+
+    const moreCommentsAvailable = () => {
+        return state.comments.length < state.total;
     };
 
     return (
@@ -278,13 +311,26 @@ export default function PostCard(props) {
                 }
                 {
                     state.comments.length > 0 && 
-                    <ul className={classes.commentList}>
-                    {
-                        state.comments.map(comment => {
-                            return <PostComment key={comment.uniqueId} comment={comment} handleReplyClick={handleReplyClick} />;
-                        })
-                    }
-                    </ul>
+                    <>
+                        <ul className={classes.commentList}>
+                        {
+                            state.comments.map(comment => {
+                                return <PostComment key={comment.uniqueId} comment={comment} handleReplyClick={handleReplyClick} />;
+                            })
+                        }
+                        </ul>
+                        {
+                            moreCommentsAvailable() &&
+                            <div className={classes.moreCommentsDiv}>
+                                <button className="btn btn-link btn-sm text-nowrap text-truncate shadow-none" 
+                                    type="button"
+                                    onClick={handleMoreResultsClick}
+                                >
+                                    {isMobile ? 'Tap' : 'Click'} here for more comments
+                                </button>
+                            </div>
+                        }
+                    </>
                 }
             </CardActions>
             {
