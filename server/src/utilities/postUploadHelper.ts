@@ -1,7 +1,11 @@
 import express from 'express';
 import multer from 'multer';
 import * as ClientConstants from '../constants/constants.client';
-import FileHandler from '../utilities/fileHandler';
+import { databaseHelper } from './databaseHelper';
+import path from 'path';
+import FileHandler from './fileHandler';
+
+import { generateAudioThumbnail, generateVideoThumbnail } from './ffmpegHelper';
 
 export default class PostUploadHelper {
     private static storage: multer.StorageEngine = multer.diskStorage({
@@ -108,5 +112,36 @@ export default class PostUploadHelper {
         }
     }
 
-    static uploader = multer({storage: PostUploadHelper.storage, fileFilter: PostUploadHelper.fileFilter});
+    static uploader = multer({
+        storage: PostUploadHelper.storage, 
+        fileFilter: PostUploadHelper.fileFilter,
+        limits: {
+            fields: 20, /* Shouldn't have more than this on a post */
+            fieldSize: 2048, /* Maximum post text length plus a couple extra because why not */
+            files: 4, /* Maximum of 4 files in one post when the type is image */
+            fileSize: ClientConstants.MAX_UPLOAD_SIZE * 1024 * 1024
+        }
+    });
+
+    static async generateAndSaveThumbnail(postId: number, postType: number, file: Express.Multer.File) {
+        if (postType === ClientConstants.POST_TYPES.VIDEO || postType === ClientConstants.POST_TYPES.AUDIO) {
+            let thumbnailFileName: string | undefined = undefined;
+
+            try {
+                if (postType === ClientConstants.POST_TYPES.VIDEO) {
+                    thumbnailFileName = await generateVideoThumbnail(file.destination, file.filename);
+                }
+                else if (postType === ClientConstants.POST_TYPES.AUDIO) {
+                    thumbnailFileName = await generateAudioThumbnail(file.destination, file.filename);
+                }
+            }
+            catch (err) {
+                console.error(`Error generating thumbnail:\n${err.message}`);
+            }
+
+            if (thumbnailFileName) {
+                databaseHelper.updateThumbnailForPostFile(postId, thumbnailFileName);
+            }
+        }
+    }
 }

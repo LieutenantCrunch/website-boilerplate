@@ -7,6 +7,7 @@ import { databaseHelper } from '../../utilities/databaseHelper';
 import * as ClientConstants from '../../constants/constants.client';
 
 import { generateAudioThumbnail, generateVideoThumbnail } from '../../utilities/ffmpegHelper';
+import FileHandler from '../../utilities/fileHandler';
 
 const apiPostsRouter: Router = express.Router();
 
@@ -94,6 +95,7 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
     }
 });
 
+// Note: Posts are currently limited to 20 fields (see the limits on multer in postUploadHelper)
 apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.uploader.array('postFiles')], async (req: Request, res: Response) => {
     switch (req.params.methodName)
     {
@@ -115,8 +117,17 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                 }
 
                 let postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined = undefined;
+                let avFile: Express.Multer.File | undefined = undefined;
 
                 if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+                    let totalFileSize: number = req.files.reduce((total, currentFile) => (total + currentFile.size), 0);
+
+                    if (totalFileSize > ClientConstants.MAX_UPLOAD_SIZE * 1024 * 1024) {
+                        FileHandler.deleteAllFiles(req.files);
+
+                        return res.status(200).json({success: false});
+                    }
+
                     postFiles = req.files.map(file => ({
                         fileName: file.filename,
                         mimeType: file.mimetype,
@@ -124,22 +135,20 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                         size: file.size
                     }));
 
-                    if (postType === ClientConstants.POST_TYPES.VIDEO) {
-                        let file: Express.Multer.File = req.files[0];
-                        let thumbnailFileName: string = await generateVideoThumbnail(file.destination, file.filename);
-
-                        postFiles[0].thumbnailFileName = thumbnailFileName;
-                    }
-                    else if (postType === ClientConstants.POST_TYPES.AUDIO) {
-                        let file: Express.Multer.File = req.files[0];
-                        let thumbnailFileName: string = await generateAudioThumbnail(file.destination, file.filename);
-
-                        postFiles[0].thumbnailFileName = thumbnailFileName;
+                    if (postType === ClientConstants.POST_TYPES.AUDIO || postType === ClientConstants.POST_TYPES.VIDEO) {
+                        avFile = req.files[0];
                     }
                 }
 
-                await databaseHelper.addNewPost(req.userId, postType, postTitle, postText, audience, customAudience, postFiles);
-                return res.status(200).json({success: true});
+                let {newPost, postId}: {newPost: WebsiteBoilerplate.Post | undefined, postId: number | undefined} = await databaseHelper.addNewPost(req.userId, postType, postTitle, postText, audience, customAudience, postFiles);
+
+                if (newPost && postId) {
+                    if (avFile) {
+                        PostUploadHelper.generateAndSaveThumbnail(postId, postType!, avFile);
+                    }
+                }
+
+                return res.status(200).json({success: true, newPost});
             }
 
             return res.status(200).json({success: false});

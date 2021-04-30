@@ -1,6 +1,7 @@
 import express, { Response } from 'express'; // Necessary to import express, otherwise Response won't resolve
 import fs from 'fs';
-import { mkdir } from 'fs/promises';
+import path from 'path';
+import { mkdir, unlink } from 'fs/promises';
 
 export default class FileHandler {
     /**
@@ -40,6 +41,23 @@ export default class FileHandler {
         }
         catch (err) {
             // Do nothing, the directory probably already existed
+        }
+    }
+
+    static async deleteFile(filePath: string) {
+        try {
+            await unlink(filePath);
+        }
+        catch (err) {
+            console.error(`Failed to delete file at location: ${filePath}:\n${err.message}`);
+        }
+    }
+
+    static async deleteAllFiles(files: Express.Multer.File[]) {
+        for (let file of files) {
+            let filePath: string = path.join(file.destination, file.filename);
+
+            this.deleteFile(filePath);
         }
     }
 }

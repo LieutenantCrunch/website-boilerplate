@@ -33,7 +33,13 @@ export default class UserService {
 
     static async getCurrentDetails() {
         try {
-            let response = await axiosApi.get(Constants.API_PATH_USERS + 'currentUserDetails');
+            if (this.getCurrentDetailsCancel !== undefined) {
+                this.getCurrentDetailsCancel();
+            }
+
+            let response = await axiosApi.get(Constants.API_PATH_USERS + 'currentUserDetails', {
+                cancelToken: new CancelToken(c => this.getCurrentDetailsCancel = c)
+            });
 
             if (response.data && response.data.success) {
                 return response.data.userDetails;
@@ -65,8 +71,14 @@ export default class UserService {
     static async getProfileInfo(profileName) {
         try
         {
+            if (this.getProfileInfoCancel !== undefined) {
+                this.getProfileInfoCancel();
+            }
+
             let queryString = encodeURI(`profileName=${profileName}`);
-            let response = await axiosApi.get(Constants.API_PATH_USERS + Constants.API_PATH_PUBLIC + `/getProfileInfo?${queryString}`);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + Constants.API_PATH_PUBLIC + `/getProfileInfo?${queryString}`, {
+                cancelToken: new CancelToken(c => this.getProfileInfoCancel = c)
+            });
 
             if (response.data && response.data.success) {
                 return response.data.profileInfo;
@@ -197,7 +209,13 @@ export default class UserService {
 
     static async getConnectionTypeDict() {
         try {
-            let response = await axiosApi.get(Constants.API_PATH_USERS + '/getConnectionTypeDict');
+            if (this.getConnectionTypeDictCancel !== undefined) {
+                this.getConnectionTypeDictCancel();
+            }
+
+            let response = await axiosApi.get(Constants.API_PATH_USERS + '/getConnectionTypeDict', {
+                cancelToken: new CancelToken(c => this.getConnectionTypeDictCancel = c)
+            });
 
             if (response.data && response.data.success) {
                 return response.data.connectionTypeDict;
@@ -263,4 +281,7 @@ export default class UserService {
 
 // Ideally these should be static properties, but that requires a babel plugin and so on so just set it this way for now
 UserService.userServiceCancel = undefined;
+UserService.getConnectionTypeDictCancel = undefined;
+UserService.getCurrentDetailsCancel = undefined;
+UserService.getProfileInfoCancel = undefined;
 UserService.resultsCache = [];

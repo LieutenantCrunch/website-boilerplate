@@ -22,11 +22,12 @@ function SettingsPage(props) {
 
     useEffect(() => {
         if (state.displayNameError) {
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 setState(prevState => ({...prevState, displayNameError: false}))
             }, 1000);
-        }
 
+            return () => clearTimeout(timer);
+        }
     }, [state.displayNameError]);
 
     const handleLogoutFromEverywhereClick = async () => {

@@ -1,5 +1,4 @@
 import React, { useRef, useState } from 'react';
-import classNames from 'classnames';
 import { isMobile } from 'react-device-detect';
 import Lightbox from 'react-image-lightbox';
 import * as Constants from '../constants/constants';
@@ -8,7 +7,6 @@ import PostService from '../services/post.service';
 // Material UI
 import { Avatar, Card, CardActions, CardContent, CardHeader, Divider } from '@material-ui/core';
 import LinearProgress from '@material-ui/core/LinearProgress';
-import MaterialButton from '@material-ui/core/Button';
 import MaterialTextfield from '@material-ui/core/TextField';
 import { makeStyles } from '@material-ui/core/styles';
 
@@ -212,8 +210,11 @@ export default function PostCard(props) {
     const getPostFilesSection = () => {
         if (postFiles && postFiles.length > 0) {
             switch (postType) {
-            case Constants.POST_TYPES.AUDIO:
-                return <AudioPlayer sourceFile={postFiles[0].fileName} thumbnail={postFiles[0].thumbnailFileName} />
+            case Constants.POST_TYPES.AUDIO: {
+                let thumbnail = postFiles[0].thumbnailFileName || Constants.STATIC_IMAGES.WAVEFORM;
+
+                return <AudioPlayer sourceFile={postFiles[0].fileName} thumbnail={thumbnail} />
+            }
             case Constants.POST_TYPES.IMAGE:
                 return postFiles.map((postFile, index) => (
                     <div key={postFile.fileName} 
@@ -223,8 +224,11 @@ export default function PostCard(props) {
                     >
                     </div>
                 ));
-            case Constants.POST_TYPES.VIDEO:
-                return <VideoPlayer sourceFile={postFiles[0].fileName} thumbnail={postFiles[0].thumbnailFileName} />;
+            case Constants.POST_TYPES.VIDEO: {
+                let thumbnail = postFiles[0].thumbnailFileName || Constants.STATIC_IMAGES.VID_TEMP_THUMB;
+
+                return <VideoPlayer sourceFile={postFiles[0].fileName} thumbnail={thumbnail} />;
+            }
             case Constants.POST_TYPES.TEXT:
             default:
                 return <></>;

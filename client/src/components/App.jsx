@@ -50,8 +50,6 @@ export default function App() {
     };
 
     useEffect(() => {
-        //## Probably want to implement cancels for these async calls in the cleanup function
-
         // Check if the loginDetails is hanging around and if it's expired, if so, delete it
         // Else make sure the userDetails are populated
         if (checkForValidSession()) {
@@ -66,6 +64,16 @@ export default function App() {
                     dispatch(connectionTypesFetched(connectionTypeDict));
                 }
             });
+        }
+
+        return () => {
+            if (UserService.getCurrentDetailsCancel) {
+                UserService.getCurrentDetailsCancel();
+            }
+
+            if (UserService.getConnectionTypeDictCancel) {
+                UserService.getConnectionTypeDictCancel();
+            }
         }
     }, [loginDetails]);
 

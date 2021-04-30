@@ -5,7 +5,7 @@ import PostService from '../services/post.service';
 
 import PostCard from './PostCard';
 import ProfilePictureUpload from './ProfilePictureUpload';
-import NewPostForm from './NewPostForm';
+import { NewPostForm } from './NewPostForm';
 
 // Redux
 import { useSelector } from 'react-redux';
@@ -36,7 +36,25 @@ function Profile(props) {
                 fetchDate
             }));
         }).catch(err => console.error(err));
+
+        return () => {
+            if (PostService.getMyPostsCancel) {
+                PostService.getMyPostsCancel();
+            }
+        }
     }, []);
+
+    const addNewPost = (post) => {
+        if (post) {
+            setState(prevState => ({
+                ...prevState,
+                posts: [
+                    post,
+                    ...prevState.posts
+                ]
+            }));
+        }
+    };
 
     const morePostsAvailable = () => {
         return state.posts.length < state.total;
@@ -76,7 +94,7 @@ function Profile(props) {
                     <p className="card-text">Email Address: {currentUserEmail}</p>
                 </div>
             </div>
-            <NewPostForm />
+            <NewPostForm onNewPostCreated={addNewPost} />
             {
                 state.posts.map(post => (
                     <PostCard key={post.uniqueId} post={post} />

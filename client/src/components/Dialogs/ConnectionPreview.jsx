@@ -1,5 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
-import classNames from 'classnames';
+import React, {useRef} from 'react';
 import ConnectionButton from '../FormControls/ConnectionButton';
 
 // Redux

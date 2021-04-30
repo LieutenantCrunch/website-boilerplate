@@ -3,11 +3,12 @@ import memoize from 'memoizee';
 import bcrypt from 'bcryptjs';
 import NodeCache from 'node-cache';
 import { Op } from 'sequelize';
-import { Sequelize, QueryTypes } from 'sequelize';
+import { Sequelize } from 'sequelize';
 import { v4 as uuidv4 } from 'uuid';
 
 import * as ClientConstants from '../constants/constants.client';
 import * as ServerConstants from '../constants/constants.server';
+import { isNullOrWhiteSpaceOnly } from './utilityFunctions';
 
 import { db } from '../models/_index';
 import { UserInstance } from '../models/User';
@@ -2244,16 +2245,52 @@ class DatabaseHelper {
         return {posts, total};
     }
 
-    async addNewPost(uniqueId: string, postType: number, postTitle: string | undefined, postText: string | undefined, audience: number, customAudience: string | undefined, postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined) {
+    async addNewPost(uniqueId: string, postType: number, postTitle: string | undefined, postText: string | undefined, audience: number, customAudience: string | undefined, postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined): Promise<{newPost: WebsiteBoilerplate.Post | undefined, postId: number | undefined}> {
         try
         {
-            let userId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(uniqueId);
 
-            if (userId) {
+            if (registeredUser) {
+                let failedValidation: Boolean = false;
+
                 // First, run server-side validation as a last minute check to try to prevent bad posts
+                if (postTitle && postTitle.length > 50) {
+                    failedValidation = true;
+                }
+                else if (postText && postText.length > 2000) {
+                    failedValidation = true;
+                }
 
                 // If there are files, verify only the allowed amounts are present and that the mimetypes are correct
                 let fileCount: number = 0;
+                let filePath: string = `/i/u/${registeredUser.uniqueId}/`;
+
+                switch (postType) {
+                    case ClientConstants.POST_TYPES.AUDIO:
+                        if (isNullOrWhiteSpaceOnly(postTitle)) {
+                            failedValidation = true;
+                        }
+
+                        filePath += 'a/';
+                        break;
+                    case ClientConstants.POST_TYPES.IMAGE:
+                        filePath += 'i/';
+                        break;
+                    case ClientConstants.POST_TYPES.VIDEO:
+                        if (isNullOrWhiteSpaceOnly(postTitle)) {
+                            failedValidation = true;
+                        }
+
+                        filePath += 'v/';
+                        break;
+                    default:
+                        if (isNullOrWhiteSpaceOnly(postText)) {
+                            failedValidation = true;
+                        }
+
+                        break;
+                }
+
                 if (postFiles) {
                     fileCount = postFiles.length;
 
@@ -2261,33 +2298,59 @@ class DatabaseHelper {
                     if (fileCount > 0) {
                         switch (postType) {
                             case ClientConstants.POST_TYPES.AUDIO: {
+                                let audioFile: WebsiteBoilerplate.PostFileInfo = postFiles[0];
+                                let foundError: Boolean = false;
+
                                 if (fileCount > 1) {
                                     postFiles.splice(1);
                                 }
 
-                                if (!postFiles[0].mimeType.startsWith('audio/')) {
+                                if (!audioFile.mimeType.startsWith('audio/')) {
+                                    foundError = true;
+                                }
+                                else if (audioFile.originalFileName.length > 150) {
+                                    foundError = true;
+                                }
+
+                                if (foundError) {
                                     postFiles = [];
                                 }
 
                                 break;
                             }
                             case ClientConstants.POST_TYPES.IMAGE: {
+                                let foundError: Boolean = false;
+
                                 if (fileCount > 4) {
                                     postFiles.splice(4);
                                 }
     
-                                if (postFiles.some(postFile => !postFile.mimeType.startsWith('image/'))) {
+                                if (postFiles.some(postFile => (!postFile.mimeType.startsWith('image/') || postFile.originalFileName.length > 150))) {
+                                    foundError = true;
+                                }
+
+                                if (foundError) {
                                     postFiles = [];
                                 }
 
                                 break;
                             }
                             case ClientConstants.POST_TYPES.VIDEO: {
+                                let videoFile: WebsiteBoilerplate.PostFileInfo = postFiles[0];
+                                let foundError: Boolean = false;
+
                                 if (fileCount > 1) {
                                     postFiles.splice(1);
                                 }
 
-                                if (!postFiles[0].mimeType.startsWith('video/')) {
+                                if (!videoFile.mimeType.startsWith('video/')) {
+                                    foundError = true;
+                                }
+                                else if (videoFile.originalFileName.length > 150) {
+                                    foundError = true;
+                                }
+
+                                if (foundError) {
                                     postFiles = [];
                                 }
 
@@ -2305,8 +2368,8 @@ class DatabaseHelper {
                     fileCount = postFiles.length;
                 }
 
-                if (fileCount === 0 && !postText) {
-                    return; //## Error
+                if ((fileCount === 0 && !postText) || failedValidation) {
+                    return {newPost: undefined, postId: undefined};
                 }
 
                 let postedOn: Date = new Date(Date.now());
@@ -2318,7 +2381,7 @@ class DatabaseHelper {
                     postText: postText || null,
                     postTitle: postTitle || null,
                     postType,
-                    registeredUserId: userId,
+                    registeredUserId: registeredUser.id!,
                     uniqueId: postUniqueId
                 });
 
@@ -2341,12 +2404,11 @@ class DatabaseHelper {
                         }
                     }
 
-                    
                     if (fileCount > 0) {
                         for (let postFile of postFiles!) {
                             await db.PostFile.create({
                                 postId: newPost!.id,
-                                registeredUserId: userId!,
+                                registeredUserId: registeredUser.id!,
                                 fileName: postFile.fileName,
                                 fileSize: postFile.size,
                                 mimeType: postFile.mimeType,
@@ -2355,6 +2417,42 @@ class DatabaseHelper {
                             });
                         }
                     }
+
+                    let displayNames: DisplayNameInstance[] = registeredUser.displayNames!;
+                    let displayName: DisplayNameInstance = displayNames[0];
+                    let profilePictures: ProfilePictureInstance[] = registeredUser.profilePictures!;
+                    let profilePicture: ProfilePictureInstance | undefined = profilePictures[0];
+
+                    let returnPostFiles: WebsiteBoilerplate.PostFileInfo[] = [];
+
+                    if (fileCount > 0) {
+                        returnPostFiles = postFiles!.map(file => ({
+                            ...file,
+                            fileName: `${filePath}${file.fileName}`,
+                            thumbnailFileName: file.thumbnailFileName ? `${filePath}${file.thumbnailFileName}` : undefined
+                        }));
+                    }
+
+                    return { 
+                        newPost: {
+                            lastEditedOn: null,
+                            commentCount: 0,
+                            postedOn,
+                            postText: postText || null,
+                            postTitle: postTitle || null,
+                            postType,
+                            postedBy: {
+                                displayName: displayName.displayName,
+                                displayNameIndex: displayName.displayNameIndex,
+                                pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                                profileName: registeredUser.profileName,
+                                uniqueId: registeredUser.uniqueId
+                            },
+                            uniqueId: postUniqueId,
+                            postFiles: returnPostFiles
+                        },
+                        postId: newPost.id!
+                    };
                 }
             }
         }
@@ -2362,6 +2460,8 @@ class DatabaseHelper {
         {
             console.error(`Error adding new post:\n${err.message}`);
         }
+
+        return {newPost: undefined, postId: undefined};
     }
 
     // The end date is used to prevent new comments from coming back and winding up inserted in a strange place in the list. If they want the latest comments, they'll have to refresh the page
@@ -2566,6 +2666,24 @@ class DatabaseHelper {
         }
         catch (err) {
             console.error(`Error adding new comment:\n${err.message}`);
+        }
+    }
+
+    async updateThumbnailForPostFile(postId: number, thumbnailFileName: string) {
+        try {
+            let postFile: PostFileInstance | null = await db.PostFile.findOne({
+                where: {
+                    postId
+                }
+            });
+
+            if (postFile) {
+                postFile.thumbnailFileName = thumbnailFileName;
+                await postFile.save();
+            }
+        }
+        catch (err) {
+            console.error(`Error updating thumbnail for postFile:\n${err.message}`);
         }
     }
 };

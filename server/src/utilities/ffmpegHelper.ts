@@ -1,18 +1,13 @@
 import ffmpeg from 'fluent-ffmpeg';
 import path from 'path';
 import * as ClientConstants from '../constants/constants.client';
+import { randomInt } from './utilityFunctions';
 
 export const logFilters = () => {
     ffmpeg.getAvailableFilters(function(err, filters) {
         console.log("Available filters:");
         console.dir(filters);
     });
-};
-
-// Might want to move this into a utility file somewhere
-// Source: https://www.w3schools.com/JS/js_random.asp
-const randomInt = (min: number, max: number): number => {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
 export const generateAudioThumbnail = async (pathName: string, fileName: string): Promise<string> => {

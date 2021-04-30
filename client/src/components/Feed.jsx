@@ -25,6 +25,12 @@ function Feed(props) {
                 fetchDate
             }));
         }).catch(err => console.error(err));
+
+        return () => {
+            if (PostService.getFeedCancel) {
+                PostService.getFeedCancel();
+            }
+        }
     }, []);
 
     const morePostsAvailable = () => {

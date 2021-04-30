@@ -1,5 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
-import classNames from 'classnames';
+import React, {useState, useRef} from 'react';
 import UserSearch from '../FormControls/UserSearch';
 import UserService from '../../services/user.service';
 import ConnectionButton from '../FormControls/ConnectionButton';

@@ -60,7 +60,8 @@ export const POST_TYPES = Object.freeze({
     TEXT: 0,
     IMAGE: 1,
     VIDEO: 2,
-    AUDIO: 3
+    AUDIO: 3,
+    ALL: 1000
 });
 
 export const POST_AUDIENCES = Object.freeze({

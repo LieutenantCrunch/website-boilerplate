@@ -16,11 +16,12 @@ export const API_PATH_PUBLIC = 'public/';
 // Frequently used static images
 export const STATIC_IMAGES = Object.freeze({
     PFP_DEFAULT: STATIC_IMAGE_PATH + 'pfpDefault.svgz',
-    WAVEFORM: STATIC_IMAGE_PATH + 'waveform.png'
+    WAVEFORM: STATIC_IMAGE_PATH + 'waveform.png',
+    VID_TEMP_THUMB: STATIC_IMAGE_PATH + 'vid-temp-thumb.png'
 });
 
 // Generic Constants
-export const MAX_UPLOAD_SIZE = 128; /* 128 Megabytes */
+export const MAX_UPLOAD_SIZE = 1280; /* 128 Megabytes */
 export const AUDIO_WAVEFORM_DIMS = Object.freeze({ /* Dimensions of Audio Waveform images */
     WIDTH: 640,
     HEIGHT: 120
@@ -60,7 +61,8 @@ export const POST_TYPES = Object.freeze({
     TEXT: 0,
     IMAGE: 1,
     VIDEO: 2,
-    AUDIO: 3
+    AUDIO: 3,
+    ALL: 1000
 });
 
 export const POST_AUDIENCES = Object.freeze({

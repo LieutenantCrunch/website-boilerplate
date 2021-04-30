@@ -156,8 +156,12 @@ const useStyles = makeStyles(() => ({
             borderStyle: 'solid'
         }
     },
-    contentError: {
-        borderColor: 'rgba(255,0,0,.50)'
+    contentMessage: {
+        color: 'rgb(255,0,0,.5)',
+        padding: '0 16px',
+        textAlign: 'center',
+        whiteSpace: 'pre',
+        width: '100%'
     },
     imageLoaded: {
         '&:hover $removeControls': {
@@ -183,7 +187,7 @@ const useStyles = makeStyles(() => ({
     }
 }));
 
-export default function NewPostForm(props) {
+export const NewPostForm = ({ onNewPostCreated }) => {
     const MAX_TEXT_LENGTH = 2000;
     const MAX_TITLE_LENGTH = 50;
     const MAX_ALLOWED_IMAGES = 4; // This value cannot be changed without making other changes throughout the file. It is set as a constant for readability and to make future updates a bit simpler
@@ -205,6 +209,7 @@ export default function NewPostForm(props) {
 
     const [state, setState] = useState({
         contentError: false,
+        contentHelper: '',
         customAudience: [],
         files: [],
         images: [],
@@ -217,6 +222,7 @@ export default function NewPostForm(props) {
         postTitle: '',
         postTitleHelper: '',
         postType: Constants.POST_TYPES.TEXT,
+        tempThumbnailFileName: '',
         textError: false,
         textLimit: 0,
         titleError: false,
@@ -240,7 +246,7 @@ export default function NewPostForm(props) {
         if (popperUpdate) {
             popperUpdate();
         }
-    }, [state.postAudience])
+    }, [state.postAudience]);
 
     const classes = useStyles(state);
 
@@ -405,21 +411,29 @@ export default function NewPostForm(props) {
                         ...filteredFiles
                     ];
 
-                    break;
-                case Constants.POST_TYPES.VIDEO:
-                    stateUpdates.images = [URL.createObjectURL(await getVideoCover(filteredFiles[0]))];
-                    stateUpdates.files = [filteredFiles[0]];
+                    stateUpdates.tempThumbnailFileName = '';
 
                     break;
+                case Constants.POST_TYPES.VIDEO: {
+                    let tempThumbnailFileName = URL.createObjectURL(await getVideoCover(filteredFiles[0]));
+
+                    stateUpdates.images = [tempThumbnailFileName];
+                    stateUpdates.files = [filteredFiles[0]];
+                    stateUpdates.tempThumbnailFileName = tempThumbnailFileName;
+
+                    break;
+                }
                 case Constants.POST_TYPES.AUDIO:
                     stateUpdates.images = [Constants.STATIC_IMAGES.WAVEFORM];
                     stateUpdates.files = [filteredFiles[0]];
+                    stateUpdates.tempThumbnailFileName = '';
 
                     break;
                 case Constants.POST_TYPES.TEXT:
                 default:
                     stateUpdates.images = [];
                     stateUpdates.files = [];
+                    stateUpdates.tempThumbnailFileName = '';
 
                     break;
             }
@@ -533,7 +547,7 @@ export default function NewPostForm(props) {
         }
 
         if (PlaceholderComponent) {
-            return <div className={classNames(classes.imageThumbnail, state.contentError ? classes.contentError : '')} style={{cursor: state.isLoading ? 'wait' : 'pointer'}}>
+            return <div className={classes.imageThumbnail} style={{cursor: state.isLoading ? 'wait' : 'pointer'}}>
                 <div className={classes.placeholderIcon} style={{display: state.isLoading ? 'block' : 'none'}}>
                     <CircularProgress />
                 </div>
@@ -566,6 +580,32 @@ export default function NewPostForm(props) {
             state.titleLimit < 100 ? 'warning' :
             'error';
     };
+
+    const getImagesFullClass = () => {
+        switch (state.postType) {
+            case Constants.POST_TYPES.AUDIO:
+                if (state.images.length === 1) {
+                    return classes.imagesFull;
+                }
+            case Constants.POST_TYPES.IMAGE:
+                if (state.images.length === MAX_ALLOWED_IMAGES) {
+                    return classes.imagesFull;
+                }
+                
+                break;
+            case Constants.POST_TYPES.VIDEO:
+                if (state.images.length === 1) {
+                    return classes.imagesFull;
+                }
+
+                break;
+            case Constants.POST_TYPES.TEXT:
+            default:
+                break;
+        }
+        
+        return '';
+    }
 
     const handleAudienceClick = (e) => {
         if (!state.isAudienceOpen) {
@@ -798,13 +838,19 @@ export default function NewPostForm(props) {
             postAudience: Constants.POST_AUDIENCES.CONNECTIONS, /*## This should be based off a preference */
             postText: '',
             postTitle: '',
-            postType: Constants.POST_TYPES.TEXT
+            postType: Constants.POST_TYPES.TEXT,
+            tempThumbnailFileName: '',
+            textError: false,
+            textLimit: 0,
+            titleError: false,
+            titleLimit: 0,
         }))
     };
 
     const validatePost = () => {
         let validationPassed = true;
         let stateUpdates = {};
+        let contentHelper = '';
 
         switch (state.postType) {
             case Constants.POST_TYPES.IMAGE: {
@@ -815,28 +861,36 @@ export default function NewPostForm(props) {
                     let totalFileSize = 0;
 
                     // Make sure all files are images. If they haven't been messing with the page, this should be the case
+                    let index = -1;
+
                     for (let file of state.files) {
+                        index++;
+
                         if (!file.type.startsWith('image/'))
                         {
                             contentError = true;
-                            break;
+                            contentHelper += `${index > 0 ? '\n' : ''} File #${index + 1} is not an image.`;
+                            continue;
                         }
 
                         if (file.name.length > 150) {
                             contentError = true;
-                            break;
+                            contentHelper += `${index > 0 ? '\n' : ''} Image #${index + 1}'s file name is too long.`;
+                            continue;
                         }
 
                         totalFileSize += file.size;
 
-                        if (totalFileSize > Constants.MAX_UPLOAD_SIZE) {
+                        if (totalFileSize > Constants.MAX_UPLOAD_SIZE * 1024 * 1024) {
                             contentError = true;
-                            break;
+                            contentHelper += `${index > 0 ? '\n' : ''} Image #${index + 1} pushes your total upload size past the limit.`;
+                            continue;
                         }
                     }
                 }
                 else {
                     contentError = true;
+                    contentHelper = 'Please select a file to upload (or upload less files).';
                 }
 
                 if (contentError) {
@@ -845,6 +899,7 @@ export default function NewPostForm(props) {
 
                 stateUpdates = {
                     contentError,
+                    contentHelper,
                     textError: false,
                     titleError: false,
                     postTextHelper: '',
@@ -863,18 +918,22 @@ export default function NewPostForm(props) {
                     // Make sure the file is a video. If they haven't been messing with the page, this should be the case
                     if (!file.type.startsWith('video/')) {
                         contentError = true;
+                        contentHelper = `Please select a video to upload.`;
                     }
 
                     if (file.name.length > 150) {
                         contentError = true;
+                        contentHelper += `${contentHelper.length === 0 ? '' : '\n'}The video's file name is too long.`;
                     }
 
                     if (file.size > Constants.MAX_UPLOAD_SIZE * 1024 * 1024) {
                         contentError = true;
+                        contentHelper += `${contentHelper.length === 0 ? '' : '\n'}The video's file size is too large`;
                     }
                 }
                 else {
                     contentError = true;
+                    contentHelper = `Please select a single video to upload`;
                 }
 
                 if (contentError) {
@@ -883,6 +942,7 @@ export default function NewPostForm(props) {
 
                 stateUpdates = {
                     contentError,
+                    contentHelper,
                     textError: false,
                     postTextHelper: false
                 };
@@ -911,18 +971,22 @@ export default function NewPostForm(props) {
                     // Make sure the file is audio. If they haven't been messing with the page, this should be the case
                     if (!file.type.startsWith('audio/')) {
                         contentError = true;
+                        contentHelper = `Please select an audio file to upload.`;
                     }
 
                     if (file.name.length > 150) {
                         contentError = true;
+                        contentHelper += `${contentHelper.length === 0 ? '' : '\n'}The audio's file name is too long.`;
                     }
 
                     if (file.size > Constants.MAX_UPLOAD_SIZE * 1024 * 1024) {
                         contentError = true;
+                        contentHelper += `${contentHelper.length === 0 ? '' : '\n'}The audio's file size is too large`;
                     }
                 }
                 else {
                     contentError = true;
+                    contentHelper = `Please select a single audio file to upload`;
                 }
 
                 if (contentError) {
@@ -931,6 +995,7 @@ export default function NewPostForm(props) {
 
                 stateUpdates = {
                     contentError,
+                    contentHelper,
                     textError: false,
                     postTextHelper: false
                 };
@@ -953,6 +1018,7 @@ export default function NewPostForm(props) {
             default: {
                 stateUpdates = {
                     contentError: false,
+                    contentHelper: '',
                     titleError: false,
                     postTitleHelper: ''
                 };
@@ -987,10 +1053,10 @@ export default function NewPostForm(props) {
             setIsUploading(true);
 
             let postData = {
-                postType: state.postType,
-                postTitle: state.postTitle,
+                audience: state.postAudience,
                 postText: state.postText,
-                audience: state.postAudience
+                postTitle: state.postTitle,
+                postType: state.postType
             };
 
             if (state.postType !== Constants.POST_TYPES.TEXT) {
@@ -1001,16 +1067,22 @@ export default function NewPostForm(props) {
                 postData.customAudience = state.customAudience;
             }
 
-            let results = await PostService.createNewPost(postData, (event) => {
+            let newPost = await PostService.createNewPost(postData, (event) => {
                 if (event.loaded === event.total) {
                     setIsUploading(false);
-                    resetForm();
                 }
 
                 setUploadProgress(Math.round((100 * event.loaded) / event.total));
             });
 
-            // Results should contain the new post, add it to the page
+            if (newPost) {
+                if (state.postType === Constants.POST_TYPES.VIDEO) {
+                    newPost.postFiles[0].thumbnailFileName = state.tempThumbnailFileName;
+                }
+
+                resetForm();
+                onNewPostCreated(newPost);
+            }
         }
     };
 
@@ -1034,7 +1106,7 @@ export default function NewPostForm(props) {
                         </div>
                     </div>
                 </div>
-                <div className={classNames(classes.previewImages, state.images.length === MAX_ALLOWED_IMAGES ? classes.imagesFull : '')}
+                <div className={classNames(classes.previewImages, getImagesFullClass())}
                     style={{
                         display: state.postType === Constants.POST_TYPES.TEXT ? 'none' : 'flex'
                     }}
@@ -1067,6 +1139,12 @@ export default function NewPostForm(props) {
                         getPlaceholderThumbnail()
                     }
                 </div>
+                {
+                    state.contentError &&
+                    <div className={classes.contentMessage}>
+                        {state.contentHelper}
+                    </div>
+                }
                 <Divider light={true} variant='middle' />
                 <div className={classes.body}>
                     <MaterialTextfield name="postText" className={classes.bodyContent} multiline variant="filled" label={`Post Text${state.postType === Constants.POST_TYPES.TEXT ? '' :  ' (optional)'}`} inputProps={{'maxLength': MAX_TEXT_LENGTH}} value={state.postText} onChange={handleTextChange} error={state.textError} helperText={state.postTextHelper} />

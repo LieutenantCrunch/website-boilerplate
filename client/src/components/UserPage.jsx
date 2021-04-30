@@ -42,6 +42,12 @@ function User (props) {
         }).catch((reason) => {
             console.error(reason);
         });
+
+        return () => {
+            if (UserService.getProfileInfoCancel) {
+                UserService.getProfileInfoCancel();
+            }
+        };
     }, []);
 
     return <div className="card col-8 col-md-4 mt-2 align-middle text-center">
