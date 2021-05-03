@@ -35,6 +35,7 @@ export default function App() {
     const [title, setTitle] = useState(null);
     const [statusMessage, setStatusMessage] = useState({type: 'info', message: null});
     const [loginDetails, setLoginDetails] = Hooks.useStateWithLocalStorage('loginDetails', null);
+    const [headerMiddleEl, setHeaderMiddleEl] = useState(<div></div>);
 
     const checkForValidSession = () => {
         if (!loginDetails) {
@@ -80,7 +81,7 @@ export default function App() {
     return(
         <div className="App">
             <Router>
-                <Header title={title} loginDetails={loginDetails} setLoginDetails={setLoginDetails} />
+                <Header title={title} loginDetails={loginDetails} setLoginDetails={setLoginDetails} headerMiddleEl={headerMiddleEl} />
                 <div className="container-fluid d-flex align-items-center flex-column">
                     <Switch>
                         <Route path="/register" exact={true}>
@@ -108,7 +109,9 @@ export default function App() {
                         </Route>
                         <Route path="/feed" exact={true}>
                             <Feed 
-                                setTitle={setTitle} />
+                                setTitle={setTitle}
+                                setHeaderMiddleEl={setHeaderMiddleEl}
+                            />
                         </Route>
                         <Route path="/profile" exact={true} render={() => {
                             return (checkForValidSession() ? 

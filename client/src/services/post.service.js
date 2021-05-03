@@ -41,7 +41,7 @@ export default class PostService {
         return {posts: [], total: 0};
     }
 
-    static async getFeed(pageNumber, endDate) {
+    static async getFeed(pageNumber, endDate, postType) {
         try {
             if (this.getFeedCancel !== undefined) {
                 this.getFeedCancel();
@@ -51,6 +51,10 @@ export default class PostService {
                 pageNumber,
                 endDate
             };
+
+            if (postType !== undefined) {
+                queryParameters.postType = postType;
+            }
 
             let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
             

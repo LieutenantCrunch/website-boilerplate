@@ -19,6 +19,7 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
             if (req.userId !== undefined) {               
                 let pageNumber: number | undefined = req.query.pageNumber ? parseInt(req.query.pageNumber.toString()) : undefined;
                 let endDate: Date | undefined = undefined;
+                let postType: number | undefined = req.query.postType ? parseInt(req.query.postType.toString()) : undefined;
                 
                 try
                 {
@@ -28,7 +29,7 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
 
                 }
 
-                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getFeed(req.userId, null, endDate, pageNumber);
+                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getFeed(req.userId, postType, endDate, pageNumber);
 
                 return res.status(200).json({success: true, posts, total});
             }

@@ -3,6 +3,7 @@ import React from 'react';
 import { withRouter, Link } from 'react-router-dom';
 import AuthService from '../services/auth.service';
 import { reduxLogout } from '../redux/rootReducer';
+import { capitalizeString } from '../utilities/TextUtilities';
 
 // Redux
 import { useDispatch, useSelector } from 'react-redux';
@@ -11,13 +12,7 @@ import { selectCurrentUserRoles } from '../redux/users/currentUserSlice';
 function Header(props) {
     const dispatch = useDispatch();
     const currentRoles = useSelector(selectCurrentUserRoles);
-    const capitalize = (s) => {
-        if (typeof s !== 'string') {
-            return '';
-        }
-
-        return s.charAt(0).toUpperCase() + s.slice(1);
-    };
+    
 
     const collapseNavbarMenu = () => {
         let headerNavbarToggleMenu = document.getElementById('headerNavbarToggleMenu');
@@ -59,7 +54,7 @@ function Header(props) {
     };
 
     /* TODO: Default this better. This does not handle if they come in without a path, ex: http://localhost:3000/ */
-    const title = capitalize(props.location.pathname.substring(1, props.location.pathname.length) || 'Welcome!');
+    const title = capitalizeString(props.location.pathname.substring(1, props.location.pathname.length) || 'Welcome!');
     const loginDetailsExists = props.loginDetails !== null;
 
     return (
@@ -70,6 +65,9 @@ function Header(props) {
         <nav className="navbar fixed-top bg-dark navbar-dark">
             <div className="container-fluid">
                 <a className="navbar-brand" href="#">{props.title || title}</a>
+                {
+                    props.headerMiddleEl
+                }
                 <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#headerNavbarToggleMenu" aria-expanded="false" aria-label="Toggle navigation">
                     <span className="navbar-toggler-icon"></span>
                 </button>

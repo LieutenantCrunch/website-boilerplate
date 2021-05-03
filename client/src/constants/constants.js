@@ -65,6 +65,14 @@ export const POST_TYPES = Object.freeze({
     ALL: 1000
 });
 
+export const POST_TYPES_NAMES = Object.freeze({
+    [POST_TYPES.TEXT]: 'Text Posts',
+    [POST_TYPES.IMAGE]: 'Image Posts',
+    [POST_TYPES.VIDEO]: 'Video Posts',
+    [POST_TYPES.AUDIO]: 'Audio Posts',
+    [POST_TYPES.ALL]: 'All Posts'
+});
+
 export const POST_AUDIENCES = Object.freeze({
     CONNECTIONS: 0,
     EVERYONE: 1,

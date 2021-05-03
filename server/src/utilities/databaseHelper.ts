@@ -2149,7 +2149,7 @@ class DatabaseHelper {
     }
 
     // The end date is used to prevent new posts from coming back and winding up inserted in a strange place in the list. If they want the latest posts, they'll have to refresh the page
-    async getFeed(uniqueId: string | number | undefined, postType: number | null, endDate: Date | undefined, pageNumber: number | undefined): Promise<{posts: WebsiteBoilerplate.Post[], total: number}> {
+    async getFeed(uniqueId: string | number | undefined, postType: number | undefined, endDate: Date | undefined, pageNumber: number | undefined): Promise<{posts: WebsiteBoilerplate.Post[], total: number}> {
         let posts: WebsiteBoilerplate.Post[] = [];
         let total: number = 0;
 
@@ -2161,22 +2161,23 @@ class DatabaseHelper {
             // This has to be done separate due to the fact that the files are being joined in, 
             // thus causing single posts to be counted multiple times when there are multiple 
             // images for a particular post
-            const count: number = await db.Views.FeedView.count({
-                where: {
-                    userUniqueId: uniqueId,
-                    postedOn: {
-                        [Op.lte]: endDate || new Date(Date.now())
-                    }
+            let whereOptions: {[key: string]: any;} = {
+                userUniqueId: uniqueId,
+                postedOn: {
+                    [Op.lte]: endDate || new Date(Date.now())
                 }
+            };
+
+            if (postType !== undefined && postType !== ClientConstants.POST_TYPES.ALL) {
+                whereOptions.postType = postType;
+            }
+            
+            const count: number = await db.Views.FeedView.count({
+                where: whereOptions
             });
 
             const rows: FeedViewInstance[] = await db.Views.FeedView.findAll({
-                where: {
-                    userUniqueId: uniqueId,
-                    postedOn: {
-                        [Op.lte]: endDate || new Date(Date.now())
-                    }
-                },
+                where: whereOptions,
                 order: [
                     ['id', 'DESC']
                 ],
@@ -2619,7 +2620,7 @@ class DatabaseHelper {
         return {comments, total};
     }
 
-    async addNewPostComment(userUniqueId: string, postUniqueId: string, commentText: string, parentCommentUniqueId: string | undefined) {
+    async addNewPostComment(userUniqueId: string, postUniqueId: string, commentText: string, parentCommentUniqueId: string | undefined): Promise<WebsiteBoilerplate.PostComment | undefined> {
         try {
             // Validate that this user can actually comment on the post
             let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
@@ -2667,6 +2668,8 @@ class DatabaseHelper {
         catch (err) {
             console.error(`Error adding new comment:\n${err.message}`);
         }
+
+        return undefined;
     }
 
     async updateThumbnailForPostFile(postId: number, thumbnailFileName: string) {

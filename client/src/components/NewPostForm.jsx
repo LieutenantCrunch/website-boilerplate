@@ -21,7 +21,7 @@ import { makeStyles } from '@material-ui/core/styles';
 
 // Assorted Functionality
 import * as Constants from '../constants/constants';
-import { isNullOrWhiteSpaceOnly } from '../utilities/TextValidation';
+import { isNullOrWhiteSpaceOnly } from '../utilities/TextUtilities';
 import PostService from '../services/post.service';
 
 // Redux
