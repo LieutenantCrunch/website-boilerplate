@@ -147,9 +147,9 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                     if (avFile) {
                         PostUploadHelper.generateAndSaveThumbnail(postId, postType!, avFile);
                     }
-                }
 
-                return res.status(200).json({success: true, newPost});
+                    return res.status(200).json({success: true, newPost});
+                }
             }
 
             return res.status(200).json({success: false});
@@ -164,9 +164,11 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                 let { postUniqueId, commentText, parentCommentUniqueId}: { postUniqueId: string | undefined, commentText: string | undefined, parentCommentUniqueId: string | undefined} = req.body;
 
                 if (postUniqueId && commentText && commentText.length <= 500) {
-                    await databaseHelper.addNewPostComment(req.userId, postUniqueId, commentText, parentCommentUniqueId);
+                    let newComment: WebsiteBoilerplate.PostComment | undefined = await databaseHelper.addNewPostComment(req.userId, postUniqueId, commentText, parentCommentUniqueId);
 
-                    return res.status(200).json({success: true});                    
+                    if (newComment) {
+                        return res.status(200).json({success: true, newComment});
+                    }
                 }
             }
 

@@ -144,11 +144,15 @@ export default function PostCard(props) {
                 parentCommentUniqueId = state.replyToComment.uniqueId;
             }
 
-            let response = await PostService.createNewPostComment(uniqueId, state.commentText, parentCommentUniqueId);
+            let newComment = await PostService.createNewPostComment(uniqueId, state.commentText, parentCommentUniqueId);
 
-            if (response.success) {
+            if (newComment) {
                 setState(prevState => ({
                     ...prevState,
+                    comments: [
+                        newComment,
+                        ...prevState.comments
+                    ],
                     commentText: '',
                     commentLimit: 0,
                     replyToComment: null

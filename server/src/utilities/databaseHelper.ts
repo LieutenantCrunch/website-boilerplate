@@ -357,6 +357,52 @@ class DatabaseHelper {
         return undefined;
     }
 
+    async getUserWithId(id: number): Promise<UserInstance | null> {
+        try
+        {
+            let registeredUser: UserInstance | null = await db.User.findOne({
+                where: {
+                    id
+                },
+                include: [
+                    {
+                        model: db.DisplayName,
+                        as: 'displayNames',
+                        where: {
+                            isActive: true
+                        },
+                        attributes: [
+                            'displayName',
+                            'displayNameIndex'
+                        ]
+                    },
+                    {
+                        model: db.ProfilePicture,
+                        as: 'profilePictures',
+                        required: false,
+                        on: {
+                            id: {
+                                [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `User`.`id` order by `profile_picture`.`id` desc limit 1)')
+                            }
+                        },
+                        attributes: [
+                            'fileName',
+                            'smallFileName'
+                        ]
+                    }
+                ]
+            });
+
+            return registeredUser;
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with id ${id}: ${err.message}`);
+        }
+        
+        return null;
+    }
+
     async getUserWithUniqueId(uniqueId: string): Promise<UserInstance | null> {
         try
         {
@@ -2633,15 +2679,19 @@ class DatabaseHelper {
                 }
             });
 
-            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(userUniqueId);
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(userUniqueId);
             
-            if (postInfo && registeredUserId) {
+            if (postInfo && registeredUser) {
                 let parentCommentId: number | undefined = undefined;
+                let parentComment: PostCommentInstance | null = null;
 
                 if (parentCommentUniqueId) {
-                    let parentComment: PostCommentInstance | null = await db.PostComment.findOne({
+                    parentComment = await db.PostComment.findOne({
                         attributes: [
-                            'id'
+                            'id',
+                            'commentText',
+                            'registeredUserId',
+                            'uniqueId'
                         ],
                         where: {
                             uniqueId: parentCommentUniqueId
@@ -2658,11 +2708,50 @@ class DatabaseHelper {
                 let newPostComment: PostCommentInstance | null = await db.PostComment.create({
                     postedOn: new Date(Date.now()),
                     postId: postInfo.id!,
-                    registeredUserId,
+                    registeredUserId: registeredUser.id!,
                     commentText,
                     uniqueId,
                     parentCommentId
                 });
+
+                let displayNames: DisplayNameInstance[] = registeredUser.displayNames!;
+                let displayName: DisplayNameInstance = displayNames[0];
+                let profilePictures: ProfilePictureInstance[] = registeredUser.profilePictures!;
+                let profilePicture: ProfilePictureInstance | undefined = profilePictures[0];
+
+                let returnComment: WebsiteBoilerplate.PostComment = {
+                    commentText,
+                    postedBy: {
+                        displayName: displayName.displayName,
+                        displayNameIndex: displayName.displayNameIndex,
+                        pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                        profileName: registeredUser.profileName,
+                        uniqueId: registeredUser.uniqueId
+                    },
+                    uniqueId
+                };
+
+                if (parentComment !== null) {
+                    let parentCommentUser: UserInstance | null = await this.getUserWithId(parentComment.registeredUserId);
+
+                    if (parentCommentUser) {
+                        displayNames = parentCommentUser.displayNames!;
+                        displayName = displayNames[0];
+                        profilePictures = parentCommentUser.profilePictures!;
+                        profilePicture = profilePictures[0];
+
+                        returnComment.parentComment = {
+                            commentText: parentComment.commentText,
+                            postedBy: {
+                                displayName: displayName.displayName,
+                                displayNameIndex: displayName.displayNameIndex
+                            },
+                            uniqueId: parentComment.uniqueId
+                        };
+                    };
+                }
+
+                return returnComment;
             }
         }
         catch (err) {

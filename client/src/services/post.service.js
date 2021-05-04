@@ -128,14 +128,16 @@ export default class PostService {
             let response = await axiosApi.post(Constants.API_PATH_POSTS + 'createNewPostComment', payload);
     
             if (response.data && response.data.success) {
-                return {success: true};
+                let { newComment } = response.data;
+
+                return newComment;
             }
         }
         catch (err) {
             console.error(`Error creating new post comment:\n${err.message}`);
         }
 
-        return {success: false};
+        return null;
     }
 
     static async getPostComments(postUniqueId, pageNumber, endDate) {
