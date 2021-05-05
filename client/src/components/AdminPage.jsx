@@ -122,7 +122,7 @@ export default function AdminPage() {
                     <button type="button" className="btn-close" aria-label="Close" data-bs-target="#adminPageAlertEl" data-bs-toggle="collapse" aria-expanded="false" aria-controls="adminPageAlert"></button>
                 </div>
                 <div className="container-fluid d-flex align-items-center flex-column mt-2">
-                    <div className="card col-8 col-md-4 align-middle text-center">
+                    <div className="card col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 align-middle text-center">
                         <div className="card-header">
                             <h5 className="card-title">User Management</h5>
                         </div>

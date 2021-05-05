@@ -253,7 +253,7 @@ export default function PostCard(props) {
     };
 
     return (
-        <Card className="col-12 col-sm-8 col-md-6 col-xl-4 mb-2">
+        <Card className="col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mb-2">
             <CardHeader
                 avatar={
                     <Avatar alt={`${postedBy.displayName}#${postedBy.displayNameIndex}`} src={postedBy.pfpSmall} style={{border: '1px solid rgba(0, 0, 0, 0.08)'}} />

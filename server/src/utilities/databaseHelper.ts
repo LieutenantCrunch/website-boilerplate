@@ -2517,6 +2517,8 @@ class DatabaseHelper {
         let total: number = 0;
 
         try {
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(userUniqueId);
+
             // Validate that this user can actually view the post
             let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
                 attributes: [
@@ -2531,7 +2533,153 @@ class DatabaseHelper {
                 }
             });
 
-            if (postInfo) {
+            if (registeredUser && postInfo) {
+                let isAdministrator: Boolean = await this.checkUserForRole(registeredUser.id!, 'Administrator');
+                isAdministrator = false; //## Temp override for development
+
+                let parentCommentInclude: Array<any> = [
+                    {
+                        model: db.User,
+                        as: 'registeredUser',
+                        attributes: [
+                            'id'
+                        ],
+                        include: [
+                            {
+                                /* Include DisplayName only for parentComment previews */
+                                model: db.DisplayName,
+                                as: 'displayNames',
+                                where: {
+                                    isActive: true
+                                },
+                                attributes: [
+                                    'displayName',
+                                    'displayNameIndex'
+                                ]
+                            }
+                        ]
+                    }
+                ];
+
+                if (!isAdministrator) {
+                    parentCommentInclude.push({
+                        model: db.UserBlock,
+                        as: 'userBlocks',
+                        on: {
+                            [Op.or]: [
+                                {
+                                    [Op.and]: [
+                                        {
+                                            'registered_user_id': {
+                                                [Op.eq]: Sequelize.col('parentComment.registered_user_id')
+                                            }
+                                        },
+                                        {
+                                            'blocked_user_id': registeredUser.id!
+                                        }
+                                    ]
+                                },
+                                {
+                                    [Op.and]: [
+                                        {
+                                            'blocked_user_id': {
+                                                [Op.eq]: Sequelize.col('parentComment.registered_user_id')
+                                            }
+                                        },
+                                        {
+                                            'registered_user_id': registeredUser.id!
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    });
+                }
+
+                let postCommentInclude: Array<any> = [
+                    {
+                        model: db.User,
+                        as: 'registeredUser',
+                        attributes: [
+                            'id',
+                            'profileName',
+                            'uniqueId'
+                        ],
+                        include: [
+                            /* Include DisplayName and ProfilePicture for top-level comments */
+                            {
+                                model: db.DisplayName,
+                                as: 'displayNames',
+                                where: {
+                                    isActive: true
+                                },
+                                attributes: [
+                                    'displayName',
+                                    'displayNameIndex'
+                                ]
+                            },
+                            {
+                                model: db.ProfilePicture,
+                                as: 'profilePictures',
+                                required: false,
+                                on: {
+                                    id: {
+                                        [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `registeredUser`.`id` order by `profile_picture`.`id` desc limit 1)')
+                                    }
+                                },
+                                attributes: [
+                                    'smallFileName'
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        model: db.PostComment,
+                        as: 'parentComment',
+                        required: false,
+                        attributes: [
+                            'commentText',
+                            'uniqueId'
+                        ],
+                        include: parentCommentInclude
+                    }
+                ];
+
+                if (!isAdministrator) {
+                    postCommentInclude.push({
+                        model: db.UserBlock,
+                        as: 'userBlocks',
+                        on: {
+                            [Op.or]: [
+                                {
+                                    [Op.and]: [
+                                        {
+                                            'registered_user_id': {
+                                                [Op.eq]: Sequelize.col('PostComment.registered_user_id')
+                                            }
+                                        },
+                                        {
+                                            'blocked_user_id': registeredUser.id!
+                                        }
+                                    ]
+                                },
+                                {
+                                    [Op.and]: [
+                                        {
+                                            'blocked_user_id': {
+                                                [Op.eq]: Sequelize.col('PostComment.registered_user_id')
+                                            }
+                                        },
+                                        {
+                                            'registered_user_id': registeredUser.id!
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    });
+                }
+
                 const {rows, count}: {rows: PostCommentInstance[]; count: number} = await db.PostComment.findAndCountAll({
                     where: {
                         postId: postInfo.id!
@@ -2539,76 +2687,7 @@ class DatabaseHelper {
                     order: [
                         ['id', 'DESC']
                     ],
-                    include: [
-                        {
-                            model: db.User,
-                            as: 'registeredUser',
-                            attributes: [
-                                'id',
-                                'profileName',
-                                'uniqueId'
-                            ],
-                            include: [
-                                /* Include DisplayName and ProfilePicture for top-level comments */
-                                {
-                                    model: db.DisplayName,
-                                    as: 'displayNames',
-                                    where: {
-                                        isActive: true
-                                    },
-                                    attributes: [
-                                        'displayName',
-                                        'displayNameIndex'
-                                    ]
-                                },
-                                {
-                                    model: db.ProfilePicture,
-                                    as: 'profilePictures',
-                                    required: false,
-                                    on: {
-                                        id: {
-                                            [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `registeredUser`.`id` order by `profile_picture`.`id` desc limit 1)')
-                                        }
-                                    },
-                                    attributes: [
-                                        'smallFileName'
-                                    ]
-                                }
-                            ]
-                        },
-                        {
-                            model: db.PostComment,
-                            as: 'parentComment',
-                            required: false,
-                            attributes: [
-                                'commentText',
-                                'uniqueId'
-                            ],
-                            include: [
-                                {
-                                    model: db.User,
-                                    as: 'registeredUser',
-                                    attributes: [
-                                        'id'
-                                    ],
-                                    include: [
-                                        {
-                                            /* Include DisplayName only for parentComment previews */
-                                            model: db.DisplayName,
-                                            as: 'displayNames',
-                                            where: {
-                                                isActive: true
-                                            },
-                                            attributes: [
-                                                'displayName',
-                                                'displayNameIndex'
-                                            ]
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ],
+                    include: postCommentInclude,
                     offset: (pageNumber || 0) * ServerConstants.DB_COMMENT_FETCH_PAGE_SIZE,
                     limit: ServerConstants.DB_COMMENT_FETCH_PAGE_SIZE,
                     subQuery: false // See subquery note
@@ -2625,32 +2704,56 @@ class DatabaseHelper {
                             displayNameIndex: number;
                         };
                         uniqueId: string;
-                    } | undefined = undefined;
+                    } | undefined = row.parentCommentId /* If there's no parent comment, but there's a parent comment id, then the parent comment was deleted */
+                        ? {
+                            commentText: '{This Comment Not Available}',
+                            postedBy: {
+                                /* Do not display the user's name */
+                                displayName: '',
+                                /* A value of 0 will keep the #index from displaying */
+                                displayNameIndex: 0
+                            },
+                            uniqueId: ''
+                        }
+                        : undefined;
+
+                    let posterBlocked: Boolean = false;
+
+                    if (row.userBlocks && row.userBlocks[0]) {
+                        posterBlocked = true;
+                    }
 
                     if (row.parentComment) {
                         let tempComment: PostCommentInstance = row.parentComment;
                         let parentCommenter: UserInstance = tempComment.registeredUser!;
                         let parentDisplayNames: DisplayNameInstance[] = parentCommenter.displayNames!;
 
-                        parentComment = {
-                            commentText: tempComment.commentText,
-                            postedBy: {
-                                displayName: parentDisplayNames[0].displayName,
-                                displayNameIndex: parentDisplayNames[0].displayNameIndex
-                            },
-                            uniqueId: tempComment.uniqueId
+                        // If there are no blocks on the parent comment
+                        if (!(tempComment.userBlocks && tempComment.userBlocks[0])) {
+                            // then we can fill in the parent comment with the actual data
+                            parentComment = {
+                                commentText: tempComment.commentText,
+                                postedBy: {
+                                    displayName: parentDisplayNames[0].displayName,
+                                    displayNameIndex: parentDisplayNames[0].displayNameIndex
+                                },
+                                uniqueId: tempComment.uniqueId
+                            };
                         }
                     }
 
                     return {
-                        commentText: row.commentText,
+                        commentText: posterBlocked ? '{This Comment Not Available}' : row.commentText,
                         parentComment,
                         postedBy: {
-                            displayName: displayNames[0].displayName,
-                            displayNameIndex: displayNames[0].displayNameIndex,
-                            pfpSmall: pfps && pfps[0] ? `/i/u/${commenter.uniqueId}/${pfps[0].smallFileName}` : '/i/s/pfpDefault.svgz',
-                            profileName: commenter.profileName,
-                            uniqueId: commenter.uniqueId
+                            /* Do not display the user's name */
+                            displayName: posterBlocked ? '' : displayNames[0].displayName,
+                            /* A value of 0 will keep the #index from displaying */
+                            displayNameIndex: posterBlocked ? 0 : displayNames[0].displayNameIndex,
+                            /* Display the default pfp if blocked */
+                            pfpSmall: !posterBlocked && pfps && pfps[0] ? `/i/u/${commenter.uniqueId}/${pfps[0].smallFileName}` : '/i/s/pfpDefault.svgz',
+                            profileName: posterBlocked ? '' : commenter.profileName,
+                            uniqueId: posterBlocked ? '' : commenter.uniqueId
                         },
                         uniqueId: row.uniqueId
                     };

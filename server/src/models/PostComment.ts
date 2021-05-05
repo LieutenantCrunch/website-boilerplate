@@ -2,6 +2,7 @@ import { BelongsToGetAssociationMixin, DataTypes, HasManyAddAssociationMixin, Ha
 import { SequelizeAttributes } from '../typings/SequelizeAttributes';
 import { UserInstance } from './User';
 import { PostInstance } from './Post';
+import { UserBlockInstance } from './UserBlock';
 
 export interface PostCommentAttributes {
     id?: number;
@@ -15,6 +16,7 @@ export interface PostCommentAttributes {
     post?: PostInstance;
     parentComment?: PostCommentInstance;
     childComments?: PostCommentInstance[];
+    userBlocks?: UserBlockInstance[];
 };
 
 export interface PostCommentCreationAttributes extends Optional<PostCommentAttributes, 'id'>,
@@ -104,6 +106,17 @@ export const PostCommentFactory = (sequelize: Sequelize): ModelCtor<PostCommentI
                 name: 'parentCommentId',
                 field: 'parent_comment_id'
             }
+        });
+
+        PostComment.hasMany(models.UserBlock, {
+            as: 'userBlocks',
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
+            },
+            sourceKey: 'registeredUserId',
+            constraints: false,
+            foreignKeyConstraint: false
         });
     };
 

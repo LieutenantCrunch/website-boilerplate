@@ -1,4 +1,5 @@
 import React from 'react';
+import classNames from 'classnames';
 
 // Material UI
 import { Avatar } from '@material-ui/core';
@@ -53,17 +54,22 @@ const useStyles = makeStyles(() => ({
         display: 'flex',
         justifyContent: 'flex-end',
         width: '100%'
+    },
+    notAvailable: {
+        backgroundColor: 'rgba(0,0,0,.1)'
     }
 }));
 
 export const PostComment = ({comment, handleReplyClick}) => {
     const classes = useStyles();
+    const posterNA = comment.postedBy.displayName === '';
+    const parentPosterNA = comment.parentComment && comment.parentComment.postedBy.displayName === '';
 
     return <li key={comment.uniqueId}>
         <div className={classes.comment}>
             {
                 comment.parentComment &&
-                <div className={classes.parentCommentHeader}>
+                <div className={classNames(classes.parentCommentHeader, {[classes.notAvailable]: parentPosterNA})}>
                     <span className={classes.parentCommenter}>
                         {comment.parentComment.postedBy.displayName}
                         {
@@ -71,10 +77,12 @@ export const PostComment = ({comment, handleReplyClick}) => {
                             `#${comment.parentComment.postedBy.displayNameIndex}`
                         }
                     </span>
-                    {`: ${comment.parentComment.commentText}`}
+                    <span style={{fontStyle: (parentPosterNA ? 'italic' : 'normal')}}>
+                        {`${parentPosterNA ? '' : ': '}${comment.parentComment.commentText}`}
+                    </span>
                 </div>
             }
-            <div className={classes.commentContent}>
+            <div className={classNames(classes.commentContent, {[classes.notAvailable]: posterNA})}>
                 <div className={classes.commentContentLeft}>
                     <div className={classes.commenterPfp}>
                         <Avatar alt={`${comment.postedBy.displayName}#${comment.postedBy.displayNameIndex}`} src={comment.postedBy.pfpSmall} style={{border: '1px solid rgba(0, 0, 0, 0.08)', height: '1.5em', width: '1.5em'}} />
@@ -90,16 +98,19 @@ export const PostComment = ({comment, handleReplyClick}) => {
                             }
                         </a>
                     </div>
-                    <div className={classes.commentText}>
+                    <div className={classes.commentText} style={{fontStyle: (posterNA ? 'italic' : 'normal')}}>
                         {comment.commentText}
                     </div>
                 </div>
             </div>
-            <div className={classes.commentActions}>
-                <div>
-                    <button className="btn btn-sm btn-link me-0 p-0" type="button" onClick={(e) => handleReplyClick(e, comment)}>Reply</button>
+            {
+                !posterNA &&
+                <div className={classes.commentActions}>
+                    <div>
+                        <button className="btn btn-sm btn-link me-0 p-0" type="button" onClick={(e) => handleReplyClick(e, comment)}>Reply</button>
+                    </div>
                 </div>
-            </div>
+            }
         </div>
     </li>;
 };

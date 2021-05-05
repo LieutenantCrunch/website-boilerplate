@@ -1087,7 +1087,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
     };
 
     return (
-        <form className="col-12 col-sm-8 col-md-6 col-xl-4 mb-2">
+        <form className="col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mb-2">
             <Paper elevation={3} className={classes.root} ref={dropArea} onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}>
                 <div className={classes.header}>
                     <div className={classes.mainTitle}>
