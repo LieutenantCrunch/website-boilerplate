@@ -1,5 +1,5 @@
 // React
-import React, {useState, useEffect} from 'react';
+import React, { useContext, useEffect, useState} from 'react';
 import {BrowserRouter as Router,
     Switch,
     Route,
@@ -19,16 +19,20 @@ import ResetPassword from './ResetPassword';
 import SettingsPage from './SettingsPage';
 import SideMenu from './SideMenu/SideMenu';
 import UserPage from './UserPage';
+import ViewPost from './ViewPost';
 import Welcome from './Welcome';
 
 // Services
 import UserService from '../services/user.service';
-import UtilityService from '../services/utility.service';
 
 // Redux
-import { useSelector, useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { connectionTypesFetched } from '../redux/connections/connectionTypesSlice';
 import { currentUserFetched } from '../redux/users/currentUserSlice';
+import { selectLoggedIn, setLoggedIn } from '../redux/rootReducer';
+
+// Socket.IO
+import { SocketContext } from '../contexts/socket';
 
 export default function App() {
     const dispatch = useDispatch();
@@ -36,16 +40,25 @@ export default function App() {
     const [statusMessage, setStatusMessage] = useState({type: 'info', message: null});
     const [loginDetails, setLoginDetails] = Hooks.useStateWithLocalStorage('loginDetails', null);
     const [headerMiddleEl, setHeaderMiddleEl] = useState(<div></div>);
+    const loggedIn = useSelector(selectLoggedIn);
+
+    const socket = useContext(SocketContext);
 
     const checkForValidSession = () => {
         if (!loginDetails) {
+            dispatch(setLoggedIn(false));
+
             return false;
         }
         else if (loginDetails.expirationDate && Date.now() > loginDetails.expirationDate) {
             setStatusMessage({type: 'warning', message: 'Please re-enter your credentials'});
             setLoginDetails(null);
+            dispatch(setLoggedIn(false));
+
             return false;
         }
+
+        dispatch(setLoggedIn(true));
 
         return true;
     };
@@ -65,6 +78,8 @@ export default function App() {
                     dispatch(connectionTypesFetched(connectionTypeDict));
                 }
             });
+
+            socket.connect();
         }
 
         return () => {
@@ -75,6 +90,8 @@ export default function App() {
             if (UserService.getConnectionTypeDictCancel) {
                 UserService.getConnectionTypeDictCancel();
             }
+
+            socket.disconnect();
         }
     }, [loginDetails]);
 
@@ -113,15 +130,20 @@ export default function App() {
                                 setHeaderMiddleEl={setHeaderMiddleEl}
                             />
                         </Route>
+                        <Route path="/view-post" exact={true}>
+                            <ViewPost 
+                                setTitle={setTitle}
+                            />
+                        </Route>
                         <Route path="/profile" exact={true} render={() => {
-                            return (checkForValidSession() ? 
+                            return (loggedIn ? 
                             <Profile 
                                 setTitle={setTitle}
                             /> : 
                             <Redirect to="/login" />)
                         }} />
                         <Route path="/settings" exact={true} render={() => {
-                            return (checkForValidSession() ? 
+                            return (loggedIn ? 
                             <SettingsPage 
                                 setStatusMessage={setStatusMessage}
                                 setTitle={setTitle}
@@ -131,7 +153,6 @@ export default function App() {
                         }} />
                         <Route path="/u">
                             <UserPage 
-                                checkForValidSession={checkForValidSession}
                                 setTitle={setTitle}
                             />
                         </Route>
@@ -142,7 +163,7 @@ export default function App() {
                 </div>
             </Router>
             {
-                checkForValidSession()
+                loggedIn
                 ? <SideMenu />
                 : <></>
             }

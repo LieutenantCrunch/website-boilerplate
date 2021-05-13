@@ -5,9 +5,6 @@ import { usersMiddleware } from './users/usersSlice';
 
 /* State:
 {
-    // Any time a user's details are queried from the server, they are stored here
-    users: ReduxToolkit.EntityAdapter,
-
     // Root slice for managing anything to do with outgoing or incoming connections
     connections: {
 
@@ -70,7 +67,17 @@ import { usersMiddleware } from './users/usersSlice';
 
         // The user's unique id in the system
         uniqueId: string
-    }
+    },
+
+    // Indicates whether the current user is logged in or not
+    loggedIn: Boolean,
+
+    notifications: {
+        comments: Array<{postId: string, message: string}>
+    },
+
+    // Any time a user's details are queried from the server, they are stored here
+    users: ReduxToolkit.EntityAdapter,
 }
 */
 

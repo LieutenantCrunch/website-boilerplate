@@ -1,0 +1,67 @@
+import express, {Request, Response} from 'express';
+import AuthHelper from '../../../utilities/authHelper';
+
+import { databaseHelper } from '../../../utilities/databaseHelper';
+import { adjustGUIDDashes } from '../../../utilities/utilityFunctions';
+
+const apiPostsPublicRouter = express.Router();
+
+apiPostsPublicRouter.get('/:methodName', [AuthHelper.verifyTokenAndPassThrough], async (req: Request, res: Response) => {
+    switch (req.params.methodName)
+    {
+    case 'getUserPosts':
+        try {
+            let userUniqueId: string | undefined = req.userId;
+            let postedByUniqueId: string | undefined = req.query.postedByUniqueId?.toString();
+            let pageNumber: number | undefined = req.query.pageNumber ? parseInt(req.query.pageNumber.toString()) : undefined;
+            let endDate: Date | undefined = undefined;
+            
+            try
+            {
+                endDate = req.query.endDate ? new Date(parseInt(req.query.endDate.toString())) : undefined;
+            }
+            catch (err) {
+
+            }
+
+            if (postedByUniqueId) {
+                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsByUser(userUniqueId, postedByUniqueId, null, endDate, pageNumber);
+
+                return res.status(200).json({success: true, posts, total});
+            }
+        }
+        catch (err) {
+            console.error(`Error during getMyPosts:\n${err.message}`);
+        }
+
+        return res.status(200).json({success: false});
+    case 'getPost': {
+        try {
+            let userUniqueId: string | undefined = req.userId;
+            let postId: string | undefined = req.query.postId ? req.query.postId.toString() : undefined;
+            let commentId: string | undefined = req.query.commentId ? req.query.commentId.toString() : undefined;
+
+            if (postId) {
+                let postUniqueId: string = adjustGUIDDashes(postId, true);
+                let commentUniqueId: string | undefined = commentId ? adjustGUIDDashes(commentId, true) : undefined;
+
+                let post: WebsiteBoilerplate.Post | undefined = await databaseHelper.getPost(userUniqueId, postUniqueId, commentUniqueId);
+
+                if (post) {
+                    return res.status(200).json({ success: true, post });
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error during getPost:\n${err.message}`);
+        }
+
+        return res.status(200).json({success: false});
+    }
+    default:
+        res.status(404).json({success: false, path: null, message: `${req.params.methodName} is not a valid user PFP method`});
+        break;
+    }
+});
+
+export {apiPostsPublicRouter};

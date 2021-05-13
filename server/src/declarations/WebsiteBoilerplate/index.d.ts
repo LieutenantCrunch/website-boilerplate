@@ -56,6 +56,8 @@ declare namespace WebsiteBoilerplate {
         };
         uniqueId: string;
         postFiles: PostFileInfo[] | undefined;
+        commentPage?: number;
+        postComments?: PostComment[];
     }
 
     export interface PostFileInfo {

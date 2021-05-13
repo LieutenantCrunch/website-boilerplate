@@ -4,12 +4,15 @@ import path from 'path';
 import AuthHelper from '../../utilities/authHelper';
 import PostUploadHelper from '../../utilities/postUploadHelper';
 import { databaseHelper } from '../../utilities/databaseHelper';
+import { adjustGUIDDashes } from '../../utilities/utilityFunctions';
 import * as ClientConstants from '../../constants/constants.client';
-
 import { generateAudioThumbnail, generateVideoThumbnail } from '../../utilities/ffmpegHelper';
 import FileHandler from '../../utilities/fileHandler';
+import { apiPostsPublicRouter } from './posts/public';
 
 const apiPostsRouter: Router = express.Router();
+
+apiPostsRouter.use('/public', apiPostsPublicRouter);
 
 apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request, res: Response) => {
     switch (req.params.methodName)
@@ -53,13 +56,13 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
 
                 }
 
-                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsForUser(req.userId, null, endDate, pageNumber);
+                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsByUser(req.userId, req.userId, null, endDate, pageNumber);
 
                 return res.status(200).json({success: true, posts, total});
             }
         }
         catch (err) {
-            console.error(err.message);
+            console.error(`Error during getMyPosts:\n${err.message}`);
         }
 
         return res.status(200).json({success: false});
@@ -83,6 +86,9 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
 
                     return res.status(200).json({success: true, comments, total});
                 }
+            }
+            else {
+                return res.status(200).json({success: true, comments: [], total: 0});
             }
         }
         catch (err) {

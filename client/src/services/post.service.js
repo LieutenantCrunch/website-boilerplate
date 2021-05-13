@@ -2,6 +2,7 @@ import axiosApi from '../services/axios-api';
 import axios from 'axios';
 import 'regenerator-runtime'; /* Necessary for async/await to not throw an error. https://tenor.com/view/idk-idont-know-sassy-kid-girl-gif-4561444 */
 import * as Constants from '../constants/constants';
+import { isNullOrWhiteSpaceOnly } from '../utilities/TextUtilities';
 
 const CancelToken = axios.CancelToken;
 
@@ -121,6 +122,39 @@ export default class PostService {
         return null;
     }
 
+    static async getPost(postId, commentId) {
+        try {
+            if (this.getPostCancel !== undefined) {
+                this.getPostCancel();
+            }
+
+            let queryParameters = {
+                postId
+            };
+
+            if (!isNullOrWhiteSpaceOnly(commentId)) {
+                queryParameters.commentId = commentId;
+            }
+
+            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
+
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + Constants.API_PATH_PUBLIC + `/getPost?${queryString}`, {
+                cancelToken: new CancelToken(c => this.getPostCancel = c)
+            });
+
+            console.log(response);
+
+            if (response.data && response.data.success) {
+                return response.data.post;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting post:\n${err.message}`);
+        }
+
+        return null;
+    }
+
     static async createNewPostComment(postUniqueId, commentText, parentCommentUniqueId) {
         try {
             let payload = {postUniqueId, commentText, parentCommentUniqueId};
@@ -178,6 +212,7 @@ export default class PostService {
 };
 
 // Ideally these should be static properties, but that requires a babel plugin and so on so just set it this way for now
-PostService.getPostCommentsCancel = undefined;
 PostService.getFeedCancel = undefined;
 PostService.getMyPostsCancel = undefined;
+PostService.getPostCancel = undefined;
+PostService.getPostCommentsCancel = undefined;

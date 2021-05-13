@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import classNames from 'classnames';
+import scrollIntoView from 'scroll-into-view-if-needed';
+
+import { adjustGUIDDashes } from '../utilities/TextUtilities';
 
 // Material UI
 import { Avatar } from '@material-ui/core';
@@ -60,12 +63,23 @@ const useStyles = makeStyles(() => ({
     }
 }));
 
-export const PostComment = ({comment, handleReplyClick}) => {
+export const PostComment = ({comment, takeFocus, handleReplyClick}) => {
     const classes = useStyles();
     const posterNA = comment.postedBy.displayName === '';
     const parentPosterNA = comment.parentComment && comment.parentComment.postedBy.displayName === '';
+    const commentId = adjustGUIDDashes(comment.uniqueId);
 
-    return <li key={comment.uniqueId}>
+    useEffect(() => {
+        if (takeFocus) {
+            let focusEl = document.getElementById(commentId);
+
+            if (focusEl) {
+                scrollIntoView(focusEl, { block: 'start', scrollMode: 'if-needed'});
+            }
+        }
+    }, []);
+
+    return <li key={comment.uniqueId} id={commentId}>
         <div className={classes.comment}>
             {
                 comment.parentComment &&

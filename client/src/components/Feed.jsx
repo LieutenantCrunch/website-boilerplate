@@ -4,7 +4,7 @@ import { withRouter } from 'react-router-dom';
 import PostService from '../services/post.service';
 import * as Constants from '../constants/constants';
 import { useHistoryState } from '../hooks/hooks';
-import PostCard from './PostCard';
+import { PostCard } from './PostCard';
 
 function Feed(props) {
     const [state, setState] = useState({

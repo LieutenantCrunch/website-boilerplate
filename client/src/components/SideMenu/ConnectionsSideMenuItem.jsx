@@ -184,7 +184,7 @@ export default function ConnectionsSideMenuItem(props) {
             onClick={toggleExpanded}
         >
             <div className="sideMenuItemTab"></div>
-            <div className="sideMenuItemDetails">
+            <div className="sideMenuItemDetails" title="Connections">
                 <div className="sideMenuItemTitle">
                     <h4 className="sideMenuItemText">Connections</h4>
                     <div className="sideMenuItemIcon"></div>

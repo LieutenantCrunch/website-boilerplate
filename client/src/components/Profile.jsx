@@ -3,7 +3,7 @@ import { isMobile } from 'react-device-detect';
 import {withRouter} from 'react-router-dom';
 import PostService from '../services/post.service';
 
-import PostCard from './PostCard';
+import { PostCard } from './PostCard';
 import ProfilePictureUpload from './ProfilePictureUpload';
 import { NewPostForm } from './NewPostForm';
 

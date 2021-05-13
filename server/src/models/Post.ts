@@ -30,7 +30,7 @@ export interface PostAttributes {
     postType: number;
     postedOn: Date;
     uniqueId: string;
-    user?: UserInstance;
+    registeredUser?: UserInstance;
     postComments?: PostCommentInstance[];
     postFiles?: PostFileInstance[];
     commentCount?: number;

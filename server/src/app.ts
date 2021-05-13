@@ -1,4 +1,6 @@
+import * as http from 'http';
 import express, {Request, Response, NextFunction} from 'express';
+import * as SocketIO from 'socket.io';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 
@@ -7,8 +9,16 @@ import FileHandler from './utilities/fileHandler';
 import * as ClientConstants from './constants/constants.client';
 import AuthHelper from './utilities/authHelper';
 
+import { socketCache } from './utilities/socketCache';
+
+const LISTEN_PORT: number = 3000;
+
 const app: express.Application = express();
-const port: number = 3000;
+const server: http.Server = http.createServer(app);
+const io: SocketIO.Server = new SocketIO.Server();
+
+io.attach(server, { cookie: false });
+
 const corsOptions: Object = {
     origin: ClientConstants.BASE_API_URL
 };
@@ -67,6 +77,10 @@ app.get('/profile', [AuthHelper.verifyTokenAndPassThrough], (req: Request, res: 
     FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
 });
 
+app.get('/view-post', [AuthHelper.verifyTokenAndPassThrough], (req: Request, res: Response) => {
+    FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+});
+
 // It may be necessary to direct everything other than api calls to index due to the single page app
 app.get('*', (req: Request, res: Response) => {
     FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
@@ -76,6 +90,19 @@ app.use((req: Request, res: Response) => {
     send404Response(res);
 });
 
-app.listen(port, () => {
-    console.log(`Listening on http://localhost:${port}`);
+io.use(AuthHelper.verifySocketToken);
+
+io.on('connection', (socket: SocketIO.Socket) => {
+    console.log(`${socket.id} connected`);
+
+    // socket.server.sockets.sockets
+    socket.on('disconnect', () => {
+        let success: Boolean = socketCache.deleteSocket(socket.id);
+
+        console.log(`${socket.id} disconnected, socket deleted: ${success}`);
+    });
+});
+
+server.listen(LISTEN_PORT, () => {
+    console.log(`Listening on http://localhost:${LISTEN_PORT}`);
 });

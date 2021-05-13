@@ -78,3 +78,9 @@ export const POST_AUDIENCES = Object.freeze({
     EVERYONE: 1,
     CUSTOM: 2
 });
+
+export const SOCKET_EVENTS = Object.freeze({
+    NOTIFY_USER: Object.freeze({
+        NEW_COMMENT: 'newComment'
+    })
+});

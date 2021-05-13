@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as ClientConstants from '../constants/constants.client';
 import * as ServerConstants from '../constants/constants.server';
 import { isNullOrWhiteSpaceOnly } from './utilityFunctions';
+import { SocketHelper } from './socketHelper';
 
 import { db } from '../models/_index';
 import { UserInstance } from '../models/User';
@@ -2070,125 +2071,151 @@ class DatabaseHelper {
     // *********************
 
     // The end date is used to prevent new posts from coming back and winding up inserted in a strange place in the list. If they want the latest posts, they'll have to refresh the page
-    async getPostsForUser(uniqueId: string, postType: number | null, endDate: Date | undefined, pageNumber: number | undefined): Promise<{posts: WebsiteBoilerplate.Post[], total: number}> {
+    async getPostsByUser(requestingUserUniqueId: string | undefined, postedByUniqueId: string, postType: number | null, endDate: Date | undefined, pageNumber: number | undefined): Promise<{posts: WebsiteBoilerplate.Post[], total: number}> {
         let posts: WebsiteBoilerplate.Post[] = [];
         let total: number = 0;
 
         try {
-            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(uniqueId);
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(postedByUniqueId);
 
             if (registeredUser) {
                 let registeredUserId: number = registeredUser.id!;
-                let displayNames: DisplayNameInstance[] = registeredUser.displayNames!;
-                let displayName: DisplayNameInstance = displayNames[0];
-                let profilePictures: ProfilePictureInstance[] = registeredUser.profilePictures!;
-                let profilePicture: ProfilePictureInstance | undefined = profilePictures[0] ? profilePictures[0] : undefined;
 
-                // This has to be done separate due to the fact that the files are being joined in, 
-                // thus causing single posts to be counted multiple times when there are multiple 
-                // images for a particular post
-                let count: number = await db.Post.count({
-                    where: {
-                        registeredUserId,
-                        postedOn: {
-                            [Op.lte]: endDate || new Date(Date.now())
+                // Make sure the user can view the posts
+                let canView: Boolean = false;
+                let isPublicUser: Boolean = isNullOrWhiteSpaceOnly(requestingUserUniqueId);
+
+                if (requestingUserUniqueId === postedByUniqueId) {
+                    // You can always view your own posts
+                    canView = true;
+                }
+                /*## Disabled for testing
+                else if (await this.checkUserForRole(registeredUser.id!, 'Administrator')) {
+                    // Administrators can view all posts
+                    canView = true;
+                }*/
+                else if (isPublicUser && registeredUser.allowPublicAccess) {
+                    // Public users can view posts of registered users that allow it
+                    // ## However, will need to make sure the post audience is set to everyone
+                    canView = true;
+                }
+                else if (!isPublicUser && !(await this.checkIfFirstUserIsBlockingSecond(registeredUserId, requestingUserUniqueId!))) {
+                    // If the requesting user is an actual user and they're not blocked
+                    canView = true;
+                }
+
+                if (canView) {
+                    let displayNames: DisplayNameInstance[] = registeredUser.displayNames!;
+                    let displayName: DisplayNameInstance = displayNames[0];
+                    let profilePictures: ProfilePictureInstance[] = registeredUser.profilePictures!;
+                    let profilePicture: ProfilePictureInstance | undefined = profilePictures[0] ? profilePictures[0] : undefined;
+
+                    // This has to be done separate due to the fact that the files are being joined in, 
+                    // thus causing single posts to be counted multiple times when there are multiple 
+                    // images for a particular post
+                    let count: number = await db.Post.count({
+                        where: {
+                            registeredUserId,
+                            postedOn: {
+                                [Op.lte]: endDate || new Date(Date.now())
+                            }
                         }
-                    }
-                });
+                    });
 
-                let rows: PostInstance[] = await db.Post.findAll({
-                    attributes: {
-                        include: [
-                            [Sequelize.fn('COUNT', Sequelize.col('postComments.id')), 'commentCount']
+                    let rows: PostInstance[] = await db.Post.findAll({
+                        attributes: {
+                            include: [
+                                [Sequelize.fn('COUNT', Sequelize.col('postComments.id')), 'commentCount']
+                            ],
+                            exclude: [
+                                'audience',
+                                'flagType',
+                                'registeredUserId'
+                            ]
+                        },
+                        where: {
+                            registeredUserId,
+                            postedOn: {
+                                [Op.lte]: endDate || new Date(Date.now())
+                            }
+                        },
+                        order: [
+                            ['id', 'DESC']
                         ],
-                        exclude: [
-                            'audience',
-                            'flagType',
-                            'registeredUserId'
-                        ]
-                    },
-                    where: {
-                        registeredUserId,
-                        postedOn: {
-                            [Op.lte]: endDate || new Date(Date.now())
-                        }
-                    },
-                    order: [
-                        ['id', 'DESC']
-                    ],
-                    group: [
-                        'id'
-                    ],
-                    include: [
-                        {
-                            model: db.PostFile,
-                            as: 'postFiles'
-                        },
-                        {
-                            model: db.PostComment,
-                            as: 'postComments',
-                            attributes: []
-                        }
-                    ],
-                    offset: (pageNumber || 0) * ServerConstants.DB_FEED_FETCH_PAGE_SIZE,
-                    limit: ServerConstants.DB_FEED_FETCH_PAGE_SIZE,
-                    subQuery: false // See subquery note
-                });
+                        group: [
+                            'id'
+                        ],
+                        include: [
+                            {
+                                model: db.PostFile,
+                                as: 'postFiles'
+                            },
+                            {
+                                model: db.PostComment,
+                                as: 'postComments',
+                                attributes: []
+                            }
+                        ],
+                        offset: (pageNumber || 0) * ServerConstants.DB_FEED_FETCH_PAGE_SIZE,
+                        limit: ServerConstants.DB_FEED_FETCH_PAGE_SIZE,
+                        subQuery: false // See subquery note
+                    });
 
-                posts = rows.map(row => {
-                    let dbPostFiles: PostFileInstance[] | undefined = row.postFiles;
-                    let postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined = undefined;
-    
-                    if (dbPostFiles && dbPostFiles.length > 0) {
-                        let filePath: string = `/i/u/${uniqueId}/`;
-    
-                        switch (row.postType) {
-                            case ClientConstants.POST_TYPES.AUDIO:
-                                filePath += 'a/';
-                                break;
-                            case ClientConstants.POST_TYPES.IMAGE:
-                                filePath += 'i/';
-                                break;
-                            case ClientConstants.POST_TYPES.VIDEO:
-                                filePath += 'v/';
-                                break;
-                            default:
-                                break;
+                    posts = rows.map(row => {
+                        let dbPostFiles: PostFileInstance[] | undefined = row.postFiles;
+                        let postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined = undefined;
+        
+                        if (dbPostFiles && dbPostFiles.length > 0) {
+                            let filePath: string = `/i/u/${postedByUniqueId}/`;
+        
+                            switch (row.postType) {
+                                case ClientConstants.POST_TYPES.AUDIO:
+                                    filePath += 'a/';
+                                    break;
+                                case ClientConstants.POST_TYPES.IMAGE:
+                                    filePath += 'i/';
+                                    break;
+                                case ClientConstants.POST_TYPES.VIDEO:
+                                    filePath += 'v/';
+                                    break;
+                                default:
+                                    break;
+                            }
+        
+                            postFiles = dbPostFiles.map(dbPostFile => ({
+                                fileName: `${filePath}${dbPostFile.fileName}`,
+                                mimeType: dbPostFile.mimeType,
+                                originalFileName: dbPostFile.originalFileName,
+                                size: dbPostFile.fileSize,
+                                thumbnailFileName: dbPostFile.thumbnailFileName ? `${filePath}${dbPostFile.thumbnailFileName}` : undefined
+                            }));
                         }
-    
-                        postFiles = dbPostFiles.map(dbPostFile => ({
-                            fileName: `${filePath}${dbPostFile.fileName}`,
-                            mimeType: dbPostFile.mimeType,
-                            originalFileName: dbPostFile.originalFileName,
-                            size: dbPostFile.fileSize,
-                            thumbnailFileName: dbPostFile.thumbnailFileName ? `${filePath}${dbPostFile.thumbnailFileName}` : undefined
-                        }));
-                    }
-    
-                    return {
-                        lastEditedOn: row.lastEditedOn || null,
-                        commentCount: row.getDataValue('commentCount') || 0,
-                        postedOn: row.postedOn,
-                        postText: row.postText || null,
-                        postTitle: row.postTitle || null,
-                        postType: row.postType,
-                        postedBy: {
-                            displayName: displayName.displayName,
-                            displayNameIndex: displayName.displayNameIndex,
-                            pfpSmall: profilePicture ? `/i/u/${uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
-                            profileName: registeredUser!.profileName,
-                            uniqueId
-                        },
-                        uniqueId: row.uniqueId,
-                        postFiles
-                    };
-                });
-    
-                total = ((count as unknown) as Array<{count: number}>).length ? ((count as unknown) as Array<{count: number}>).length : count;
+        
+                        return {
+                            lastEditedOn: row.lastEditedOn || null,
+                            commentCount: row.getDataValue('commentCount') || 0,
+                            postedOn: row.postedOn,
+                            postText: row.postText || null,
+                            postTitle: row.postTitle || null,
+                            postType: row.postType,
+                            postedBy: {
+                                displayName: displayName.displayName,
+                                displayNameIndex: displayName.displayNameIndex,
+                                pfpSmall: profilePicture ? `/i/u/${postedByUniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                                profileName: registeredUser!.profileName,
+                                uniqueId: postedByUniqueId
+                            },
+                            uniqueId: row.uniqueId,
+                            postFiles
+                        };
+                    });
+        
+                    total = ((count as unknown) as Array<{count: number}>).length ? ((count as unknown) as Array<{count: number}>).length : count;
+                }
             }
         }
         catch (err) {
-            console.error(`Error getting posts for user ${uniqueId}:\n${err.message}`);
+            console.error(`Error getting posts for user ${postedByUniqueId}:\n${err.message}`);
         }
 
         return {posts, total};
@@ -2213,6 +2240,10 @@ class DatabaseHelper {
                     [Op.lte]: endDate || new Date(Date.now())
                 }
             };
+
+            if (true) { //## User Preference: Show my posts in my feed
+                whereOptions.postedByUniqueId = { [Op.ne]: uniqueId };
+            }
 
             if (postType !== undefined && postType !== ClientConstants.POST_TYPES.ALL) {
                 whereOptions.postType = postType;
@@ -2511,6 +2542,103 @@ class DatabaseHelper {
         return {newPost: undefined, postId: undefined};
     }
 
+    async getPost(userUniqueId: string | undefined, postUniqueId: string, commentUniqueId: string | undefined): Promise<WebsiteBoilerplate.Post | undefined> {
+        let isPublicUser: Boolean = isNullOrWhiteSpaceOnly(userUniqueId);
+        let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
+            where: {
+                uniqueId: postUniqueId,
+                userUniqueId: isPublicUser ? { [Op.is]: null } : userUniqueId
+            },
+            include: [
+                {
+                    model: db.PostFile,
+                    as: 'postFiles'
+                }
+            ],
+            subQuery: false
+        });
+
+        if (postInfo) {
+            let postComments: WebsiteBoilerplate.PostComment[] = [];
+            let commentPage: number = 0;
+
+            if (!isPublicUser && commentUniqueId !== undefined) {
+                let endDate: Date = new Date(Date.now());
+                let commentFound: Boolean = false;
+                let fetchedCount: number = 0;
+
+                do {
+                    let { comments: fetchedComments }: { comments: WebsiteBoilerplate.PostComment[] } = await this.getCommentsForPost(userUniqueId!, postUniqueId, endDate, commentPage);
+                    commentPage++;
+                    fetchedCount = fetchedComments.length;
+
+                    if (fetchedComments.find(fetchedComment => fetchedComment.uniqueId === commentUniqueId)) {
+                        commentFound = true;
+                        commentPage--; // Back the commentPage up one
+                    }
+
+                    postComments.push(...fetchedComments);
+
+                } while (fetchedCount && !commentFound);
+
+                if (!commentFound) {
+                    postComments = [];
+                }
+            }
+
+            let dbPostFiles: PostFileInstance[] | undefined = postInfo.postFiles;
+            let postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined = undefined;
+
+            if (dbPostFiles && dbPostFiles.length > 0) {
+                let filePath: string = `/i/u/${postInfo.postedByUniqueId}/`;
+
+                switch (postInfo.postType) {
+                    case ClientConstants.POST_TYPES.AUDIO:
+                        filePath += 'a/';
+                        break;
+                    case ClientConstants.POST_TYPES.IMAGE:
+                        filePath += 'i/';
+                        break;
+                    case ClientConstants.POST_TYPES.VIDEO:
+                        filePath += 'v/';
+                        break;
+                    default:
+                        break;
+                }
+
+                postFiles = dbPostFiles.map(dbPostFile => ({
+                    fileName: `${filePath}${dbPostFile.fileName}`,
+                    mimeType: dbPostFile.mimeType,
+                    originalFileName: dbPostFile.originalFileName,
+                    size: dbPostFile.fileSize,
+                    thumbnailFileName: dbPostFile.thumbnailFileName ? `${filePath}${dbPostFile.thumbnailFileName}` : undefined
+                }));
+            }
+
+            return {
+                lastEditedOn: postInfo.lastEditedOn,
+                commentCount: postInfo.commentCount,
+                postedOn: postInfo.postedOn,
+                postText: postInfo.postText,
+                postTitle: postInfo.postTitle,
+                postType: postInfo.postType,
+                postedBy: {
+                    displayName: postInfo.postedByDisplayName,
+                    displayNameIndex: postInfo.postedByDisplayNameIndex,
+                    pfpSmall: postInfo.postedByPfpSmall ? `/i/u/${postInfo.postedByUniqueId}/${postInfo.postedByPfpSmall}` : '/i/s/pfpDefault.svgz',
+                    profileName: postInfo.postedByProfileName,
+                    uniqueId: postInfo.postedByUniqueId
+                },
+                uniqueId: postInfo.uniqueId,
+                postFiles,
+                commentPage,
+                postComments
+            };
+        }
+
+        return undefined;
+    }
+
     // The end date is used to prevent new comments from coming back and winding up inserted in a strange place in the list. If they want the latest comments, they'll have to refresh the page
     async getCommentsForPost(userUniqueId: string, postUniqueId: string, endDate: Date | undefined, pageNumber: number | undefined): Promise<{comments: WebsiteBoilerplate.PostComment[], total: number}> {
         let comments: WebsiteBoilerplate.PostComment[] = [];
@@ -2774,7 +2902,9 @@ class DatabaseHelper {
             // Validate that this user can actually comment on the post
             let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
                 attributes: [
-                    'id'
+                    'id',
+                    'postedByUniqueId',
+                    'uniqueId'
                 ],
                 where: {
                     userUniqueId,
@@ -2785,6 +2915,7 @@ class DatabaseHelper {
             let registeredUser: UserInstance | null = await this.getUserWithUniqueId(userUniqueId);
             
             if (postInfo && registeredUser) {
+                let postedOn: Date = new Date(Date.now());
                 let parentCommentId: number | undefined = undefined;
                 let parentComment: PostCommentInstance | null = null;
 
@@ -2809,7 +2940,7 @@ class DatabaseHelper {
                 let uniqueId: string = uuidv4();
 
                 let newPostComment: PostCommentInstance | null = await db.PostComment.create({
-                    postedOn: new Date(Date.now()),
+                    postedOn,
                     postId: postInfo.id!,
                     registeredUserId: registeredUser.id!,
                     commentText,
@@ -2853,6 +2984,13 @@ class DatabaseHelper {
                         };
                     };
                 }
+
+                let { postedByUniqueId }: { postedByUniqueId: string } = postInfo;
+                let message: string = `${displayName.displayName}${ displayName.displayNameIndex === 0 ? '' : `#${displayName.displayNameIndex}`} commented on your post!`;
+                //## Might want to make this an interface
+                let notification: {[key: string]: any} = { commentId: uniqueId, message, postId: postInfo.uniqueId, createdOn: postedOn };
+
+                SocketHelper.notifyUser(postedByUniqueId, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT, notification);
 
                 return returnComment;
             }

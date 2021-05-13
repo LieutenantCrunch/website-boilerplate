@@ -17,3 +17,10 @@ export const INVALIDATE_TOKEN_MODE = Object.freeze({
 });
 
 export const EMAIL_FROM: string = '"Website Boilerplate" <test@test.test>';
+
+export const VERIFY_TOKEN_RESULTS = Object.freeze({
+    VALID: 0,
+    INVALID: 1,
+    EXPIRED: 2,
+    ERROR: 3
+});

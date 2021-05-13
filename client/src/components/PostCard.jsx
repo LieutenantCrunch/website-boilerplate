@@ -1,8 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import Lightbox from 'react-image-lightbox';
 import * as Constants from '../constants/constants';
 import PostService from '../services/post.service';
+import { adjustGUIDDashes } from '../utilities/TextUtilities';
 
 // Material UI
 import { Avatar, Card, CardActions, CardContent, CardHeader, Divider } from '@material-ui/core';
@@ -19,6 +20,10 @@ import { VideoPlayer } from './Multimedia/VideoPlayer';
 
 // Other Components
 import { PostComment } from './PostComment';
+
+// Redux
+import { useSelector } from 'react-redux';
+import { selectLoggedIn } from '../redux/rootReducer';
 
 // Material UI Styles
 const useStyles = makeStyles(() => ({
@@ -86,11 +91,12 @@ const useStyles = makeStyles(() => ({
     }
 }));
 
-export default function PostCard(props) {
+export const PostCard = ({ post, fetchDate, focusCommentId }) => {
     const MAX_COMMENT_LENGTH = 500;
-    const { post } = props;
-    const { commentCount, postedBy, postFiles, postType, uniqueId } = post;
+    const { commentCount, commentPage, postedBy, postComments, postFiles, postType, uniqueId } = post;
     const postDate = new Date(post.postedOn);
+    const postLinkId = adjustGUIDDashes(uniqueId);
+    const loggedIn = useSelector(selectLoggedIn);
 
     const [state, setState] = useState({
         comments: [],
@@ -101,11 +107,35 @@ export default function PostCard(props) {
         lightboxIndex: 0,
         pageNumber: 0,
         replyToComment: null,
-        total: 0
+        total: -1
     });
 
     const classes = useStyles();
     const commentTextfield = useRef(null);
+
+    useEffect(() => {
+        let stateUpdates = {};
+
+        if (fetchDate) {
+            stateUpdates.fetchDate = fetchDate;
+        }
+
+        if (postComments && postComments.length > 0) {
+            stateUpdates.comments = [...postComments];
+            stateUpdates.total = commentCount;
+        }
+
+        if (commentPage !== undefined) {
+            stateUpdates.pageNumber = commentPage;
+        }
+
+        if (Object.keys(stateUpdates).length > 0) {
+            setState(prevState => ({
+                ...prevState,
+                ...stateUpdates
+            }));
+        }
+    }, [post]);
 
     const handleImageClick = (e, index) => {
         if (postType === Constants.POST_TYPES.IMAGE) {
@@ -147,32 +177,52 @@ export default function PostCard(props) {
             let newComment = await PostService.createNewPostComment(uniqueId, state.commentText, parentCommentUniqueId);
 
             if (newComment) {
-                setState(prevState => ({
-                    ...prevState,
-                    comments: [
-                        newComment,
-                        ...prevState.comments
-                    ],
-                    commentText: '',
-                    commentLimit: 0,
-                    replyToComment: null
-                }));
+                let fetchOtherComments = state.fetchDate === null;
+
+                if (fetchOtherComments) {
+                    handleViewCommentsClick(e, true);
+                }
+                else {
+                    setState(prevState => ({
+                        ...prevState,
+                        comments: [
+                            newComment,
+                            ...prevState.comments
+                        ],
+                        commentText: '',
+                        commentLimit: 0,
+                        replyToComment: null
+                    }));
+                }
             }
         }
     };
 
-    const handleViewCommentsClick = async (e) => {
+    const handleViewCommentsClick = async (e, clearCommentForm) => {
         let fetchDate = Date.now();
 
         let response = await PostService.getPostComments(uniqueId, 0, fetchDate);
 
         if (response) {
-            setState(prevState => ({
-                ...prevState,
-                comments: response.comments,
-                fetchDate,
-                total: response.total
-            }));
+            if (clearCommentForm) {
+                setState(prevState => ({
+                    ...prevState,
+                    comments: response.comments,
+                    commentText: '',
+                    commentLimit: 0,
+                    fetchDate,
+                    replyToComment: null,
+                    total: response.total
+                }));
+            }
+            else {
+                setState(prevState => ({
+                    ...prevState,
+                    comments: response.comments,
+                    fetchDate,
+                    total: response.total
+                }));
+            }
         }
     };
 
@@ -211,6 +261,21 @@ export default function PostCard(props) {
         }).catch(err => console.error(err));
     };
 
+    let _postedByDisplayName = undefined;
+    const getPostedByDisplayName = () => {
+        if (_postedByDisplayName) {
+            return _postedByDisplayName;
+        }
+
+        _postedByDisplayName = postedBy.displayName;
+
+        if (postedBy.displayNameIndex !== 0) {
+            _postedByDisplayName += `#${postedBy.displayNameIndex}`;
+        }
+        
+        return _postedByDisplayName;
+    };
+
     const getPostFilesSection = () => {
         if (postFiles && postFiles.length > 0) {
             switch (postType) {
@@ -240,7 +305,7 @@ export default function PostCard(props) {
         }
 
         return <></>;
-    }
+    };
 
     const getCommentProgressColor = () => {
         return state.commentLimit <= 90 ? 'primary' :
@@ -253,12 +318,16 @@ export default function PostCard(props) {
     };
 
     return (
-        <Card className="col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mb-2">
+        <Card id={postLinkId} className="col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mb-2">
             <CardHeader
                 avatar={
-                    <Avatar alt={`${postedBy.displayName}#${postedBy.displayNameIndex}`} src={postedBy.pfpSmall} style={{border: '1px solid rgba(0, 0, 0, 0.08)'}} />
+                    <Avatar alt={getPostedByDisplayName()} title={getPostedByDisplayName()} src={postedBy.pfpSmall} style={{border: '1px solid rgba(0, 0, 0, 0.08)'}} />
                 }
-                subheader={postDate.toLocaleString()}
+                subheader={
+                    <a href={`/view-post?p=${postLinkId}`} style={{color: 'inherit', textDecoration: 'none'}}>
+                        {postDate.toLocaleString()}
+                    </a>
+                }
                 title={post.postTitle}
             />
             <CardContent>
@@ -279,40 +348,43 @@ export default function PostCard(props) {
             </CardContent>
             <Divider light={true} variant='middle' />
             <CardActions style={{flexWrap: 'wrap', padding: '16px'}}>
-                <div className="d-flex mb-2 w-100">
-                    <div style={{flexGrow: 1}}>
-                        {
-                            state.replyToComment &&
-                            <div className={classes.parentCommentHeader}>
-                                <div style={{flexGrow: 1}}>
-                                    <span className={classes.parentCommenter}>
-                                        {state.replyToComment.postedBy.displayName}
-                                        {
-                                            state.replyToComment.postedBy.displayNameIndex !== 0 &&
-                                            `#${state.replyToComment.postedBy.displayNameIndex}`
-                                        }
-                                    </span>
-                                    {`: ${state.replyToComment.commentText}`}
-                                </div>
-                                <div style={{alignContent: 'center', display: 'flex'}}>
-                                    <CancelTwoToneIcon style={{
-                                            cursor: 'pointer',
-                                            fontSize: 'small',
-                                            height: '100%'
-                                        }}
-                                        onClick={handleCancelReply}
-                                        titleAccess="Cancel reply" 
-                                    />
-                                </div>
-                            </div>
-                        }
-                        <MaterialTextfield inputRef={commentTextfield} style={{width: '100%'}} label={`Add a ${state.replyToComment ? 'reply' : 'comment'}`} multiline variant="filled" size="small" inputProps={{'maxLength': MAX_COMMENT_LENGTH}} onChange={handleCommentChange} value={state.commentText}></MaterialTextfield>
-                        <LinearProgress className={classes.commentProgress} variant="determinate" value={state.commentLimit} color={getCommentProgressColor()} aria-valuetext={`${state.commentLimit} Percent of Comment Characters Used`} />
-                    </div>
-                    <button className="btn btn-primary ms-2" type="button" onClick={handlePostClick}>Post</button>
-                </div>
                 {
-                    commentCount > 0 && state.comments.length === 0 &&
+                    loggedIn &&
+                    <div className="d-flex mb-2 w-100">
+                        <div style={{flexGrow: 1}}>
+                            {
+                                state.replyToComment &&
+                                <div className={classes.parentCommentHeader}>
+                                    <div style={{flexGrow: 1}}>
+                                        <span className={classes.parentCommenter}>
+                                            {state.replyToComment.postedBy.displayName}
+                                            {
+                                                state.replyToComment.postedBy.displayNameIndex !== 0 &&
+                                                `#${state.replyToComment.postedBy.displayNameIndex}`
+                                            }
+                                        </span>
+                                        {`: ${state.replyToComment.commentText}`}
+                                    </div>
+                                    <div style={{alignContent: 'center', display: 'flex'}}>
+                                        <CancelTwoToneIcon style={{
+                                                cursor: 'pointer',
+                                                fontSize: 'small',
+                                                height: '100%'
+                                            }}
+                                            onClick={handleCancelReply}
+                                            titleAccess="Cancel reply" 
+                                        />
+                                    </div>
+                                </div>
+                            }
+                            <MaterialTextfield inputRef={commentTextfield} style={{width: '100%'}} label={`Add a ${state.replyToComment ? 'reply' : 'comment'}`} multiline variant="filled" size="small" inputProps={{'maxLength': MAX_COMMENT_LENGTH}} onChange={handleCommentChange} value={state.commentText}></MaterialTextfield>
+                            <LinearProgress className={classes.commentProgress} variant="determinate" value={state.commentLimit} color={getCommentProgressColor()} aria-valuetext={`${state.commentLimit} Percent of Comment Characters Used`} />
+                        </div>
+                        <button className="btn btn-primary ms-2" type="button" onClick={handlePostClick}>Post</button>
+                    </div>
+                }
+                {
+                    commentCount > 0 && state.total === -1 && 
                     <div className="d-flex justify-content-end w-100">
                         <button className="btn btn-link border-0 dropdown-toggle text-decoration-none" type="button" onClick={handleViewCommentsClick}>View Comments ({commentCount})</button>
                     </div>
@@ -323,7 +395,9 @@ export default function PostCard(props) {
                         <ul className={classes.commentList}>
                         {
                             state.comments.map(comment => {
-                                return <PostComment key={comment.uniqueId} comment={comment} handleReplyClick={handleReplyClick} />;
+                                let commentId = adjustGUIDDashes(comment.uniqueId);
+
+                                return <PostComment key={comment.uniqueId} comment={comment} takeFocus={commentId === focusCommentId} handleReplyClick={handleReplyClick} />;
                             })
                         }
                         </ul>
@@ -339,6 +413,12 @@ export default function PostCard(props) {
                             </div>
                         }
                     </>
+                }
+                {
+                    state.comments.length === 0 && state.total === 0 &&
+                    <div>
+                        <span>Either there are no comments or you are <a href="/register">not authorized</a> to view comments.</span>
+                    </div>
                 }
             </CardActions>
             {

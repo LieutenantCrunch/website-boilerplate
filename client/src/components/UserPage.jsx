@@ -6,8 +6,9 @@ import ProfilePicture from './ProfilePicture';
 import UserService from '../services/user.service';
 import ConnectionButton from './FormControls/ConnectionButton';
 
+import { useDispatch, useSelector } from 'react-redux';
 import { upsertUser } from '../redux/users/usersSlice';
-import { useDispatch } from 'react-redux';
+import { selectLoggedIn } from '../redux/rootReducer';
 
 function User (props) {
     const dispatch = useDispatch();
@@ -15,6 +16,7 @@ function User (props) {
     const [state, updateState] = useState({
         profileInfo: null
     });
+    const loggedIn = useSelector(selectLoggedIn);
 
     const updateConnection = (connection) => {
         updateState(prevState => ({
@@ -50,7 +52,7 @@ function User (props) {
         };
     }, []);
 
-    return <div className="card col-8 col-md-4 mt-2 align-middle text-center">
+    return <div className="card col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mt-2 align-middle text-center">
         <div className="card-header">
             <ProfilePicture pfpSmall={state.profileInfo?.pfpSmall || ''} />
         </div>
@@ -64,7 +66,7 @@ function User (props) {
             </h5>
         </div>
         {
-            props.checkForValidSession()
+            loggedIn
             ? <div className="card-footer text-end">
                 <ConnectionButton uniqueId={state.profileInfo?.uniqueId} />
             </div>
@@ -75,17 +77,17 @@ function User (props) {
 
 function UserPage (props) {
     const { url } = useRouteMatch();
+    const loggedIn = useSelector(selectLoggedIn);
 
     return <>
         <Route path={`${url}/:profileName`}>
             <User 
-                checkForValidSession={props.checkForValidSession}
                 setTitle={props.setTitle}
             />
         </Route>
         <Route path={`${url}`} exact={true} render={() => {
                 return (
-                    props.checkForValidSession()
+                    loggedIn
                     ? <Redirect to="/profile" />
                     : <Redirect to="/login" />
                 );
