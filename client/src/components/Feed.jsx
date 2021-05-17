@@ -22,11 +22,11 @@ function Feed(props) {
         props.setTitle('My Feed');
         props.setHeaderMiddleEl(getFeedFilter());
 
-        PostService.getFeed(state.pageNumber, fetchDate, postType).then(response => {
+        PostService.getFeed(state.pageNumber, fetchDate, postType).then(({ posts, total }) => {
             setState(prevState => ({
                 ...prevState,
-                posts: response.posts,
-                total: response.total,
+                posts,
+                total,
                 fetchDate
             }));
         }).catch(err => console.error(err));

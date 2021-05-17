@@ -1101,7 +1101,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
                             <MaterialTextfield name="postTitle" label={`Post Title${state.postType === Constants.POST_TYPES.AUDIO || state.postType === Constants.POST_TYPES.VIDEO ? '' :  ' (optional)'}`} size="small" variant="filled" className={classes.title} inputProps={{'maxLength': MAX_TITLE_LENGTH}} value={state.postTitle} onChange={handleTextChange} error={state.titleError} helperText={state.postTitleHelper} />
                             <LinearProgress className={classes.titleProgress} variant="determinate" value={state.titleLimit} color={getTitleProgressColor()} aria-valuetext={`${state.titleLimit} Percent of Title Characters Used`} />
                             <div>
-                                {currentDate}
+                                <small style={{color: 'rgba(0,0,0,0.6)'}}>{currentDate}</small>
                             </div>
                         </div>
                     </div>

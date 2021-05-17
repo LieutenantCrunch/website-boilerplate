@@ -69,9 +69,6 @@ import { usersMiddleware } from './users/usersSlice';
         uniqueId: string
     },
 
-    // Indicates whether the current user is logged in or not
-    loggedIn: Boolean,
-
     notifications: {
         comments: Array<{postId: string, message: string}>
     },

@@ -88,4 +88,11 @@ declare namespace WebsiteBoilerplate {
         uniqueId: string;
         childComments?: PostComment[];
     }
+
+    export interface CommentNotification {
+        commentId: string;
+        message: string;
+        postId: string;
+        createdOn: Date
+    }
 }

@@ -20,8 +20,50 @@ export default class PostService {
 
             let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
 
-            let response = await axiosApi.get(Constants.API_PATH_POSTS + `/getMyPosts?${queryString}`, {
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + `getMyPosts?${queryString}`, {
                 cancelToken: new CancelToken(c => this.getMyPostsCancel = c)
+            });
+
+            if (response.data && response.data.success) {
+                const {posts, total} = response.data;
+
+                return {posts, total};
+            }
+        }
+        catch (err) {
+            if (axios.isCancel(err)) {
+                // Don't need to do anything special, the return below will handle it
+            }
+            else {
+                console.error(`Error getting my posts:\n${err.message}`);
+            }
+        }
+
+        return {posts: [], total: 0};
+    }
+
+    static async getUserPosts(uniqueId, profileName, pageNumber, endDate) {
+        try {
+            if (this.getUserPostsCancel !== undefined) {
+                this.getUserPostsCancel();
+            }
+
+            let queryParameters = {
+                pageNumber,
+                endDate
+            };
+
+            if (!isNullOrWhiteSpaceOnly(uniqueId)) {
+                queryParameters.postedByUniqueId = uniqueId;
+            }
+            else if (!isNullOrWhiteSpaceOnly(profileName)) {
+                queryParameters.profileName = profileName;
+            }
+
+            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
+
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + Constants.API_PATH_PUBLIC + `getUserPosts?${queryString}`, {
+                cancelToken: new CancelToken(c => this.getUserPostsCancel = c)
             });
 
             if (response.data && response.data.success) {
@@ -59,7 +101,7 @@ export default class PostService {
 
             let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
             
-            let response = await axiosApi.get(Constants.API_PATH_POSTS + `/getFeed?${queryString}`, {
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + `getFeed?${queryString}`, {
                 cancelToken: new CancelToken(c => this.getFeedCancel = c)
             });
 
@@ -138,11 +180,9 @@ export default class PostService {
 
             let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
 
-            let response = await axiosApi.get(Constants.API_PATH_POSTS + Constants.API_PATH_PUBLIC + `/getPost?${queryString}`, {
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + Constants.API_PATH_PUBLIC + `getPost?${queryString}`, {
                 cancelToken: new CancelToken(c => this.getPostCancel = c)
             });
-
-            console.log(response);
 
             if (response.data && response.data.success) {
                 return response.data.post;
@@ -188,7 +228,7 @@ export default class PostService {
 
             let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
 
-            let response = await axiosApi.get(Constants.API_PATH_POSTS + `/getPostComments?${queryString}`, {
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + `getPostComments?${queryString}`, {
                 cancelToken: new CancelToken(c => this.getPostCommentsCancel = c)
             });
 
@@ -216,3 +256,4 @@ PostService.getFeedCancel = undefined;
 PostService.getMyPostsCancel = undefined;
 PostService.getPostCancel = undefined;
 PostService.getPostCommentsCancel = undefined;
+PostService.getUserPostsCancel = undefined;

@@ -12,9 +12,11 @@ apiPostsPublicRouter.get('/:methodName', [AuthHelper.verifyTokenAndPassThrough],
     case 'getUserPosts':
         try {
             let userUniqueId: string | undefined = req.userId;
-            let postedByUniqueId: string | undefined = req.query.postedByUniqueId?.toString();
+            let postedByUniqueId: string | undefined = req.query.postedByUniqueId ? req.query.postedByUniqueId.toString() : undefined;
             let pageNumber: number | undefined = req.query.pageNumber ? parseInt(req.query.pageNumber.toString()) : undefined;
             let endDate: Date | undefined = undefined;
+            let profileName: string | undefined = req.query.profileName ? req.query.profileName.toString() : undefined;
+
             
             try
             {
@@ -25,13 +27,18 @@ apiPostsPublicRouter.get('/:methodName', [AuthHelper.verifyTokenAndPassThrough],
             }
 
             if (postedByUniqueId) {
-                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsByUser(userUniqueId, postedByUniqueId, null, endDate, pageNumber);
+                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsByUser(userUniqueId, postedByUniqueId, undefined, null, endDate, pageNumber);
+
+                return res.status(200).json({success: true, posts, total});
+            }
+            else if (profileName) {
+                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsByUser(userUniqueId, undefined, profileName, null, endDate, pageNumber);
 
                 return res.status(200).json({success: true, posts, total});
             }
         }
         catch (err) {
-            console.error(`Error during getMyPosts:\n${err.message}`);
+            console.error(`Error during getUserPosts:\n${err.message}`);
         }
 
         return res.status(200).json({success: false});

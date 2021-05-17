@@ -11,7 +11,7 @@ export default class UserService {
         {
             let payload = { blockUserUniqueId };
 
-            return await axiosApi.post(Constants.API_PATH_USERS + '/blockUser', payload);
+            return await axiosApi.post(Constants.API_PATH_USERS + 'blockUser', payload);
         }
         catch (err) {
             return { success: false };
@@ -23,7 +23,7 @@ export default class UserService {
         {
             let payload = {displayName};
 
-            return await axiosApi.post(Constants.API_PATH_USERS + '/setDisplayName', payload);
+            return await axiosApi.post(Constants.API_PATH_USERS + 'setDisplayName', payload);
         }
         catch(err)
         {
@@ -55,7 +55,7 @@ export default class UserService {
     static async getUserDetails(uniqueId) {
         try {
             let queryString = encodeURI(`uniqueId=${uniqueId}`);
-            let response = await axiosApi.get(Constants.API_PATH_USERS + `/getUserDetails?${queryString}`);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + `getUserDetails?${queryString}`);
 
             if (response.data && response.data.success) {
                 return response.data.userDetails;
@@ -76,7 +76,7 @@ export default class UserService {
             }
 
             let queryString = encodeURI(`profileName=${profileName}`);
-            let response = await axiosApi.get(Constants.API_PATH_USERS + Constants.API_PATH_PUBLIC + `/getProfileInfo?${queryString}`, {
+            let response = await axiosApi.get(Constants.API_PATH_USERS + Constants.API_PATH_PUBLIC + `getProfileInfo?${queryString}`, {
                 cancelToken: new CancelToken(c => this.getProfileInfoCancel = c)
             });
 
@@ -121,7 +121,7 @@ export default class UserService {
             let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
             
             try {
-                let searchResults = await axiosApi.get(Constants.API_PATH_USERS + `/search?${queryString}`, {
+                let searchResults = await axiosApi.get(Constants.API_PATH_USERS + `search?${queryString}`, {
                     cancelToken: new CancelToken(c => this.userServiceCancel = c)
                 });
 
@@ -150,7 +150,7 @@ export default class UserService {
     static async verifyDisplayName(userUniqueID, displayName) {
         try {
             let payload = {userUniqueID, displayName};
-            let results = await axiosApi.post(Constants.API_PATH_USERS + '/verifyDisplayName', payload);
+            let results = await axiosApi.post(Constants.API_PATH_USERS + 'verifyDisplayName', payload);
 
             return results.data;
         }
@@ -167,10 +167,10 @@ export default class UserService {
 
             if (uniqueId) {
                 let queryString = encodeURI(`uniqueId=${uniqueId}`);
-                response = await axiosApi.get(Constants.API_PATH_USERS + `/getIncomingConnections?${queryString}`);
+                response = await axiosApi.get(Constants.API_PATH_USERS + `getIncomingConnections?${queryString}`);
             }
             else {
-                response = await axiosApi.get(Constants.API_PATH_USERS + `/getIncomingConnections`);
+                response = await axiosApi.get(Constants.API_PATH_USERS + `getIncomingConnections`);
             }
 
             if (response.data && response.data.success) {
@@ -190,10 +190,10 @@ export default class UserService {
 
             if (uniqueId) {
                 let queryString = encodeURI(`uniqueId=${uniqueId}`);
-                response = await axiosApi.get(Constants.API_PATH_USERS + `/getOutgoingConnections?${queryString}`);
+                response = await axiosApi.get(Constants.API_PATH_USERS + `getOutgoingConnections?${queryString}`);
             }
             else {
-                response = await axiosApi.get(Constants.API_PATH_USERS + `/getOutgoingConnections`);
+                response = await axiosApi.get(Constants.API_PATH_USERS + `getOutgoingConnections`);
             }
 
             if (response.data && response.data.success) {
@@ -213,7 +213,7 @@ export default class UserService {
                 this.getConnectionTypeDictCancel();
             }
 
-            let response = await axiosApi.get(Constants.API_PATH_USERS + '/getConnectionTypeDict', {
+            let response = await axiosApi.get(Constants.API_PATH_USERS + 'getConnectionTypeDict', {
                 cancelToken: new CancelToken(c => this.getConnectionTypeDictCancel = c)
             });
 
@@ -234,7 +234,7 @@ export default class UserService {
     static async updateConnection(connection) {
         try {
             let payload = {connection};
-            let response = await axiosApi.post(Constants.API_PATH_USERS + '/updateConnection', payload);
+            let response = await axiosApi.post(Constants.API_PATH_USERS + 'updateConnection', payload);
 
             if (response.data?.success && response.data?.results) {
                 return response.data.results;
@@ -253,7 +253,7 @@ export default class UserService {
         try {
             let payload = {connectedUserUniqueId};
             
-            let response = await axiosApi.post(Constants.API_PATH_USERS + '/removeConnection', payload);
+            let response = await axiosApi.post(Constants.API_PATH_USERS + 'removeConnection', payload);
 
             if (response.data?.success && response.data?.results) {
                 return response.data.results;
@@ -271,7 +271,7 @@ export default class UserService {
         {
             let payload = { unblockUserUniqueId };
 
-            return await axiosApi.post(Constants.API_PATH_USERS + '/unblockUser', payload);
+            return await axiosApi.post(Constants.API_PATH_USERS + 'unblockUser', payload);
         }
         catch (err) {
             return { success: false };

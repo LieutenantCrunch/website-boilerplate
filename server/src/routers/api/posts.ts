@@ -56,7 +56,7 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
 
                 }
 
-                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsByUser(req.userId, req.userId, null, endDate, pageNumber);
+                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsByUser(req.userId, req.userId, undefined, null, endDate, pageNumber);
 
                 return res.status(200).json({success: true, posts, total});
             }

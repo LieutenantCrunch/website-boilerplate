@@ -126,10 +126,10 @@ function Header(props) {
                             commentNotifications && commentNotifications.length > 0
                             ? commentNotifications.map(commentNotification => (
                                 <li key={commentNotification.commentId} className="nav-item">
-                                    <a className="nav-link text-end" href="#">{commentNotification.message}</a>
+                                    <a className="nav-link text-end" href={`/view-post?p=${commentNotification.postId}#${commentNotification.commentId}`}>{commentNotification.message}</a>
                                 </li>
                             ))
-                            : <li className="nav-item" key="None">
+                            : <li key="None" className="nav-item">
                                 <a className="nav-link text-end" href="#">None</a>
                             </li>
                         }

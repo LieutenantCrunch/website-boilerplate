@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import Lightbox from 'react-image-lightbox';
 import * as Constants from '../constants/constants';
+import { LoggedInContext } from '../contexts/loggedIn';
 import PostService from '../services/post.service';
 import { adjustGUIDDashes } from '../utilities/TextUtilities';
 
@@ -9,6 +10,7 @@ import { adjustGUIDDashes } from '../utilities/TextUtilities';
 import { Avatar, Card, CardActions, CardContent, CardHeader, Divider } from '@material-ui/core';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import MaterialTextfield from '@material-ui/core/TextField';
+import Typography from '@material-ui/core/Typography';
 import { makeStyles } from '@material-ui/core/styles';
 
 // Material UI Icons
@@ -20,10 +22,6 @@ import { VideoPlayer } from './Multimedia/VideoPlayer';
 
 // Other Components
 import { PostComment } from './PostComment';
-
-// Redux
-import { useSelector } from 'react-redux';
-import { selectLoggedIn } from '../redux/rootReducer';
 
 // Material UI Styles
 const useStyles = makeStyles(() => ({
@@ -93,10 +91,10 @@ const useStyles = makeStyles(() => ({
 
 export const PostCard = ({ post, fetchDate, focusCommentId }) => {
     const MAX_COMMENT_LENGTH = 500;
+    const loggedIn = useContext(LoggedInContext);
     const { commentCount, commentPage, postedBy, postComments, postFiles, postType, uniqueId } = post;
     const postDate = new Date(post.postedOn);
     const postLinkId = adjustGUIDDashes(uniqueId);
-    const loggedIn = useSelector(selectLoggedIn);
 
     const [state, setState] = useState({
         comments: [],
@@ -321,14 +319,25 @@ export const PostCard = ({ post, fetchDate, focusCommentId }) => {
         <Card id={postLinkId} className="col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mb-2">
             <CardHeader
                 avatar={
-                    <Avatar alt={getPostedByDisplayName()} title={getPostedByDisplayName()} src={postedBy.pfpSmall} style={{border: '1px solid rgba(0, 0, 0, 0.08)'}} />
-                }
-                subheader={
-                    <a href={`/view-post?p=${postLinkId}`} style={{color: 'inherit', textDecoration: 'none'}}>
-                        {postDate.toLocaleString()}
+                    <a href={`/u/${postedBy.profileName}`}>
+                        <Avatar alt={getPostedByDisplayName()} title={getPostedByDisplayName()} src={postedBy.pfpSmall} style={{border: '1px solid rgba(0, 0, 0, 0.08)'}} />
                     </a>
                 }
-                title={post.postTitle}
+                subheader={
+                    <small>
+                        <a href={`/view-post?p=${postLinkId}`} style={{color: 'inherit', textDecoration: 'none'}}>
+                            {postDate.toLocaleString()}
+                        </a>
+                    </small>
+                }
+                title={
+                    <>
+                        <Typography variant="h6">{post.postTitle}</Typography>
+                        <a href={`/u/${postedBy.profileName}`} style={{color: 'inherit', textDecoration: 'none'}}>
+                            {postedBy.displayName}<small className="text-muted">{postedBy.displayNameIndex === 0 ? '' : `#${postedBy.displayNameIndex}`}</small>
+                        </a>
+                    </>
+                }
             />
             <CardContent>
                 <div className={classes.previewImages}

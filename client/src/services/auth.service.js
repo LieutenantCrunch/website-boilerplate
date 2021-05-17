@@ -1,4 +1,4 @@
-import axiosApi from '../services/axios-api';
+import axiosApi from './axios-api';
 import * as Constants from '../constants/constants';
 import 'regenerator-runtime'; /* Necessary for async/await to not throw an error. https://tenor.com/view/idk-idont-know-sassy-kid-girl-gif-4561444 */
 

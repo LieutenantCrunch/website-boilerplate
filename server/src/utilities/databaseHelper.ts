@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import * as ClientConstants from '../constants/constants.client';
 import * as ServerConstants from '../constants/constants.server';
-import { isNullOrWhiteSpaceOnly } from './utilityFunctions';
+import { adjustGUIDDashes, isNullOrWhiteSpaceOnly } from './utilityFunctions';
 import { SocketHelper } from './socketHelper';
 
 import { db } from '../models/_index';
@@ -445,6 +445,52 @@ class DatabaseHelper {
         catch (err)
         {
             console.error(`Error looking up user with uniqueId ${uniqueId}: ${err.message}`);
+        }
+        
+        return null;
+    }
+
+    async getUserWithProfileName(profileName: string): Promise<UserInstance | null> {
+        try
+        {
+            let registeredUser: UserInstance | null = await db.User.findOne({
+                where: {
+                    profileName
+                },
+                include: [
+                    {
+                        model: db.DisplayName,
+                        as: 'displayNames',
+                        where: {
+                            isActive: true
+                        },
+                        attributes: [
+                            'displayName',
+                            'displayNameIndex'
+                        ]
+                    },
+                    {
+                        model: db.ProfilePicture,
+                        as: 'profilePictures',
+                        required: false,
+                        on: {
+                            id: {
+                                [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `User`.`id` order by `profile_picture`.`id` desc limit 1)')
+                            }
+                        },
+                        attributes: [
+                            'fileName',
+                            'smallFileName'
+                        ]
+                    }
+                ]
+            });
+
+            return registeredUser;
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with profileName ${profileName}: ${err.message}`);
         }
         
         return null;
@@ -2071,15 +2117,25 @@ class DatabaseHelper {
     // *********************
 
     // The end date is used to prevent new posts from coming back and winding up inserted in a strange place in the list. If they want the latest posts, they'll have to refresh the page
-    async getPostsByUser(requestingUserUniqueId: string | undefined, postedByUniqueId: string, postType: number | null, endDate: Date | undefined, pageNumber: number | undefined): Promise<{posts: WebsiteBoilerplate.Post[], total: number}> {
+    async getPostsByUser(requestingUserUniqueId: string | undefined, postedByUniqueId: string | undefined, profileName: string | undefined, postType: number | null, endDate: Date | undefined, pageNumber: number | undefined): Promise<{posts: WebsiteBoilerplate.Post[], total: number}> {
         let posts: WebsiteBoilerplate.Post[] = [];
         let total: number = 0;
 
         try {
-            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(postedByUniqueId);
+            let registeredUser: UserInstance | null = null;
+            
+            if (!isNullOrWhiteSpaceOnly(postedByUniqueId)) {
+                registeredUser = await this.getUserWithUniqueId(postedByUniqueId!);
+            }
+            else if (!isNullOrWhiteSpaceOnly(profileName)) {
+                registeredUser = await this.getUserWithProfileName(profileName!);
+            }
 
             if (registeredUser) {
                 let registeredUserId: number = registeredUser.id!;
+
+                // Set it just in case it's not set already
+                postedByUniqueId = registeredUser.uniqueId;
 
                 // Make sure the user can view the posts
                 let canView: Boolean = false;
@@ -2096,7 +2152,6 @@ class DatabaseHelper {
                 }*/
                 else if (isPublicUser && registeredUser.allowPublicAccess) {
                     // Public users can view posts of registered users that allow it
-                    // ## However, will need to make sure the post audience is set to everyone
                     canView = true;
                 }
                 else if (!isPublicUser && !(await this.checkIfFirstUserIsBlockingSecond(registeredUserId, requestingUserUniqueId!))) {
@@ -2105,36 +2160,23 @@ class DatabaseHelper {
                 }
 
                 if (canView) {
-                    let displayNames: DisplayNameInstance[] = registeredUser.displayNames!;
-                    let displayName: DisplayNameInstance = displayNames[0];
-                    let profilePictures: ProfilePictureInstance[] = registeredUser.profilePictures!;
-                    let profilePicture: ProfilePictureInstance | undefined = profilePictures[0] ? profilePictures[0] : undefined;
-
                     // This has to be done separate due to the fact that the files are being joined in, 
                     // thus causing single posts to be counted multiple times when there are multiple 
                     // images for a particular post
-                    let count: number = await db.Post.count({
+                    let count: number = await db.Views.FeedView.count({
                         where: {
-                            registeredUserId,
+                            userUniqueId: isPublicUser ? { [Op.is]: null } : requestingUserUniqueId,
+                            postedByUniqueId,
                             postedOn: {
                                 [Op.lte]: endDate || new Date(Date.now())
                             }
                         }
                     });
 
-                    let rows: PostInstance[] = await db.Post.findAll({
-                        attributes: {
-                            include: [
-                                [Sequelize.fn('COUNT', Sequelize.col('postComments.id')), 'commentCount']
-                            ],
-                            exclude: [
-                                'audience',
-                                'flagType',
-                                'registeredUserId'
-                            ]
-                        },
+                    let rows: FeedViewInstance[] = await db.Views.FeedView.findAll({
                         where: {
-                            registeredUserId,
+                            userUniqueId: isPublicUser ? { [Op.is]: null } : requestingUserUniqueId,
+                            postedByUniqueId,
                             postedOn: {
                                 [Op.lte]: endDate || new Date(Date.now())
                             }
@@ -2142,18 +2184,10 @@ class DatabaseHelper {
                         order: [
                             ['id', 'DESC']
                         ],
-                        group: [
-                            'id'
-                        ],
                         include: [
                             {
                                 model: db.PostFile,
                                 as: 'postFiles'
-                            },
-                            {
-                                model: db.PostComment,
-                                as: 'postComments',
-                                attributes: []
                             }
                         ],
                         offset: (pageNumber || 0) * ServerConstants.DB_FEED_FETCH_PAGE_SIZE,
@@ -2192,18 +2226,18 @@ class DatabaseHelper {
                         }
         
                         return {
-                            lastEditedOn: row.lastEditedOn || null,
-                            commentCount: row.getDataValue('commentCount') || 0,
+                            lastEditedOn: row.lastEditedOn,
+                            commentCount: row.commentCount,
                             postedOn: row.postedOn,
-                            postText: row.postText || null,
-                            postTitle: row.postTitle || null,
+                            postText: row.postText,
+                            postTitle: row.postTitle,
                             postType: row.postType,
                             postedBy: {
-                                displayName: displayName.displayName,
-                                displayNameIndex: displayName.displayNameIndex,
-                                pfpSmall: profilePicture ? `/i/u/${postedByUniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
-                                profileName: registeredUser!.profileName,
-                                uniqueId: postedByUniqueId
+                                displayName: row.postedByDisplayName,
+                                displayNameIndex: row.postedByDisplayNameIndex,
+                                pfpSmall: row.postedByPfpSmall ? `/i/u/${postedByUniqueId!}/${row.postedByPfpSmall}` : '/i/s/pfpDefault.svgz',
+                                profileName: row.postedByProfileName,
+                                uniqueId: postedByUniqueId!
                             },
                             uniqueId: row.uniqueId,
                             postFiles
@@ -2987,8 +3021,8 @@ class DatabaseHelper {
 
                 let { postedByUniqueId }: { postedByUniqueId: string } = postInfo;
                 let message: string = `${displayName.displayName}${ displayName.displayNameIndex === 0 ? '' : `#${displayName.displayNameIndex}`} commented on your post!`;
-                //## Might want to make this an interface
-                let notification: {[key: string]: any} = { commentId: uniqueId, message, postId: postInfo.uniqueId, createdOn: postedOn };
+
+                let notification: WebsiteBoilerplate.CommentNotification = { commentId: adjustGUIDDashes(uniqueId), message, postId: adjustGUIDDashes(postInfo.uniqueId), createdOn: postedOn };
 
                 SocketHelper.notifyUser(postedByUniqueId, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT, notification);
 
