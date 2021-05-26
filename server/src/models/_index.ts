@@ -10,6 +10,7 @@ import { PasswordResetTokenFactory } from '../models/PasswordResetToken';
 import { PostFactory } from '../models/Post';
 import { PostCommentFactory } from '../models/PostComment';
 import { PostFileFactory } from '../models/PostFile';
+import { PostNotificationFactory } from '../models/PostNotification';
 import { ProfilePictureFactory } from '../models/ProfilePicture';
 import { RoleFactory } from '../models/Role';
 import { UserFactory } from '../models/User';
@@ -47,7 +48,7 @@ const sequelizeConfig = {
 const createModels = (sequelizeConfig: any): DbInterface => {
     const sequelize = new Sequelize(sequelizeConfig);
     const cache: SequelizeSimpleCache = new SequelizeSimpleCache({
-        UserConnectionType: { ttl: ServerConstants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000 }
+        UserConnectionType: { ttl: ServerConstants.CACHE_DURATIONS.CONNECTION_TYPES }
     });
 
     const db: DbInterface = {
@@ -58,6 +59,7 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         PostComment: PostCommentFactory(sequelize),
         PostCustomAudience: PostCustomAudienceFactory(sequelize),
         PostFile: PostFileFactory(sequelize),
+        PostNotification: PostNotificationFactory(sequelize),
         ProfilePicture: ProfilePictureFactory(sequelize),
         Role: RoleFactory(sequelize),
         User: UserFactory(sequelize),

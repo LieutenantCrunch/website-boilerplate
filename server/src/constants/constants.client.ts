@@ -83,3 +83,15 @@ export const SOCKET_EVENTS = Object.freeze({
         NEW_COMMENT: 'newComment'
     })
 });
+
+export const NOTIFICATION_STATUS = Object.freeze({
+    READ: 0,
+    UNREAD: 1,
+    SEEN_ONCE: 2,
+    UNSEEN: 3
+});
+
+export const NOTIFICATION_TYPES = Object.freeze({
+    COMMENT: 0,
+    COMMENT_REPLY: 1
+});

@@ -10,7 +10,8 @@ const initialState = {
     pfp: Constants.STATIC_IMAGES.PFP_DEFAULT,
     pfpSmall: Constants.STATIC_IMAGES.PFP_DEFAULT, 
     roles: [], 
-    uniqueId: ''
+    uniqueId: '',
+    unseenPostNotifications: 0
 };
 
 // Async Thunks
@@ -34,7 +35,8 @@ const currentUserSlice = createSlice({
                 pfp,
                 pfpSmall, 
                 roles, 
-                uniqueId
+                uniqueId,
+                unseenPostNotifications
             } = action.payload;
 
             return {
@@ -46,7 +48,8 @@ const currentUserSlice = createSlice({
                 pfp,
                 pfpSmall, 
                 roles, 
-                uniqueId
+                uniqueId,
+                unseenPostNotifications
             };
         },
         currentUserDisplayNameUpdated: (state, action) => {
@@ -67,12 +70,22 @@ const currentUserSlice = createSlice({
             if (removeIndex > -1) {
                 state.ids.splice(removeIndex, 1);
             }
+        },
+        seenPostNotifications: (state, action) => {
+            state.unseenPostNotifications = 0;
         }
     }
 });
 
 export default currentUserSlice.reducer;
-export const { currentUserFetched, currentUserDisplayNameUpdated, currentUserPfpUpdated, currentUserRoleAdded, currentUserRoleRemoved } = currentUserSlice.actions;
+export const { 
+    currentUserFetched, 
+    currentUserDisplayNameUpdated, 
+    currentUserPfpUpdated, 
+    currentUserRoleAdded, 
+    currentUserRoleRemoved,
+    seenPostNotifications
+} = currentUserSlice.actions;
 
 // Selectors
 export const selectCurrentUser = state => state.currentUser;
@@ -84,3 +97,4 @@ export const selectCurrentUserPfp = state => state.currentUser.pfp;
 export const selectCurrentUserPfpSmall = state => state.currentUser.pfpSmall;
 export const selectCurrentUserRoles = state => state.currentUser.roles;
 export const selectCurrentUserUniqueId = state => state.currentUser.uniqueId;
+//export const selectCurrentUserUnseenPostNotifications = state => state.currentUser.unseenPostNotifications;

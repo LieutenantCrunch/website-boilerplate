@@ -4,7 +4,7 @@ import path from 'path';
 import AuthHelper from '../../utilities/authHelper';
 import PostUploadHelper from '../../utilities/postUploadHelper';
 import { databaseHelper } from '../../utilities/databaseHelper';
-import { adjustGUIDDashes } from '../../utilities/utilityFunctions';
+import { adjustGUIDDashes, dateFromInput } from '../../utilities/utilityFunctions';
 import * as ClientConstants from '../../constants/constants.client';
 import { generateAudioThumbnail, generateVideoThumbnail } from '../../utilities/ffmpegHelper';
 import FileHandler from '../../utilities/fileHandler';
@@ -26,7 +26,7 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
                 
                 try
                 {
-                    endDate = req.query.endDate ? new Date(parseInt(req.query.endDate.toString())) : undefined;
+                    endDate = req.query.endDate ? dateFromInput(req.query.endDate.toString()) : undefined;
                 }
                 catch (err) {
 
@@ -50,7 +50,7 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
                 
                 try
                 {
-                    endDate = req.query.endDate ? new Date(parseInt(req.query.endDate.toString())) : undefined;
+                    endDate = req.query.endDate ? dateFromInput(req.query.endDate.toString()) : undefined;
                 }
                 catch (err) {
 
@@ -75,7 +75,7 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
                 
                 try
                 {
-                    endDate = req.query.endDate ? new Date(parseInt(req.query.endDate.toString())) : undefined;
+                    endDate = req.query.endDate ? dateFromInput(req.query.endDate.toString()) : undefined;
                 }
                 catch (err) {
 
@@ -89,6 +89,19 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
             }
             else {
                 return res.status(200).json({success: true, comments: [], total: 0});
+            }
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return res.status(200).json({success: false});
+    case 'getPostNotifications':
+        try {
+            if (req.userId !== undefined) {
+                let notifications: WebsiteBoilerplate.PostNotification[] = await databaseHelper.getPostNotifications(req.userId);
+
+                return res.status(200).json({success: true, notifications});
             }
         }
         catch (err) {
@@ -184,7 +197,97 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
             console.error(err.message);
             return res.status(500);
         }
-        break;
+    }
+    case 'markPostNotificationAsRead': {
+        try {
+            if (req.userId) {
+                let { postId, commentId, endDate: endDateStr }: { postId: string | undefined, commentId: string | undefined, endDate: string | undefined } = req.body;
+
+                let endDate: Date | undefined = undefined;
+
+                if (endDateStr) {
+                    try
+                    {
+                        endDate = dateFromInput(endDateStr);
+                    }
+                    catch (err) {
+
+                    }
+                }
+
+                if (postId) {
+                    databaseHelper.markPostNotificationAsRead(req.userId, postId, commentId, endDate);
+
+                    return res.status(200).json({success: true});
+                }
+            }
+
+            return res.status(200).json({success: false});
+        }
+        catch (err) {
+            console.error(err.message);
+            return res.status(500);
+        }
+    }
+    case 'markAllPostNotificationsAsSeen': {
+        try {
+            if (req.userId) {
+                let { endDate: endDateStr }: { endDate: string | undefined } = req.body;
+
+                let endDate: Date | undefined = undefined;
+
+                if (endDateStr) {
+                    try
+                    {
+                        endDate = dateFromInput(endDateStr);
+                    }
+                    catch (err) {
+
+                    }
+                }
+
+                databaseHelper.markAllPostNotificationsAsSeen(req.userId, endDate);
+
+                return res.status(200).json({success: true});
+            }
+
+            return res.status(200).json({success: false});
+        }
+        catch (err) {
+            console.error(err.message);
+            return res.status(500);
+        }
+    }
+    case 'removePostNotifications': {
+        try {
+            if (req.userId) {
+                let { postId, commentId, endDate: endDateStr }: { postId: string | undefined, commentId: string | undefined, endDate: string | undefined } = req.body;
+
+                let endDate: Date | undefined = undefined;
+
+                if (endDateStr) {
+                    try
+                    {
+                        endDate = dateFromInput(endDateStr);
+                    }
+                    catch (err) {
+
+                    }
+                }
+
+                if (postId) {
+                    databaseHelper.removePostNotifications(req.userId, postId, commentId, endDate);
+
+                    return res.status(200).json({success: true});
+                }
+            }
+
+            return res.status(200).json({success: false});
+        }
+        catch (err) {
+            console.error(err.message);
+            return res.status(500);
+        }
     }
     default:
         res.status(404).send(req.params.methodName + ' is not a valid posts method.');

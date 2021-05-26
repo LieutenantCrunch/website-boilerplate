@@ -6,6 +6,7 @@ import { PasswordResetTokenInstance } from '../../models/PasswordResetToken';
 import { PostInstance } from '../../models/PostFile';
 import { PostCommentInstance } from '../../models/PostComment';
 import { PostFileInstance } from '../../models/PostFile';
+import { PostNotificationInstance } from '../../models/PostNotification';
 import { ProfilePictureInstance } from '../../models/ProfilePicture';
 import { RoleInstance } from '../../models/Role';
 import { UserInstance } from '../../models/User';
@@ -31,6 +32,7 @@ export interface DbInterface {
   PostComment: ModelCtor<PostCommentInstance>;
   PostCustomAudience: ModelCtor<PostCustomAudienceInstance>;
   PostFile: ModelCtor<PostFileInstance>;
+  PostNotification: ModelCtor<PostNotificationInstance>;
   ProfilePicture: ModelCtor<ProfilePictureInstance>;
   Role: ModelCtor<RoleInstance>;
   User: ModelCtor<UserInstance>;

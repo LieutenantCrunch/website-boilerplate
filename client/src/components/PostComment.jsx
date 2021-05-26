@@ -63,7 +63,7 @@ const useStyles = makeStyles(() => ({
     }
 }));
 
-export const PostComment = ({comment, takeFocus, handleReplyClick}) => {
+export const PostComment = ({ comment, takeFocus, handleReplyClick }) => {
     const classes = useStyles();
     const posterNA = comment.postedBy.displayName === '';
     const parentPosterNA = comment.parentComment && comment.parentComment.postedBy.displayName === '';

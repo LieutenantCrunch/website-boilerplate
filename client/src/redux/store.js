@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import rootReducer from './rootReducer';
 import { connectionsMiddleware } from './connections/connectionsSlice';
+import { postsMiddleware} from './notifications/postsSlice';
 import { usersMiddleware } from './users/usersSlice';
 
 /* State:
@@ -66,7 +67,10 @@ import { usersMiddleware } from './users/usersSlice';
         roles: Array<string>, 
 
         // The user's unique id in the system
-        uniqueId: string
+        uniqueId: string,
+
+        // The count of unseen post notifications for display in the header
+        unseenPostNotifications: number
     },
 
     notifications: {
@@ -82,6 +86,7 @@ const store = configureStore({
     reducer: rootReducer,
     middleware: [
         connectionsMiddleware,
+        postsMiddleware,
         usersMiddleware
     ]
 });

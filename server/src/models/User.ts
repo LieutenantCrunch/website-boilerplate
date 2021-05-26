@@ -4,6 +4,7 @@ import { DisplayNameInstance } from './DisplayName';
 import { PasswordResetTokenInstance } from './PasswordResetToken';
 import { PostInstance } from './Post';
 import { PostFileInstance } from './PostFile';
+import { PostNotificationInstance } from './PostNotification';
 import { ProfilePictureInstance } from './ProfilePicture';
 import { RoleInstance } from './Role';
 import { UserConnectionInstance } from './UserConnection';
@@ -26,8 +27,10 @@ export interface UserAttributes {
     passwordResetTokens?: PasswordResetTokenInstance[];
     posts?: PostInstance[];
     postFiles?: PostFileInstance[];
+    postNotifications?: PostNotificationInstance[];
     profilePictures?: ProfilePictureInstance[];
     roles?: RoleInstance[];
+    triggeredPostNotifications?: PostNotificationInstance[];
 };
 
 export interface UserCreationAttributes extends Optional<UserAttributes, 'id'>, 
@@ -68,6 +71,11 @@ export interface UserInstance extends Model<UserAttributes, UserCreationAttribut
     
     getPostFiles: HasManyGetAssociationsMixin<PostFileInstance>;
 
+    addPostNotification: HasManyAddAssociationMixin<PostNotificationInstance, PostNotificationInstance['id']>;
+    getPostNotifications: HasManyGetAssociationsMixin<PostNotificationInstance>;
+    removePostNotification: HasManyRemoveAssociationMixin<PostNotificationInstance, PostNotificationInstance['id']>;
+    removePostNotifications: HasManyRemoveAssociationsMixin<PostNotificationInstance, PostNotificationInstance['id']>;
+
     getProfilePictures: HasManyGetAssociationsMixin<ProfilePictureInstance>;
     addProfilePicture: HasManyAddAssociationMixin<ProfilePictureInstance, ProfilePictureInstance['id']>;
     createProfilePicture: HasManyCreateAssociationMixin<ProfilePictureInstance>;
@@ -78,6 +86,10 @@ export interface UserInstance extends Model<UserAttributes, UserCreationAttribut
     addRoles: BelongsToManyAddAssociationsMixin<RoleInstance, RoleInstance['id']>;
     removeRole: BelongsToManyRemoveAssociationMixin<RoleInstance, RoleInstance['id']>;
     removeRoles: BelongsToManyRemoveAssociationsMixin<RoleInstance, RoleInstance['id']>;
+
+    addTriggeredPostNotification: HasManyAddAssociationMixin<PostNotificationInstance, PostNotificationInstance['id']>;
+    getTriggeredPostNotifications: HasManyGetAssociationsMixin<PostNotificationInstance>;
+    removeTriggeredPostNotification: HasManyRemoveAssociationMixin<PostNotificationInstance, PostNotificationInstance['id']>;
 };
 
 export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
@@ -201,6 +213,14 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
             }
         });
 
+        User.hasMany(models.PostNotification, {
+            as: 'postNotifications',
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
+            }
+        });
+
         User.hasMany(models.ProfilePicture, {
             as: 'profilePictures',
             foreignKey: {
@@ -215,6 +235,14 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
             foreignKey: {
                 name: 'registeredUserId',
                 field: 'registered_user_id'
+            }
+        });
+
+        User.hasMany(models.PostNotification, {
+            as: 'triggeredPostNotifications',
+            foreignKey: {
+                name: 'triggeredByUserId',
+                field: 'triggered_by_user_id'
             }
         });
     };

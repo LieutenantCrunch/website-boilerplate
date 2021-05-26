@@ -49,13 +49,15 @@ apiPostsPublicRouter.get('/:methodName', [AuthHelper.verifyTokenAndPassThrough],
             let commentId: string | undefined = req.query.commentId ? req.query.commentId.toString() : undefined;
 
             if (postId) {
-                let postUniqueId: string = adjustGUIDDashes(postId, true);
+                let postUniqueId: string | undefined = adjustGUIDDashes(postId, true);
                 let commentUniqueId: string | undefined = commentId ? adjustGUIDDashes(commentId, true) : undefined;
 
-                let post: WebsiteBoilerplate.Post | undefined = await databaseHelper.getPost(userUniqueId, postUniqueId, commentUniqueId);
+                if (postUniqueId) {
+                    let post: WebsiteBoilerplate.Post | undefined = await databaseHelper.getPost(userUniqueId, postUniqueId, commentUniqueId);
 
-                if (post) {
-                    return res.status(200).json({ success: true, post });
+                    if (post) {
+                        return res.status(200).json({ success: true, post });
+                    }
                 }
             }
         }

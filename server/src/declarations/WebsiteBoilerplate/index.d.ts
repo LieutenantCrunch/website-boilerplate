@@ -13,6 +13,7 @@ declare namespace WebsiteBoilerplate {
         profileName: string;
         roles?: string[];
         uniqueId: string;
+        unseenPostNotifications?: number;
     }
 
     export interface UserSearchResults {
@@ -89,10 +90,14 @@ declare namespace WebsiteBoilerplate {
         childComments?: PostComment[];
     }
 
-    export interface CommentNotification {
-        commentId: string;
+    export interface PostNotification {
+        commentId?: string;
+        createdOn: Date;
         message: string;
         postId: string;
-        createdOn: Date
+        status: number;
+        triggeredBy?: string[];
+        type: number;
+        uniqueId: string;
     }
 }

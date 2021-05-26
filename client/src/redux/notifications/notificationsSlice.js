@@ -1,9 +1,9 @@
 import { combineReducers } from 'redux';
 
-import commentsReducer from './commentsSlice';
+import postsReducer from './postsSlice';
 
 const notificationsReducer = combineReducers({
-    comments: commentsReducer
+    posts: postsReducer
 });
 
 export default notificationsReducer;

@@ -26,6 +26,8 @@ import { UserConnectionViewInstance } from '../models/views/UserConnectionView';
 import { PostInstance } from '../models/Post';
 import { PostFileInstance } from '../models/PostFile';
 import { PostCommentInstance } from '../models/PostComment';
+import { notificationHelper } from './notificationHelper';
+import { PostNotificationInstance } from '../models/PostNotification';
 
 class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -81,15 +83,7 @@ class DatabaseHelper {
     async userExistsForProfileName(currentUserUniqueId: string | undefined, profileName: string): Promise<{exists: Boolean, allowPublicAccess: Boolean}> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
-                where: {
-                    profileName: profileName.toLowerCase()
-                },
-                attributes: [
-                    'id',
-                    'allowPublicAccess'
-                ]
-            });
+            let registeredUser: UserInstance | null = await this.getUserWithProfileName(profileName);
 
             if (registeredUser) {
                 let exists: Boolean = true;
@@ -310,7 +304,7 @@ class DatabaseHelper {
         return null;
     }
 
-    async getUserIdForUniqueId(uniqueId: string): Promise<number | undefined> {
+    async _getUserIdForUniqueId(uniqueId: string): Promise<number | undefined> {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
@@ -334,7 +328,12 @@ class DatabaseHelper {
         return undefined;
     }
 
-    async getUniqueIdForUserId(id: number): Promise<string | undefined> {
+    getUserIdForUniqueId = memoize(this._getUserIdForUniqueId, {
+        maxAge: ServerConstants.CACHE_DURATIONS.USER_BY_UNIQUE_ID,
+        promise: true
+    });
+
+    async _getUniqueIdForUserId(id: number): Promise<string | undefined> {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
@@ -358,7 +357,12 @@ class DatabaseHelper {
         return undefined;
     }
 
-    async getUserWithId(id: number): Promise<UserInstance | null> {
+    getUniqueIdForUserId = memoize(this._getUniqueIdForUserId, {
+        maxAge: ServerConstants.CACHE_DURATIONS.USER_BY_ID,
+        promise: true
+    });
+
+    async _getUserWithId(id: number): Promise<UserInstance | null> {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
@@ -404,7 +408,12 @@ class DatabaseHelper {
         return null;
     }
 
-    async getUserWithUniqueId(uniqueId: string): Promise<UserInstance | null> {
+    getUserWithId = memoize(this._getUserWithId, {
+        maxAge: ServerConstants.CACHE_DURATIONS.USER_BY_ID,
+        promise: true
+    });
+
+    async _getUserWithUniqueId(uniqueId: string): Promise<UserInstance | null> {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
@@ -450,7 +459,12 @@ class DatabaseHelper {
         return null;
     }
 
-    async getUserWithProfileName(profileName: string): Promise<UserInstance | null> {
+    getUserWithUniqueId = memoize(this._getUserWithUniqueId, {
+        maxAge: ServerConstants.CACHE_DURATIONS.USER_BY_UNIQUE_ID,
+        promise: true
+    });
+
+    async _getUserWithProfileName(profileName: string): Promise<UserInstance | null> {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
@@ -495,6 +509,11 @@ class DatabaseHelper {
         
         return null;
     }
+
+    getUserWithProfileName = memoize(this._getUserWithProfileName, {
+        maxAge: ServerConstants.CACHE_DURATIONS.USER_BY_PROFILE_NAME,
+        promise: true
+    });
 
     async registerNewUser(email: string, displayName: string, profileName: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
@@ -1179,6 +1198,23 @@ class DatabaseHelper {
                     uniqueId
                 };
 
+                let unseenPostNotifications: PostNotificationInstance[] = await db.PostNotification.findAll({
+                    attributes: [
+                        'postId',
+                        'notificationType'
+                    ],
+                    where: {
+                        registeredUserId: registeredUser.id!,
+                        notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNSEEN
+                    },
+                    group: [
+                        'postId',
+                        'notificationType'
+                    ]
+                });
+
+                userDetails.unseenPostNotifications = unseenPostNotifications.length;
+
                 if (includeEmail) {
                     userDetails.email = registeredUser.email;
                 }
@@ -1819,7 +1855,7 @@ class DatabaseHelper {
                     }
                 }, {});
 
-                this.nodeCache.set(ServerConstants.CACHE_KEY_CONNECTION_TYPES_DICT, connectionTypesDict, ServerConstants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000);
+                this.nodeCache.set(ServerConstants.CACHE_KEY_CONNECTION_TYPES_DICT, connectionTypesDict, ServerConstants.CACHE_DURATIONS.CONNECTION_TYPES);
             }
 
             return connectionTypesDict;
@@ -2938,6 +2974,7 @@ class DatabaseHelper {
                 attributes: [
                     'id',
                     'postedByUniqueId',
+                    'postTitle',
                     'uniqueId'
                 ],
                 where: {
@@ -2946,87 +2983,140 @@ class DatabaseHelper {
                 }
             });
 
-            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(userUniqueId);
+            let commenter: UserInstance | null = await this.getUserWithUniqueId(userUniqueId);
             
-            if (postInfo && registeredUser) {
-                let postedOn: Date = new Date(Date.now());
-                let parentCommentId: number | undefined = undefined;
-                let parentComment: PostCommentInstance | null = null;
+            if (postInfo && commenter) {
+                let postAuthor: UserInstance | null = await this.getUserWithUniqueId(postInfo.postedByUniqueId);
 
-                if (parentCommentUniqueId) {
-                    parentComment = await db.PostComment.findOne({
-                        attributes: [
-                            'id',
-                            'commentText',
-                            'registeredUserId',
-                            'uniqueId'
-                        ],
-                        where: {
-                            uniqueId: parentCommentUniqueId
+                if (postAuthor) {
+                    let postedOn: Date = new Date(Date.now());
+                    let parentCommentId: number | undefined = undefined;
+                    let parentComment: PostCommentInstance | null = null;
+
+                    if (parentCommentUniqueId) {
+                        parentComment = await db.PostComment.findOne({
+                            attributes: [
+                                'id',
+                                'commentText',
+                                'registeredUserId',
+                                'uniqueId'
+                            ],
+                            where: {
+                                uniqueId: parentCommentUniqueId
+                            }
+                        });
+
+                        if (parentComment) {
+                            parentCommentId = parentComment.id!;
                         }
+                    }
+
+                    let uniqueId: string = uuidv4();
+
+                    let newPostComment: PostCommentInstance | null = await db.PostComment.create({
+                        postedOn,
+                        postId: postInfo.id!,
+                        registeredUserId: commenter.id!,
+                        commentText,
+                        uniqueId,
+                        parentCommentId
                     });
 
-                    if (parentComment) {
-                        parentCommentId = parentComment.id!;
+                    if (newPostComment) {
+                        let commenterDisplayNames: DisplayNameInstance[] = commenter.displayNames!;
+                        let commenterDisplayName: DisplayNameInstance = commenterDisplayNames[0];
+                        let commenterProfilePictures: ProfilePictureInstance[] = commenter.profilePictures!;
+                        let commenterProfilePicture: ProfilePictureInstance | undefined = commenterProfilePictures[0];
+                        let commenterFullName: string = `${commenterDisplayName.displayName}${ commenterDisplayName.displayNameIndex === 0 ? '' : `#${commenterDisplayName.displayNameIndex}`}`;
+
+                        let returnComment: WebsiteBoilerplate.PostComment = {
+                            commentText,
+                            postedBy: {
+                                displayName: commenterDisplayName.displayName,
+                                displayNameIndex: commenterDisplayName.displayNameIndex,
+                                pfpSmall: commenterProfilePicture ? `/i/u/${commenter.uniqueId}/${commenterProfilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                                profileName: commenter.profileName,
+                                uniqueId: commenter.uniqueId
+                            },
+                            uniqueId
+                        };
+
+                        let postId: string = adjustGUIDDashes(postInfo.uniqueId)!;
+                        let commentId: string | undefined = adjustGUIDDashes(uniqueId);
+
+                        if (parentComment !== null) {
+                            let parentCommenter: UserInstance | null = await this.getUserWithId(parentComment.registeredUserId);
+
+                            if (parentCommenter) {
+                                let parentCommenterDisplayNames: DisplayNameInstance[] = parentCommenter.displayNames!;
+                                let parentCommenterDisplayName: DisplayNameInstance = parentCommenterDisplayNames[0];
+
+                                returnComment.parentComment = {
+                                    commentText: parentComment.commentText,
+                                    postedBy: {
+                                        displayName: parentCommenterDisplayName.displayName,
+                                        displayNameIndex: parentCommenterDisplayName.displayNameIndex
+                                    },
+                                    uniqueId: parentComment.uniqueId
+                                };
+
+                                let postAuthorDisplayNames: DisplayNameInstance[] = postAuthor.displayNames!;
+                                let postAuthorDisplayName: DisplayNameInstance = postAuthorDisplayNames[0];
+
+                                let replyNotification: WebsiteBoilerplate.PostNotification = {
+                                    commentId, 
+                                    createdOn: postedOn, 
+                                    message: `replied to your comment on ${postAuthorDisplayName.displayName}${postAuthorDisplayName.displayNameIndex === 0 ? '' : `#${commenterDisplayName.displayNameIndex}`}'s post`, 
+                                    postId, 
+                                    status: ClientConstants.NOTIFICATION_STATUS.UNSEEN, 
+                                    triggeredBy: [commenterFullName],
+                                    type: ClientConstants.NOTIFICATION_TYPES.COMMENT_REPLY,
+                                    uniqueId: uuidv4() 
+                                };
+
+                                db.PostNotification.create({
+                                    postId: postInfo.id,
+                                    registeredUserId: parentCommenter.id!,
+                                    commentId: newPostComment.id!,
+                                    notificationType: ClientConstants.NOTIFICATION_TYPES.COMMENT_REPLY,
+                                    createdOn: postedOn,
+                                    triggeredByUserId: commenter.id!
+                                });
+
+                                SocketHelper.notifyUser(parentCommenter.uniqueId, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT, replyNotification);
+                            };
+                        }
+
+                        let { postedByUniqueId }: { postedByUniqueId: string } = postInfo;
+                        let message: string = `commented on ${postInfo.postTitle || 'your post'}`;
+
+                        let postNotification: WebsiteBoilerplate.PostNotification = {
+                            commentId, 
+                            createdOn: postedOn, 
+                            message, 
+                            postId, 
+                            status: ClientConstants.NOTIFICATION_STATUS.UNSEEN, 
+                            triggeredBy: [commenterFullName],
+                            type: ClientConstants.NOTIFICATION_TYPES.COMMENT,
+                            uniqueId: uuidv4() 
+                        };
+                        
+                        // Shouldn't have to wait for the Post Notification to be created
+                        // let postNotification: PostNotificationInstance = await db.PostNotification.create({
+                        db.PostNotification.create({
+                            postId: postInfo.id,
+                            registeredUserId: postAuthor.id!,
+                            commentId: newPostComment.id!,
+                            notificationType: 0,
+                            createdOn: postedOn,
+                            triggeredByUserId: commenter.id!
+                        });
+
+                        SocketHelper.notifyUser(postedByUniqueId, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT, postNotification);
+
+                        return returnComment;
                     }
                 }
-
-                let uniqueId: string = uuidv4();
-
-                let newPostComment: PostCommentInstance | null = await db.PostComment.create({
-                    postedOn,
-                    postId: postInfo.id!,
-                    registeredUserId: registeredUser.id!,
-                    commentText,
-                    uniqueId,
-                    parentCommentId
-                });
-
-                let displayNames: DisplayNameInstance[] = registeredUser.displayNames!;
-                let displayName: DisplayNameInstance = displayNames[0];
-                let profilePictures: ProfilePictureInstance[] = registeredUser.profilePictures!;
-                let profilePicture: ProfilePictureInstance | undefined = profilePictures[0];
-
-                let returnComment: WebsiteBoilerplate.PostComment = {
-                    commentText,
-                    postedBy: {
-                        displayName: displayName.displayName,
-                        displayNameIndex: displayName.displayNameIndex,
-                        pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
-                        profileName: registeredUser.profileName,
-                        uniqueId: registeredUser.uniqueId
-                    },
-                    uniqueId
-                };
-
-                if (parentComment !== null) {
-                    let parentCommentUser: UserInstance | null = await this.getUserWithId(parentComment.registeredUserId);
-
-                    if (parentCommentUser) {
-                        displayNames = parentCommentUser.displayNames!;
-                        displayName = displayNames[0];
-                        profilePictures = parentCommentUser.profilePictures!;
-                        profilePicture = profilePictures[0];
-
-                        returnComment.parentComment = {
-                            commentText: parentComment.commentText,
-                            postedBy: {
-                                displayName: displayName.displayName,
-                                displayNameIndex: displayName.displayNameIndex
-                            },
-                            uniqueId: parentComment.uniqueId
-                        };
-                    };
-                }
-
-                let { postedByUniqueId }: { postedByUniqueId: string } = postInfo;
-                let message: string = `${displayName.displayName}${ displayName.displayNameIndex === 0 ? '' : `#${displayName.displayNameIndex}`} commented on your post!`;
-
-                let notification: WebsiteBoilerplate.CommentNotification = { commentId: adjustGUIDDashes(uniqueId), message, postId: adjustGUIDDashes(postInfo.uniqueId), createdOn: postedOn };
-
-                SocketHelper.notifyUser(postedByUniqueId, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT, notification);
-
-                return returnComment;
             }
         }
         catch (err) {
@@ -3034,6 +3124,247 @@ class DatabaseHelper {
         }
 
         return undefined;
+    }
+    
+    async getPostNotifications(uniqueId: string): Promise<WebsiteBoilerplate.PostNotification[]> {
+        let notifications: WebsiteBoilerplate.PostNotification[] = [];
+
+        try {
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(uniqueId);
+
+            if (registeredUser) {
+                let postNotifications: PostNotificationInstance[] = await registeredUser.getPostNotifications({
+                    include: [
+                        {
+                            model: db.User,
+                            as: 'triggeredByUser',
+                            attributes: [
+                                'id'
+                            ],
+                            include: [
+                                {
+                                    model: db.DisplayName,
+                                    as: 'displayNames',
+                                    where: {
+                                        isActive: true
+                                    },
+                                    attributes: [
+                                        'displayName',
+                                        'displayNameIndex'
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            model: db.Post,
+                            as: 'post',
+                            attributes: [
+                                'postTitle',
+                                'uniqueId'
+                            ]
+                        },
+                        {
+                            model: db.PostComment,
+                            as: 'comment',
+                            required: false,
+                            attributes: [
+                                'uniqueId'
+                            ]
+                        }
+                    ],
+                    // Order ascending:
+                    // If one user triggers multiple notifications for the same post, there will still only be one
+                    // notification after they're processed. Because there will only be one notification for a single user,
+                    // it will include the commentId in the notification. We want the commentId to be the oldest comment
+                    // by the user, so by ordering ascending, the first comment to be hit and stored will be the oldest one.
+                    // The notifications will then get sorted by date descending, making sure they end in the right order.
+                    order: [['id', 'ASC']]
+                });
+
+                if (postNotifications.length > 0) {
+                    let { postNotifications: filteredNotifications, purgeNotifications }: { postNotifications: WebsiteBoilerplate.PostNotification[], purgeNotifications: PostNotificationInstance[] } = notificationHelper.processPostNotifications(postNotifications);
+
+                    notifications = filteredNotifications;
+
+                    if (purgeNotifications.length > 0) {
+                        db.PostNotification.destroy({
+                            where: {
+                                id: purgeNotifications.map(notification => notification.id!)
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error getting post notifications for user ${uniqueId}:\n${err.message}`);
+        }
+
+        return notifications;
+    }
+
+    async markPostNotificationAsRead(uniqueId: string, postId: string, commentId: string | undefined, endDate: Date | undefined) {
+        try {
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+
+            if (registeredUserId) {
+                let adjustedPostId: string | undefined = adjustGUIDDashes(postId, true);
+                let adjustedCommentId: string | undefined = adjustGUIDDashes(commentId, true);
+
+                if (adjustedPostId) {
+                    let whereOptions: { [key: string]: any} = {
+                        postId: {
+                            [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post\` where \`post\`.\`unique_id\` = '${adjustedPostId}')`)
+                        },
+                        registeredUserId,
+                        notificationStatus: {
+                            [Op.ne]: ClientConstants.NOTIFICATION_STATUS.READ /* Knock out unseen and unread at the same time */
+                        }
+                    };
+
+                    if (adjustedCommentId) {
+                        // There could be multiple comments by the same user, but we'd only get one comment id (the oldest one)
+                        // so just mark all notifications by that user as read
+                        let notification: PostNotificationInstance | null = await db.PostNotification.findOne({
+                            attributes: [
+                                'triggeredByUserId'
+                            ],
+                            where: {
+                                commentId: {
+                                    [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post_comment\` where \`post_comment\`.\`unique_id\` = '${adjustedCommentId}')`)
+                                },
+                                postId: {
+                                    [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post\` where \`post\`.\`unique_id\` = '${adjustedPostId}')`)
+                                },
+                                registeredUserId
+                            }
+                        });
+
+                        if (notification) {
+                            whereOptions.triggeredByUserId = notification.triggeredByUserId;
+                        }
+                    }
+                    
+                    if (endDate) {
+                        whereOptions.createdOn = {
+                            [Op.lte]: endDate
+                        };
+                    }
+
+                    // Don't need to wait
+                    db.PostNotification.update({
+                            notificationStatus: ClientConstants.NOTIFICATION_STATUS.READ
+                        },
+                        {
+                            where: whereOptions
+                        }
+                    );
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error marking unseen notifications as read:\n${err.message}`);
+        }
+    }
+
+    async markAllPostNotificationsAsSeen(uniqueId: string, endDate: Date | undefined) {
+        try {
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+
+            if (registeredUserId) {
+                let whereOptions: { [key: string]: any} = {
+                    registeredUserId,
+                    notificationStatus: ClientConstants.NOTIFICATION_STATUS.SEEN_ONCE,
+                };
+
+                if (endDate) {
+                    whereOptions.createdOn = {
+                        [Op.lte]: endDate
+                    };
+                }
+
+                // Mark all that they've seen at least once before as Unread
+                // Need to wait so we don't accidentally update the same notification twice
+                await db.PostNotification.update({
+                        notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNREAD
+                    },
+                    {
+                        where: whereOptions
+                    }
+                );
+
+                whereOptions.notificationStatus = ClientConstants.NOTIFICATION_STATUS.UNSEEN;
+
+                // Mark all that they haven't seen as Seen Once
+                // Don't need to wait
+                db.PostNotification.update({
+                        notificationStatus: ClientConstants.NOTIFICATION_STATUS.SEEN_ONCE
+                    },
+                    {
+                        where: whereOptions
+                    }
+                );
+            }
+        }
+        catch (err) {
+            console.error(`Error marking unseen notifications as seen/unread:\n${err.message}`);
+        }
+    }
+
+    async removePostNotifications(uniqueId: string, postId: string, commentId: string | undefined, endDate: Date | undefined) {
+        try {
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+
+            if (registeredUserId) {
+                let adjustedPostId: string | undefined = adjustGUIDDashes(postId, true);
+                let adjustedCommentId: string | undefined = adjustGUIDDashes(commentId, true);
+
+                if (adjustedPostId) {
+                    let whereOptions: { [key: string]: any} = {
+                        postId: {
+                            [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post\` where \`post\`.\`unique_id\` = '${adjustedPostId}')`)
+                        },
+                        registeredUserId
+                    };
+
+                    if (adjustedCommentId) {
+                        // There could be multiple comments by the same user, but we'd only get one comment id (the oldest one)
+                        // so just clear out all notifications by that user
+                        let notification: PostNotificationInstance | null = await db.PostNotification.findOne({
+                            attributes: [
+                                'triggeredByUserId'
+                            ],
+                            where: {
+                                commentId: {
+                                    [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post_comment\` where \`post_comment\`.\`unique_id\` = '${adjustedCommentId}')`)
+                                },
+                                postId: {
+                                    [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post\` where \`post\`.\`unique_id\` = '${adjustedPostId}')`)
+                                },
+                                registeredUserId
+                            }
+                        });
+
+                        if (notification) {
+                            whereOptions.triggeredByUserId = notification.triggeredByUserId;
+                        }
+                    }
+
+                    if (endDate) {
+                        whereOptions.createdOn = {
+                            [Op.lte]: endDate
+                        };
+                    }
+
+                    await db.PostNotification.destroy({
+                        where: whereOptions
+                    });
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error removing notifications:\n${err.message}`);
+        }
     }
 
     async updateThumbnailForPostFile(postId: number, thumbnailFileName: string) {
