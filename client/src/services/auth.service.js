@@ -1,5 +1,6 @@
 import axiosApi from './axios-api';
 import * as Constants from '../constants/constants';
+import { disconnectSocket } from '../sockets/socket';
 import 'regenerator-runtime'; /* Necessary for async/await to not throw an error. https://tenor.com/view/idk-idont-know-sassy-kid-girl-gif-4561444 */
 
 export default class AuthService {
@@ -84,6 +85,8 @@ export default class AuthService {
 
     static async logout(fromHere = true, fromOtherLocations = false) {
         try {
+            disconnectSocket();
+
             let payload = {
                 fromHere,
                 fromOtherLocations

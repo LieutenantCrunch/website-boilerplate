@@ -30,10 +30,12 @@ import { useDispatch, useSelector } from 'react-redux';
 import { connectionTypesFetched } from '../redux/connections/connectionTypesSlice';
 import { currentUserFetched } from '../redux/users/currentUserSlice';
 
-// Socket.IO
-import { SocketContext } from '../contexts/socket';
-
+// Contexts
 import { LoggedInContext } from '../contexts/loggedIn';
+
+// Other
+import * as Constants from '../constants/constants';
+import { connectSocket } from '../sockets/socket';
 
 export default function App() {
     const dispatch = useDispatch();
@@ -41,8 +43,6 @@ export default function App() {
     const [statusMessage, setStatusMessage] = useState({type: 'info', message: null});
     const [loginDetails, setLoginDetails] = Hooks.useStateWithLocalStorage('loginDetails', null);
     const [headerMiddleEl, setHeaderMiddleEl] = useState(<div></div>);
-
-    const socket = useContext(SocketContext);
 
     const checkForValidSession = () => {
         if (!loginDetails) {
@@ -74,7 +74,7 @@ export default function App() {
                 }
             });
 
-            socket.connect();
+            connectSocket();
         }
 
         return () => {
@@ -85,8 +85,6 @@ export default function App() {
             if (UserService.getConnectionTypeDictCancel) {
                 UserService.getConnectionTypeDictCancel();
             }
-
-            socket.disconnect();
         }
     }, [loginDetails]);
 

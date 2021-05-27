@@ -1,3 +1,5 @@
+import * as ClientConstants from '../constants/constants.client';
+
 // Source: https://www.w3schools.com/JS/js_random.asp
 export const randomInt = (min: number, max: number): number => {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -7,13 +9,13 @@ export const isNullOrWhiteSpaceOnly = (text: string | null | undefined): Boolean
 
 /**
  * Takes a GUID and adds or removes dashes from it
- * @param guid A valid GUID with or without dashes
- * @param add If true, dashes will be added to the GUID if necessary, else they will be removed
+ * @param {string} guid A valid GUID with or without dashes
+ * @param {Boolean} add If true, dashes will be added to the GUID if necessary, else they will be removed
  * @returns The same GUID with or without dashes as specified by the add paramter or undefined if the GUID is not valid
  */
 export const adjustGUIDDashes = (guid: string | undefined, add: Boolean = false): string | undefined => {
     if (guid) {
-        let matchResults: string[] | null = guid.match(/^([0-9a-f]{8})(?:-)?([0-9a-f]{4})(?:-)?([0-9a-f]{4})(?:-)?([0-9a-f]{4})(?:-)?([0-9a-f]{12})$/i);
+        let matchResults: string[] | null = guid.match(ClientConstants.GUID_REGEX_DASH_OPTIONAL);
 
         if (matchResults && matchResults.length === 6) {
             // The full match is stored at index 0
@@ -63,4 +65,17 @@ export const dateFromInput = (input: string | number | Date | null | undefined):
     }
 
     return undefined;
+};
+
+/**
+ * Takes a string and determines if it's a valid GUID containing dashes
+ * @param {string} guid A string that could potentially be a dashed GUID
+ * @returns true if the string is a dashed guid, else false
+ */
+export const isDashedGUID = (guid: string | undefined): Boolean => {
+    if (guid) {
+        return ClientConstants.GUID_REGEX.test(guid);
+    }
+
+    return false;
 };

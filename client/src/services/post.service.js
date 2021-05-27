@@ -278,22 +278,22 @@ export default class PostService {
         return [];
     }
 
-    static async markPostNotificationAsRead(postId, commentId, endDate) {
+    static async markPostNotificationsAsRead(postId, endDate) {
         try {
             let payload = { postId, endDate };
 
-            if (!isNullOrWhiteSpaceOnly(commentId)) {
-                payload.commentId = commentId;
-            }
-
-            let response = await axiosApi.post(Constants.API_PATH_POSTS + 'markPostNotificationAsRead', payload);
+            let response = await axiosApi.post(Constants.API_PATH_POSTS + 'markPostNotificationsAsRead', payload);
     
             if (response.data) {
                 return response.data.success;
             }
         }
         catch (err) {
-            console.error(`Error marking post notification as read:\n${err.message}`);
+            // Don't log request aborted messages that happen due to the page changing when clicking on a link
+            // The requests will still make it to the server and do what they're supposed to
+            if (!(/aborted/i).test(err.message)) {
+                console.error(`Error marking post notification as read:\n${err.message}`);
+            }
         }
 
         return undefined;
@@ -317,13 +317,9 @@ export default class PostService {
         return undefined;
     }
 
-    static async removePostNotifications(postId, commentId, endDate) {
+    static async removePostNotifications(postId, endDate) {
         try {
             let payload = { postId, endDate };
-
-            if (!isNullOrWhiteSpaceOnly(commentId)) {
-                payload.commentId = commentId;
-            }
 
             let response = await axiosApi.post(Constants.API_PATH_POSTS + 'removePostNotifications', payload);
     

@@ -1,5 +1,4 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import UserService from '../../services/user.service';
 import * as Constants from '../../constants/constants';
 
 const initialState = {
@@ -11,7 +10,7 @@ const initialState = {
     pfpSmall: Constants.STATIC_IMAGES.PFP_DEFAULT, 
     roles: [], 
     uniqueId: '',
-    unseenPostNotifications: 0
+    hasUnseenPostNotifications: false
 };
 
 // Async Thunks
@@ -36,7 +35,7 @@ const currentUserSlice = createSlice({
                 pfpSmall, 
                 roles, 
                 uniqueId,
-                unseenPostNotifications
+                hasUnseenPostNotifications
             } = action.payload;
 
             return {
@@ -49,7 +48,7 @@ const currentUserSlice = createSlice({
                 pfpSmall, 
                 roles, 
                 uniqueId,
-                unseenPostNotifications
+                hasUnseenPostNotifications
             };
         },
         currentUserDisplayNameUpdated: (state, action) => {
@@ -72,7 +71,10 @@ const currentUserSlice = createSlice({
             }
         },
         seenPostNotifications: (state, action) => {
-            state.unseenPostNotifications = 0;
+            state.hasUnseenPostNotifications = false;
+        },
+        unseenPostNotificationAdded: (state, action) => {
+            state.hasUnseenPostNotifications = true;
         }
     }
 });
@@ -84,7 +86,8 @@ export const {
     currentUserPfpUpdated, 
     currentUserRoleAdded, 
     currentUserRoleRemoved,
-    seenPostNotifications
+    seenPostNotifications,
+    unseenPostNotificationAdded
 } = currentUserSlice.actions;
 
 // Selectors
@@ -97,4 +100,4 @@ export const selectCurrentUserPfp = state => state.currentUser.pfp;
 export const selectCurrentUserPfpSmall = state => state.currentUser.pfpSmall;
 export const selectCurrentUserRoles = state => state.currentUser.roles;
 export const selectCurrentUserUniqueId = state => state.currentUser.uniqueId;
-//export const selectCurrentUserUnseenPostNotifications = state => state.currentUser.unseenPostNotifications;
+export const selectHasUnseenPostNotifications = state => state.currentUser.hasUnseenPostNotifications;

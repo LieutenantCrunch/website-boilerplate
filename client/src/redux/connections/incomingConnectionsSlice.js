@@ -48,12 +48,5 @@ export default incomingConnectionsSlice.reducer;
 export const { incomingConnectionAdded, incomingConnectionRemoved } = incomingConnectionsSlice.actions;
 
 // Selectors
-export const selectAllIncomingConnections = state => {
-    let ids = state.connections.incomingConnections.ids;
-    if (ids.length) {
-        return ids.map(id => state.users.entities[id]);
-    }
-
-    return ids;
-};
+export const selectIncomingConnectionIds = state => state.connections.incomingConnections.ids;
 export const selectIncomingConnectionsStatus = state => state.connections.incomingConnections.status;

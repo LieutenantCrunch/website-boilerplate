@@ -1119,7 +1119,9 @@ class DatabaseHelper {
 
     async getUserDetails(currentUniqueId: string | undefined, uniqueId: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.UserDetails | null> {
         try {
-            let getConnectionTypes = currentUniqueId && currentUniqueId !== uniqueId;
+            let currentUniqueIdExists: Boolean = !isNullOrWhiteSpaceOnly(currentUniqueId);
+            let userIsCurrent: Boolean = currentUniqueIdExists && currentUniqueId === uniqueId;
+            let getConnectionTypes: Boolean = currentUniqueIdExists && currentUniqueId !== uniqueId;
             let currentUser: UserInstance | null = null;
             
             if (currentUniqueId) {
@@ -1198,22 +1200,24 @@ class DatabaseHelper {
                     uniqueId
                 };
 
-                let unseenPostNotifications: PostNotificationInstance[] = await db.PostNotification.findAll({
-                    attributes: [
-                        'postId',
-                        'notificationType'
-                    ],
-                    where: {
-                        registeredUserId: registeredUser.id!,
-                        notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNSEEN
-                    },
-                    group: [
-                        'postId',
-                        'notificationType'
-                    ]
-                });
+                if (userIsCurrent) {
+                    let unseenPostNotifications: PostNotificationInstance[] = await db.PostNotification.findAll({
+                        attributes: [
+                            'postId',
+                            'notificationType'
+                        ],
+                        where: {
+                            registeredUserId: registeredUser.id!,
+                            notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNSEEN
+                        },
+                        group: [
+                            'postId',
+                            'notificationType'
+                        ]
+                    });
 
-                userDetails.unseenPostNotifications = unseenPostNotifications.length;
+                    userDetails.hasUnseenPostNotifications = unseenPostNotifications.length > 0;
+                }
 
                 if (includeEmail) {
                     userDetails.email = registeredUser.email;
@@ -1606,6 +1610,7 @@ class DatabaseHelper {
                                 model: db.ProfilePicture,
                                 as: 'profilePictures',
                                 attributes: [
+                                    'fileName',
                                     'smallFileName'
                                 ],
                                 order: [['id', 'DESC']],
@@ -1680,6 +1685,8 @@ class DatabaseHelper {
                             }), {});
                         }
 
+                        let connectedUserUniqueId: string = connectedUser.uniqueId;
+
                         return {
                             allowPublicAccess: connectedUser!.allowPublicAccess,
                             connectedToCurrentUser: true, /* Outgoing connections are always connected to the user */
@@ -1688,10 +1695,10 @@ class DatabaseHelper {
                             displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
                             isBlocked: false, /* Outgoing connections shouldn't be blocked */
                             isMutual: connectionView.isMutual,
-                            pfp: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${uniqueId}/${connectedUser!.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                            pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                            pfp: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser!.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                            pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
                             profileName: connectedUser!.profileName,
-                            uniqueId: connectedUser!.uniqueId
+                            uniqueId: connectedUserUniqueId
                         };
                     });
                 }
@@ -1750,6 +1757,7 @@ class DatabaseHelper {
                                             model: db.ProfilePicture,
                                             as: 'profilePictures',
                                             attributes: [
+                                                'fileName',
                                                 'smallFileName'
                                             ],
                                             order: [['id', 'DESC']],
@@ -1814,6 +1822,8 @@ class DatabaseHelper {
                                 isBlocked = true;
                             }
 
+                            let requestedUserUniqueId: string = requestedUser.uniqueId;
+
                             results.push({
                                 allowPublicAccess: requestedUser.allowPublicAccess,
                                 connectedToCurrentUser: false, /* This list will only contain users who are not connected */
@@ -1822,10 +1832,10 @@ class DatabaseHelper {
                                 displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
                                 isBlocked,
                                 isMutual: false, /* Incoming connections will never be mutual */
-                                pfp: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                pfp: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${requestedUserUniqueId}/${requestedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
+                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${requestedUserUniqueId}/${requestedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
                                 profileName: requestedUser.profileName,
-                                uniqueId: requestedUser.uniqueId
+                                uniqueId: requestedUserUniqueId
                             });
                         }
 
@@ -3075,11 +3085,12 @@ class DatabaseHelper {
                                 };
 
                                 db.PostNotification.create({
+                                    commentId: newPostComment.id!,
+                                    createdOn: postedOn,
+                                    notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNSEEN, /* This is defaulted in the model, but set it here to be safe */
+                                    notificationType: ClientConstants.NOTIFICATION_TYPES.COMMENT_REPLY,
                                     postId: postInfo.id,
                                     registeredUserId: parentCommenter.id!,
-                                    commentId: newPostComment.id!,
-                                    notificationType: ClientConstants.NOTIFICATION_TYPES.COMMENT_REPLY,
-                                    createdOn: postedOn,
                                     triggeredByUserId: commenter.id!
                                 });
 
@@ -3104,11 +3115,12 @@ class DatabaseHelper {
                         // Shouldn't have to wait for the Post Notification to be created
                         // let postNotification: PostNotificationInstance = await db.PostNotification.create({
                         db.PostNotification.create({
+                            commentId: newPostComment.id!,
+                            createdOn: postedOn,
+                            notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNSEEN, /* This is defaulted in the model, but set it here to be safe */
+                            notificationType: 0,
                             postId: postInfo.id,
                             registeredUserId: postAuthor.id!,
-                            commentId: newPostComment.id!,
-                            notificationType: 0,
-                            createdOn: postedOn,
                             triggeredByUserId: commenter.id!
                         });
 
@@ -3203,13 +3215,12 @@ class DatabaseHelper {
         return notifications;
     }
 
-    async markPostNotificationAsRead(uniqueId: string, postId: string, commentId: string | undefined, endDate: Date | undefined) {
+    async markPostNotificationsAsRead(uniqueId: string, postId: string, endDate: Date | undefined) {
         try {
             let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
 
             if (registeredUserId) {
                 let adjustedPostId: string | undefined = adjustGUIDDashes(postId, true);
-                let adjustedCommentId: string | undefined = adjustGUIDDashes(commentId, true);
 
                 if (adjustedPostId) {
                     let whereOptions: { [key: string]: any} = {
@@ -3221,29 +3232,6 @@ class DatabaseHelper {
                             [Op.ne]: ClientConstants.NOTIFICATION_STATUS.READ /* Knock out unseen and unread at the same time */
                         }
                     };
-
-                    if (adjustedCommentId) {
-                        // There could be multiple comments by the same user, but we'd only get one comment id (the oldest one)
-                        // so just mark all notifications by that user as read
-                        let notification: PostNotificationInstance | null = await db.PostNotification.findOne({
-                            attributes: [
-                                'triggeredByUserId'
-                            ],
-                            where: {
-                                commentId: {
-                                    [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post_comment\` where \`post_comment\`.\`unique_id\` = '${adjustedCommentId}')`)
-                                },
-                                postId: {
-                                    [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post\` where \`post\`.\`unique_id\` = '${adjustedPostId}')`)
-                                },
-                                registeredUserId
-                            }
-                        });
-
-                        if (notification) {
-                            whereOptions.triggeredByUserId = notification.triggeredByUserId;
-                        }
-                    }
                     
                     if (endDate) {
                         whereOptions.createdOn = {
@@ -3311,13 +3299,12 @@ class DatabaseHelper {
         }
     }
 
-    async removePostNotifications(uniqueId: string, postId: string, commentId: string | undefined, endDate: Date | undefined) {
+    async removePostNotifications(uniqueId: string, postId: string, endDate: Date | undefined) {
         try {
             let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
 
             if (registeredUserId) {
                 let adjustedPostId: string | undefined = adjustGUIDDashes(postId, true);
-                let adjustedCommentId: string | undefined = adjustGUIDDashes(commentId, true);
 
                 if (adjustedPostId) {
                     let whereOptions: { [key: string]: any} = {
@@ -3326,29 +3313,6 @@ class DatabaseHelper {
                         },
                         registeredUserId
                     };
-
-                    if (adjustedCommentId) {
-                        // There could be multiple comments by the same user, but we'd only get one comment id (the oldest one)
-                        // so just clear out all notifications by that user
-                        let notification: PostNotificationInstance | null = await db.PostNotification.findOne({
-                            attributes: [
-                                'triggeredByUserId'
-                            ],
-                            where: {
-                                commentId: {
-                                    [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post_comment\` where \`post_comment\`.\`unique_id\` = '${adjustedCommentId}')`)
-                                },
-                                postId: {
-                                    [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post\` where \`post\`.\`unique_id\` = '${adjustedPostId}')`)
-                                },
-                                registeredUserId
-                            }
-                        });
-
-                        if (notification) {
-                            whereOptions.triggeredByUserId = notification.triggeredByUserId;
-                        }
-                    }
 
                     if (endDate) {
                         whereOptions.createdOn = {

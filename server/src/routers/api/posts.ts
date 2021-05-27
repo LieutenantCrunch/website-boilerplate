@@ -198,10 +198,10 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
             return res.status(500);
         }
     }
-    case 'markPostNotificationAsRead': {
+    case 'markPostNotificationsAsRead': {
         try {
             if (req.userId) {
-                let { postId, commentId, endDate: endDateStr }: { postId: string | undefined, commentId: string | undefined, endDate: string | undefined } = req.body;
+                let { postId, endDate: endDateStr }: { postId: string | undefined, endDate: string | undefined } = req.body;
 
                 let endDate: Date | undefined = undefined;
 
@@ -216,7 +216,7 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                 }
 
                 if (postId) {
-                    databaseHelper.markPostNotificationAsRead(req.userId, postId, commentId, endDate);
+                    databaseHelper.markPostNotificationsAsRead(req.userId, postId, endDate);
 
                     return res.status(200).json({success: true});
                 }
@@ -261,7 +261,7 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
     case 'removePostNotifications': {
         try {
             if (req.userId) {
-                let { postId, commentId, endDate: endDateStr }: { postId: string | undefined, commentId: string | undefined, endDate: string | undefined } = req.body;
+                let { postId, endDate: endDateStr }: { postId: string | undefined, endDate: string | undefined } = req.body;
 
                 let endDate: Date | undefined = undefined;
 
@@ -276,7 +276,7 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                 }
 
                 if (postId) {
-                    databaseHelper.removePostNotifications(req.userId, postId, commentId, endDate);
+                    databaseHelper.removePostNotifications(req.userId, postId, endDate);
 
                     return res.status(200).json({success: true});
                 }

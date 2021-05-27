@@ -1,20 +1,20 @@
 import React, {useRef, useState} from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { shallowEqual, useSelector, useDispatch } from 'react-redux';
 import classNames from 'classnames';
 import ConnectionPreviewDialog from '../Dialogs/ConnectionPreview';
-import ConnectionListItem from './ConnectionListItem';
+import { ConnectionListItem } from './ConnectionListItem';
 import AddConnectionDialog from '../Dialogs/AddConnection';
 import YesNoMessageBox from '../MessageBoxes/YesNoMessageBox';
 
 import { 
     fetchOutgoingConnections, 
-    selectAllOutgoingConnections,
+    selectOutgoingConnectionIds,
     selectOutgoingConnectionsStatus
 } from '../../redux/connections/outgoingConnectionsSlice';
 
 import {
     fetchIncomingConnections,
-    selectAllIncomingConnections,
+    selectIncomingConnectionIds,
     selectIncomingConnectionsStatus
 } from '../../redux/connections/incomingConnectionsSlice';
 
@@ -27,9 +27,9 @@ import { selectUserById } from '../../redux/users/usersSlice';
 export default function ConnectionsSideMenuItem(props) {
     const dispatch = useDispatch();
     const outgoingConnectionsStatus = useSelector(selectOutgoingConnectionsStatus);
-    const outgoingConnections = useSelector(selectAllOutgoingConnections);
+    const outgoingConnectionIds = useSelector(selectOutgoingConnectionIds, shallowEqual);
     const incomingConnectionsStatus = useSelector(selectIncomingConnectionsStatus);
-    const incomingConnections = useSelector(selectAllIncomingConnections);
+    const incomingConnectionIds = useSelector(selectIncomingConnectionIds, shallowEqual);
 
     const [state, updateState] = useState({
         expanded: false,
@@ -139,9 +139,9 @@ export default function ConnectionsSideMenuItem(props) {
                         Loading...
                     </li>;
             case 'idle':
-                return outgoingConnections && outgoingConnections.length > 0
-                    ? outgoingConnections.map(outgoingConnection => (
-                            <ConnectionListItem key={outgoingConnection.uniqueId} connection={outgoingConnection} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
+                return outgoingConnectionIds && outgoingConnectionIds.length > 0
+                    ? outgoingConnectionIds.map(outgoingConnectionId => (
+                            <ConnectionListItem key={outgoingConnectionId} connectionId={outgoingConnectionId} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
                         )
                     )
                     : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>
@@ -162,9 +162,9 @@ export default function ConnectionsSideMenuItem(props) {
                         Loading...
                     </li>;
             case 'idle':
-                return incomingConnections && incomingConnections.length > 0
-                        ? incomingConnections.map(incomingConnection => (
-                                <ConnectionListItem key={incomingConnection.uniqueId} connection={incomingConnection} handleConnectionClick={handleConnectionClick} />
+                return incomingConnectionIds && incomingConnectionIds.length > 0
+                        ? incomingConnectionIds.map(incomingConnectionId => (
+                                <ConnectionListItem key={incomingConnectionId} connectionId={incomingConnectionId} handleConnectionClick={handleConnectionClick} />
                             )
                         )
                         : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>
@@ -183,9 +183,9 @@ export default function ConnectionsSideMenuItem(props) {
         <div className={classNames('sideMenuItem', {'sideMenuItemExpanded': state.expanded})}
             onClick={toggleExpanded}
         >
-            <div className="sideMenuItemTab"></div>
-            <div className="sideMenuItemDetails" title="Connections">
-                <div className="sideMenuItemTitle">
+            <div className="sideMenuItemTab" title="Connections"></div>
+            <div className="sideMenuItemDetails">
+                <div className="sideMenuItemTitle" title="Connections">
                     <h4 className="sideMenuItemText">Connections</h4>
                     <div className="sideMenuItemIcon"></div>
                 </div>

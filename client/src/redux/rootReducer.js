@@ -3,10 +3,7 @@ import { combineReducers } from 'redux';
 import connectionsReducer from './connections/connectionsSlice';
 import currentUserReducer from './users/currentUserSlice';
 import notificationsReducer from './notifications/notificationsSlice';
-import { selectUnseenPostNotifications } from './notifications/postsSlice';
 import usersReducer from './users/usersSlice';
-
-import * as Constants from '../constants/constants';
 
 const appReducer = combineReducers({
     connections: connectionsReducer,
@@ -31,14 +28,3 @@ export const reduxLogout = () => ({
 });
 
 // Selectors
-export const selectUnseenPostNotificationCount = state => {
-    let unseenPostNotifications = state.currentUser?.unseenPostNotifications;
-
-    if (unseenPostNotifications) {
-        return unseenPostNotifications;
-    }
-
-    let postNotifications = selectUnseenPostNotifications(state);
-
-    return postNotifications.length;
-}

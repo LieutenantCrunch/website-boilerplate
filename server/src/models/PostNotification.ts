@@ -3,6 +3,7 @@ import { SequelizeAttributes } from '../typings/SequelizeAttributes';
 import { UserInstance } from './User';
 import { PostInstance } from './Post';
 import { PostCommentInstance } from './PostComment';
+import * as ClientConstants from '../constants/constants.client';
 
 export interface PostNotificationAttributes {
     id?: number;
@@ -76,7 +77,7 @@ export const PostNotificationFactory = (sequelize: Sequelize): ModelCtor<PostNot
             type: DataTypes.INTEGER,
             field: 'notification_status',
             allowNull: false,
-            defaultValue: 2
+            defaultValue: ClientConstants.NOTIFICATION_STATUS.UNSEEN
         }
     };
 

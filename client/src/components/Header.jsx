@@ -1,5 +1,5 @@
 // https://medium.com/technoetics/create-basic-login-forms-using-react-js-hooks-and-bootstrap-2ae36c15e551
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { withRouter, Link } from 'react-router-dom';
 import AuthService from '../services/auth.service';
 import { reduxLogout } from '../redux/rootReducer';
@@ -11,18 +11,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { PostNotification } from './PostNotification';
 
 // Redux
-import { useDispatch, useSelector } from 'react-redux';
-import { selectUnseenPostNotificationCount } from '../redux/rootReducer';
-import { addPostNotification, fetchPostNotifications, markAllPostNotificationsAsSeen, removeAllPostNotifications, selectAllPostNotifications, selectFetchPostNotificationsStatus } from '../redux/notifications/postsSlice';
-import { selectCurrentUserRoles } from '../redux/users/currentUserSlice';
+import { shallowEqual, useDispatch, useSelector } from 'react-redux';
+import { fetchPostNotifications, invalidatePostNotifications, markAllPostNotificationsAsSeen, selectAllPostNotificationIds, selectFetchPostNotificationsStatus } from '../redux/notifications/postsSlice';
+import { selectCurrentUserRoles, seenPostNotifications, selectHasUnseenPostNotifications, unseenPostNotificationAdded } from '../redux/users/currentUserSlice';
 
 // Material UI
 import Badge from '@material-ui/core/Badge';
 import NotificationsOutlinedIcon from '@material-ui/icons/NotificationsOutlined';
 import { withStyles } from '@material-ui/core/styles';
-
-// Socket.IO
-import { SocketContext } from '../contexts/socket';
 
 const StyledBadge = withStyles((theme) => ({
     badge: {
@@ -40,15 +36,9 @@ function Header(props) {
 
     const dispatch = useDispatch();
     const currentRoles = useSelector(selectCurrentUserRoles);
-    const postNotifications = useSelector(selectAllPostNotifications);
-    const unseenPostNotificationCount = useSelector(selectUnseenPostNotificationCount);
+    const postNotificationIds = useSelector(selectAllPostNotificationIds, shallowEqual);
+    const hasUnseenPostNotifications = useSelector(selectHasUnseenPostNotifications);
     const fetchPostNotificationsStatus = useSelector(selectFetchPostNotificationsStatus);
-
-    const socket = useContext(SocketContext);
-
-    socket.on(Constants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT, (postNotification) => {
-        dispatch(addPostNotification(postNotification));
-    });
 
     const headerNavbar = useRef(null);
     const headerNotifications = useRef(null);
@@ -90,6 +80,11 @@ function Header(props) {
         if (notificationsCollapse) {
             notificationsCollapse.show();
         }
+
+        setState(prevState => ({
+            ...prevState,
+            notificationsExpanded: true
+        }));
     };
 
     const hideNotificationMenu = () => {
@@ -98,6 +93,11 @@ function Header(props) {
         if (notificationsCollapse) {
             notificationsCollapse.hide();
         }
+
+        setState(prevState => ({
+            ...prevState,
+            notificationsExpanded: false
+        }));
     };
 
     const showNavbarMenu = () => {
@@ -106,6 +106,11 @@ function Header(props) {
         if (navbarCollapse) {
             navbarCollapse.show();
         }
+
+        setState(prevState => ({
+            ...prevState,
+            navbarExpanded: true
+        }));
     };
 
     const hideNavbarMenu = () => {
@@ -114,6 +119,11 @@ function Header(props) {
         if (navbarCollapse) {
             navbarCollapse.hide();
         }
+
+        setState(prevState => ({
+            ...prevState,
+            navbarExpanded: false
+        }));
     };
 
     const getPostNotificationsList = () => {
@@ -123,9 +133,9 @@ function Header(props) {
                         <a className="nav-link text-end" href="#">Loading...</a>
                     </li>;
             case 'idle':
-                return postNotifications && postNotifications.length > 0
-                    ? postNotifications.map(postNotification => {
-                        return <PostNotification key={postNotification.uniqueId} notification={postNotification} />
+                return postNotificationIds && postNotificationIds.length > 0
+                    ? postNotificationIds.map(postNotificationId => {
+                        return <PostNotification key={postNotificationId} notificationId={postNotificationId} />
                     })
                     : <li key="None" className="nav-item">
                         <a className="nav-link text-end" href="#">None</a>
@@ -143,22 +153,13 @@ function Header(props) {
 
         if (state.notificationsExpanded) {
             hideNotificationMenu();
-            
-            setState(prevState => ({
-                ...prevState,
-                notificationsExpanded: false
-            }));
         }
         else {
-            let results = await dispatch(fetchPostNotifications());
-
             showNotificationMenu();
 
-            setState(prevState => ({
-                ...prevState,
-                navbarExpanded: false,
-                notificationsExpanded: true
-            }));
+            await dispatch(fetchPostNotifications());
+
+            dispatch(seenPostNotifications());
         }
     };
 
@@ -167,20 +168,9 @@ function Header(props) {
         
         if (state.navbarExpanded) {
             hideNavbarMenu();
-            
-            setState(prevState => ({
-                ...prevState,
-                navbarExpanded: false
-            }));
         }
         else {
             showNavbarMenu();
-
-            setState(prevState => ({
-                ...prevState,
-                navbarExpanded: true,
-                notificationsExpanded: false
-            }));
         }
     };
 
@@ -234,7 +224,7 @@ function Header(props) {
                     {
                         loginDetailsExists &&
                         <button className="navbar-toggler mx-1" type="button" data-bs-toggle="collapse" aria-expanded="false" aria-label="Toggle notifications" onClick={handleNotificationClick}>
-                            <StyledBadge badgeContent={unseenPostNotificationCount || 0} max={99} invisible={!unseenPostNotificationCount || unseenPostNotificationCount === 0}>
+                            <StyledBadge variant="dot" invisible={!hasUnseenPostNotifications}>
                                 <NotificationsOutlinedIcon style={{color: 'rgba(255,255,255,0.55)', fontSize: '1.5em'}} />
                             </StyledBadge>
                         </button>

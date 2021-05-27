@@ -26,6 +26,8 @@ export const AUDIO_WAVEFORM_DIMS = Object.freeze({ /* Dimensions of Audio Wavefo
     WIDTH: 640,
     HEIGHT: 120
 });
+export const GUID_REGEX = /^([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})$/i;
+export const GUID_REGEX_DASH_OPTIONAL = /^([0-9a-f]{8})(?:-)?([0-9a-f]{4})(?:-)?([0-9a-f]{4})(?:-)?([0-9a-f]{4})(?:-)?([0-9a-f]{12})$/i;
 
 // User Settings
 export const DISPLAY_NAME_CHANGE_DAYS = 30; // The number of days a user must wait between display name changes

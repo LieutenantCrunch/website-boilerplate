@@ -8,9 +8,10 @@ import * as ServerConstants from '../constants/constants.server';
 
 // These interfaces are just for use in this file, do not export
 interface _NotificationDetails {
-    displayName: string;
+    actualCommentId: number | undefined;
     commentId: string | undefined;
     createdOn: Date;
+    displayName: string;
     postTitle: string | undefined;
     type: number;
     status: number;
@@ -103,9 +104,10 @@ class NotificationHelper {
 
                         // Fill out the notification details that will be used to display the notification on the client
                         let details: _NotificationDetails = {
-                            displayName: fullDisplayName,
+                            actualCommentId: notification.comment ? notification.comment.id! : undefined,
                             commentId: notification.comment ? adjustGUIDDashes(notification.comment.uniqueId) : undefined,
                             createdOn: notification.createdOn,
+                            displayName: fullDisplayName,
                             postTitle,
                             status: notificationStatus,
                             type: notification.notificationType
@@ -128,6 +130,13 @@ class NotificationHelper {
                                     existingEntry.createdOn = notification.createdOn;
 
                                     // This will allow us to clear all notifications before a certain date later on
+                                }
+                                // Else if the createdOn value of this new notification is older than the existing one
+                                else if (notification.createdOn < existingEntry.createdOn) {
+                                    // Set the commentId to the older notification
+                                    // That way, the oldest comment is the one that will be focused
+                                    existingEntry.actualCommentId = notification.comment ? notification.comment.id! : existingEntry.actualCommentId;
+                                    existingEntry.commentId = notification.comment ? adjustGUIDDashes(notification.comment.uniqueId) : existingEntry.commentId;
                                 }
 
                                 // Check to see if the status of this new notification is unseen and the current entry is seen once
@@ -176,6 +185,35 @@ class NotificationHelper {
                     let values: _NotificationDetails[] = group[key];
 
                     if (values.length > 0) {
+                        // At this point, we need two key values:
+                        //      1: The most recent createdOn Date so we can mark all notifications read where createdOn <=
+                        //      2: The oldest commentId (if available), so we can focus to that comment, forcing all necessary comments to be loaded
+                        let mostRecentCreatedOn: Date = values[0].createdOn;
+                        let lowestActualCommentId: number | undefined = values[0].actualCommentId;
+                        let oldestCommentId: string | undefined = values[0].commentId;
+
+                        // Go through all values in the list, starting with the second one, since we already have the first, and get the appropriate values
+                        for (var i = 1; i < values.length; i++) {
+                            let value: _NotificationDetails = values[i];
+
+                            if (value.createdOn.greaterThan(mostRecentCreatedOn)) {
+                                mostRecentCreatedOn = value.createdOn;
+                            }
+
+                            if (lowestActualCommentId !== undefined) {
+                                if (value.actualCommentId !== undefined && value.actualCommentId < lowestActualCommentId) {
+                                    lowestActualCommentId = value.actualCommentId;
+                                    oldestCommentId = value.commentId;
+                                }
+                            }
+                            else {
+                                if (value.actualCommentId !== undefined) {
+                                    lowestActualCommentId = value.actualCommentId;
+                                    oldestCommentId = value.commentId;
+                                }
+                            }
+                        }
+
                         // Base the notification off the first value
                         let firstValue: _NotificationDetails = values[0];
 
@@ -196,7 +234,7 @@ class NotificationHelper {
                         // Create the notification with initial values
                         let notification: WebsiteBoilerplate.PostNotification = {
                             postId: adjustGUIDDashes(key)!,
-                            createdOn: firstValue.createdOn,
+                            createdOn: mostRecentCreatedOn,
                             message,
                             status: firstValue.status,
                             type: firstValue.type,
@@ -205,9 +243,9 @@ class NotificationHelper {
 
                         notification.triggeredBy = values.map(value => value.displayName);
 
-                        if (values.length === 1) {
-                            // Only one user commented on the post, we can link to the specific comment
-                            notification.commentId = firstValue.commentId;
+                        if (oldestCommentId !== undefined) {
+                            // If we have a comment id, we can link to it
+                            notification.commentId = oldestCommentId;
                         }
 
                         // Add it to the list

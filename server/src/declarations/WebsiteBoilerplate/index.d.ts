@@ -13,7 +13,7 @@ declare namespace WebsiteBoilerplate {
         profileName: string;
         roles?: string[];
         uniqueId: string;
-        unseenPostNotifications?: number;
+        hasUnseenPostNotifications?: Boolean;
     }
 
     export interface UserSearchResults {

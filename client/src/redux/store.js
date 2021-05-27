@@ -69,12 +69,19 @@ import { usersMiddleware } from './users/usersSlice';
         // The user's unique id in the system
         uniqueId: string,
 
-        // The count of unseen post notifications for display in the header
-        unseenPostNotifications: number
+        // Indicates whether there are unseen post notifications for display in the header
+        hasUnseenPostNotifications: Boolean
     },
 
     notifications: {
-        comments: Array<{postId: string, message: string}>
+
+        // Contains notifications about posts
+        posts: ReduxToolkit.EntityAdapter({
+
+            // Indicates whether the current entities dictionary is in sync with the server
+            // A false value indicates that the notifications should be re-fetched
+            valid: Boolean
+        })
     },
 
     // Any time a user's details are queried from the server, they are stored here

@@ -5,8 +5,8 @@ import PostService from '../services/post.service';
 import { isNullOrWhiteSpaceOnly } from '../utilities/TextUtilities';
 
 // Redux
-import { useDispatch } from 'react-redux';
-import { removePostNotification } from '../redux/notifications/postsSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { removePostNotifications, selectPostNotificationById } from '../redux/notifications/postsSlice';
 
 // Material UI
 import { makeStyles } from '@material-ui/core/styles';
@@ -28,20 +28,27 @@ const useStyles = makeStyles(() => ({
         }
     },
     unseen: {
-        backgroundColor: 'rgba(0,200,100,0.2)'
+        backgroundColor: 'rgba(0,200,100,0.2)',
+        transition: 'all 1s'
+    },
+    seenOnce: {
+        backgroundColor: 'rgba(0,200,100,0.2)',
+        transition: 'all 1s'
     },
     unread: {
-        backgroundColor: 'rgba(0,100,200,0.2)'
+        backgroundColor: 'rgba(0,100,200,0.2)',
+        transition: 'all 1s'
     },
     read: {
-
+        backgroundColor: 'rgba(0,0,0,0)'
     }
 }));
 
-export const PostNotification = ({ notification }) => {
+export const PostNotification = ({ notificationId }) => {
     const classes = useStyles();
     const dispatch = useDispatch();
 
+    const notification = useSelector(state => selectPostNotificationById(state, notificationId));
     const { commentId, createdOn, message, postId, status, triggeredBy, type, uniqueId } = notification;
 
     let noCommentId = isNullOrWhiteSpaceOnly(commentId);
@@ -54,8 +61,9 @@ export const PostNotification = ({ notification }) => {
     const getListItemClass = () => {
         switch (status) {
             case Constants.NOTIFICATION_STATUS.UNSEEN:
-            case Constants.NOTIFICATION_STATUS.SEEN_ONCE:
                 return classes.unseen;
+            case Constants.NOTIFICATION_STATUS.SEEN_ONCE:
+                return classes.seenOnce;
             case Constants.NOTIFICATION_STATUS.UNREAD:
                 return classes.unread;
             case Constants.NOTIFICATION_STATUS.READ:
@@ -82,14 +90,14 @@ export const PostNotification = ({ notification }) => {
     };
 
     const handleNotificationClick = (e) => {
-        if (status === Constants.NOTIFICATION_STATUS.UNREAD) {
-            PostService.markPostNotificationAsRead(postId, commentId, createdOn);
+        if (status !== Constants.NOTIFICATION_STATUS.READ) {
+            PostService.markPostNotificationsAsRead(postId, createdOn);
         }
     };
 
     const handleRemoveNotificationClick = (e) => {
-        PostService.removePostNotifications(postId, commentId, createdOn);
-        dispatch(removePostNotification(uniqueId));
+        PostService.removePostNotifications(postId, createdOn);
+        dispatch(removePostNotifications(postId));
     };
 
     return <li className={classNames('nav-item px-1', classes.item, getListItemClass())} >
