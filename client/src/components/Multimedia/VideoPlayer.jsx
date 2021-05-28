@@ -108,7 +108,18 @@ const useStyles = makeStyles(() => ({
         display: 'flex',
         height: '1em',
         position: 'relative',
-        width: '100%'
+        width: '100%',
+        '&.disabled': {
+            border: '1px solid rgb(200,200,200)',
+            cursor: 'default',
+            pointerEvents: 'none',
+            '& $progress': {
+                backgroundColor: 'rgb(200,200,200)'
+            },
+            '& $progressScrubber': {
+                border: '1px solid rgb(200,200,200)'
+            }
+        }
     },
     progress: {
         backgroundColor: 'rgb(0,162,232)',
@@ -556,12 +567,20 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
         className={classNames(classes.borderDiv, state.mouseMoving ? 'mouseMoving' : '')}
         onMouseMove={handleBorderDivMouseMove}
     >
-        <video ref={videoEl} className={classes.video} poster={thumbnail} onClick={handleVideoClick} controls={isIOS} playsInline={isIOS}>
+        <video 
+            ref={videoEl} 
+            className={classes.video} 
+            poster={thumbnail} 
+            onClick={handleVideoClick} 
+            controls={isIOS} 
+            playsInline={isIOS}
+            preload='none'
+        >
             <source src={sourceFile} type="video/mp4" />
         </video>
         {
             !isIOS && <div className={classes.controls}>
-                <div className={classes.progressBar}
+                <div className={classNames(classes.progressBar, { 'disabled': !state.playedOnce })}
                     onMouseEnter={handleProgressBarMouseEnter}
                     onClick={handleProgressBarMouseClick}
                     onMouseLeave={handleProgressBarMouseLeave}

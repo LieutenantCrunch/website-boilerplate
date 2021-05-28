@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import classNames from 'classnames';
 import { isMobile } from 'react-device-detect';
 
 // Material UI
@@ -27,7 +28,17 @@ const useStyles = makeStyles(() => ({
         borderStyle: 'none',
         cursor: 'pointer',
         position: 'relative',
-        width: '100%'
+        width: '100%',
+        '&.disabled': {
+            cursor: 'default',
+            pointerEvents: 'none',
+            '& $progress': {
+                backgroundColor: 'rgb(200,200,200)'
+            },
+            '& $progressScrubber': {
+                border: '1px solid rgb(200,200,200)'
+            }
+        }
     },
     actualThumbnail: {
         pointerEvents: 'none',
@@ -124,6 +135,7 @@ export const AudioPlayer = ({sourceFile, thumbnail}) => {
 
             let audio = new Audio(sourceFile);
 
+            audio.preload = 'none';
             audio.volume = state.volume;
             audio.addEventListener('ended', handleAudioEnded);
 
@@ -411,7 +423,7 @@ export const AudioPlayer = ({sourceFile, thumbnail}) => {
     };
 
     return <div className={classes.borderDiv}>
-        <div className={classes.audioThumbnail} 
+        <div className={classNames(classes.audioThumbnail, { 'disabled': !state.playedOnce })} 
             onMouseEnter={handleThumbnailMouseEnter}
             onClick={handleThumbnailMouseClick}
             onMouseLeave={handleThumbnailMouseLeave}

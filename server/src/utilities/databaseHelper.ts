@@ -246,8 +246,8 @@ class DatabaseHelper {
                         displayNameIndex: displayName ? displayName.displayNameIndex : -1,
                         isBlocked: false, /* This is a public user so they won't have been blocked */
                         isMutual,
-                        pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
-                        pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                        pfp: profilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/${profilePicture.fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
+                        pfpSmall: profilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/${profilePicture.smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
                         profileName,
                         uniqueId: registeredUser.uniqueId
                     };
@@ -289,8 +289,8 @@ class DatabaseHelper {
                         displayNameIndex: displayName ? displayName.displayNameIndex : -1,
                         isBlocked,
                         isMutual,
-                        pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
-                        pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                        pfp: profilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/${profilePicture.fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
+                        pfpSmall: profilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/${profilePicture.smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
                         profileName,
                         uniqueId: registeredUser.uniqueId
                     };
@@ -701,8 +701,8 @@ class DatabaseHelper {
                 if (newPFP) {
                     return {
                         success: true, 
-                        pfp: `/i/u/${userUniqueId}/${fileName}`,
-                        pfpSmall: `/i/u/${userUniqueId}/${smallFileName}`
+                        pfp: `${ClientConstants.PUBLIC_USER_PATH}${userUniqueId}/${fileName}`,
+                        pfpSmall: `${ClientConstants.PUBLIC_USER_PATH}${userUniqueId}/${smallFileName}`
                     };
                 }
             }
@@ -1193,8 +1193,8 @@ class DatabaseHelper {
                     displayNameIndex: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayNameIndex : -1),
                     isBlocked: false, /* Handled below */
                     isMutual,
-                    pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                    pfpSmall: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                    pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${uniqueId}/${registeredUser.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                    pfpSmall: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${uniqueId}/${registeredUser.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                     profileName: registeredUser.profileName,
                     roles: (registeredUser.roles ? registeredUser.roles.map(role => role.roleName) : []),
                     uniqueId
@@ -1554,8 +1554,8 @@ class DatabaseHelper {
                             displayNameIndex: displayName.displayNameIndex, 
                             isBlocked,
                             isMutual,
-                            pfp: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                            pfpSmall: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                            pfp: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                            pfpSmall: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                             profileName: displayName.registeredUser!.profileName,
                             uniqueId: displayName.registeredUser!.uniqueId
                         };
@@ -1695,8 +1695,8 @@ class DatabaseHelper {
                             displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
                             isBlocked: false, /* Outgoing connections shouldn't be blocked */
                             isMutual: connectionView.isMutual,
-                            pfp: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser!.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                            pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                            pfp: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser!.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                            pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                             profileName: connectedUser!.profileName,
                             uniqueId: connectedUserUniqueId
                         };
@@ -1832,8 +1832,8 @@ class DatabaseHelper {
                                 displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
                                 isBlocked,
                                 isMutual: false, /* Incoming connections will never be mutual */
-                                pfp: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${requestedUserUniqueId}/${requestedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${requestedUserUniqueId}/${requestedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                pfp: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${requestedUserUniqueId}/${requestedUser.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${requestedUserUniqueId}/${requestedUser.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                                 profileName: requestedUser.profileName,
                                 uniqueId: requestedUserUniqueId
                             });
@@ -2052,8 +2052,8 @@ class DatabaseHelper {
                                 connectionTypes,
                                 displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
                                 displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
-                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                                 isBlocked: false, /* Outgoing connections shouldn't be blocked */
                                 isMutual: incomingConnection !== null,
                                 profileName: connectedUser.profileName,
@@ -2087,8 +2087,8 @@ class DatabaseHelper {
                                 connectionTypes,
                                 displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
                                 displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
-                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                                 isBlocked: false, /* Outgoing connections shouldn't be blocked */
                                 isMutual: incomingConnection !== null,
                                 profileName: connectedUser.profileName,
@@ -2246,7 +2246,7 @@ class DatabaseHelper {
                         let postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined = undefined;
         
                         if (dbPostFiles && dbPostFiles.length > 0) {
-                            let filePath: string = `/i/u/${postedByUniqueId}/`;
+                            let filePath: string = `${ClientConstants.PUBLIC_USER_PATH}${postedByUniqueId}/`;
         
                             switch (row.postType) {
                                 case ClientConstants.POST_TYPES.AUDIO:
@@ -2281,7 +2281,7 @@ class DatabaseHelper {
                             postedBy: {
                                 displayName: row.postedByDisplayName,
                                 displayNameIndex: row.postedByDisplayNameIndex,
-                                pfpSmall: row.postedByPfpSmall ? `/i/u/${postedByUniqueId!}/${row.postedByPfpSmall}` : '/i/s/pfpDefault.svgz',
+                                pfpSmall: row.postedByPfpSmall ? `${ClientConstants.PUBLIC_USER_PATH}${postedByUniqueId!}/${row.postedByPfpSmall}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
                                 profileName: row.postedByProfileName,
                                 uniqueId: postedByUniqueId!
                             },
@@ -2353,7 +2353,7 @@ class DatabaseHelper {
                 let postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined = undefined;
 
                 if (dbPostFiles && dbPostFiles.length > 0) {
-                    let filePath: string = `/i/u/${row.postedByUniqueId}/`;
+                    let filePath: string = `${ClientConstants.PUBLIC_USER_PATH}${row.postedByUniqueId}/`;
 
                     switch (row.postType) {
                         case ClientConstants.POST_TYPES.AUDIO:
@@ -2388,7 +2388,7 @@ class DatabaseHelper {
                     postedBy: {
                         displayName: row.postedByDisplayName,
                         displayNameIndex: row.postedByDisplayNameIndex,
-                        pfpSmall: row.postedByPfpSmall ? `/i/u/${row.postedByUniqueId}/${row.postedByPfpSmall}` : '/i/s/pfpDefault.svgz',
+                        pfpSmall: row.postedByPfpSmall ? `${ClientConstants.PUBLIC_USER_PATH}${row.postedByUniqueId}/${row.postedByPfpSmall}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
                         profileName: row.postedByProfileName,
                         uniqueId: row.postedByUniqueId
                     },
@@ -2421,7 +2421,7 @@ class DatabaseHelper {
 
                 // If there are files, verify only the allowed amounts are present and that the mimetypes are correct
                 let fileCount: number = 0;
-                let filePath: string = `/i/u/${registeredUser.uniqueId}/`;
+                let filePath: string = `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/`;
 
                 switch (postType) {
                     case ClientConstants.POST_TYPES.AUDIO:
@@ -2602,7 +2602,7 @@ class DatabaseHelper {
                             postedBy: {
                                 displayName: displayName.displayName,
                                 displayNameIndex: displayName.displayNameIndex,
-                                pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                                pfpSmall: profilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/${profilePicture.smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
                                 profileName: registeredUser.profileName,
                                 uniqueId: registeredUser.uniqueId
                             },
@@ -2670,7 +2670,7 @@ class DatabaseHelper {
             let postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined = undefined;
 
             if (dbPostFiles && dbPostFiles.length > 0) {
-                let filePath: string = `/i/u/${postInfo.postedByUniqueId}/`;
+                let filePath: string = `${ClientConstants.PUBLIC_USER_PATH}${postInfo.postedByUniqueId}/`;
 
                 switch (postInfo.postType) {
                     case ClientConstants.POST_TYPES.AUDIO:
@@ -2705,7 +2705,7 @@ class DatabaseHelper {
                 postedBy: {
                     displayName: postInfo.postedByDisplayName,
                     displayNameIndex: postInfo.postedByDisplayNameIndex,
-                    pfpSmall: postInfo.postedByPfpSmall ? `/i/u/${postInfo.postedByUniqueId}/${postInfo.postedByPfpSmall}` : '/i/s/pfpDefault.svgz',
+                    pfpSmall: postInfo.postedByPfpSmall ? `${ClientConstants.PUBLIC_USER_PATH}${postInfo.postedByUniqueId}/${postInfo.postedByPfpSmall}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
                     profileName: postInfo.postedByProfileName,
                     uniqueId: postInfo.postedByUniqueId
                 },
@@ -2959,7 +2959,7 @@ class DatabaseHelper {
                             /* A value of 0 will keep the #index from displaying */
                             displayNameIndex: posterBlocked ? 0 : displayNames[0].displayNameIndex,
                             /* Display the default pfp if blocked */
-                            pfpSmall: !posterBlocked && pfps && pfps[0] ? `/i/u/${commenter.uniqueId}/${pfps[0].smallFileName}` : '/i/s/pfpDefault.svgz',
+                            pfpSmall: !posterBlocked && pfps && pfps[0] ? `${ClientConstants.PUBLIC_USER_PATH}${commenter.uniqueId}/${pfps[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
                             profileName: posterBlocked ? '' : commenter.profileName,
                             uniqueId: posterBlocked ? '' : commenter.uniqueId
                         },
@@ -3044,7 +3044,7 @@ class DatabaseHelper {
                             postedBy: {
                                 displayName: commenterDisplayName.displayName,
                                 displayNameIndex: commenterDisplayName.displayNameIndex,
-                                pfpSmall: commenterProfilePicture ? `/i/u/${commenter.uniqueId}/${commenterProfilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                                pfpSmall: commenterProfilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${commenter.uniqueId}/${commenterProfilePicture.smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
                                 profileName: commenter.profileName,
                                 uniqueId: commenter.uniqueId
                             },

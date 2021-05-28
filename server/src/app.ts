@@ -1,4 +1,5 @@
 import * as http from 'http';
+import path from 'path';
 import express, {Request, Response, NextFunction} from 'express';
 import * as SocketIO from 'socket.io';
 import cookieParser from 'cookie-parser';
@@ -35,7 +36,7 @@ app.use(/.*\.svgz$/, (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Serve static files out of the dist directory using the static middleware function
-app.use(express.static('dist'));
+app.use('/public', express.static(path.resolve(__dirname, '../dist')));
 // Parse request bodies as JSON
 app.use(express.json());
 // Parse url encoded request bodies, supporting qs, which allows nested objects in query strings
@@ -62,28 +63,28 @@ import {usersRouter} from './routers/users';
 app.use('/u', usersRouter);
 
 app.get(/^\/admin$/, [AuthHelper.verifyToken, AuthHelper.verifyAdmin], (req: Request, res: Response) => {
-    FileHandler.sendFileResponse(res, './dist/admin.html', 'text/html');
+    FileHandler.sendFileResponse(res, './dist/admin.html');
 });
 
 app.get(/^\/(index)?$/, (req: Request, res: Response) => {
-    FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+    FileHandler.sendFileResponse(res, './dist/index.html');
 });
 
 app.get('/feed', [AuthHelper.verifyToken], (req: Request, res: Response) => {
-    FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+    FileHandler.sendFileResponse(res, './dist/index.html');
 });
 
 app.get('/profile', [AuthHelper.verifyTokenAndPassThrough], (req: Request, res: Response) => {
-    FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+    FileHandler.sendFileResponse(res, './dist/index.html');
 });
 
 app.get('/view-post', [AuthHelper.verifyTokenAndPassThrough], (req: Request, res: Response) => {
-    FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+    FileHandler.sendFileResponse(res, './dist/index.html');
 });
 
 // It may be necessary to direct everything other than api calls to index due to the single page app
 app.get('*', (req: Request, res: Response) => {
-    FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+    FileHandler.sendFileResponse(res, './dist/index.html');
 });
 
 app.use((req: Request, res: Response) => {

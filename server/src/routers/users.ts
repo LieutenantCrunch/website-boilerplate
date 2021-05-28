@@ -15,7 +15,7 @@ usersRouter.get('/:profileName', [AuthHelper.verifyTokenAndPassThrough], async (
         let result: {exists: Boolean, allowPublicAccess: Boolean} = await databaseHelper.userExistsForProfileName(currentUserUniqueId, profileName);
         
         if (result.exists && (currentUserUniqueId || result.allowPublicAccess)) {
-            FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+            FileHandler.sendFileResponse(res, './dist/index.html');
         }
         else {
             res.status(404).send(`Sorry, you can't view that profile.`);

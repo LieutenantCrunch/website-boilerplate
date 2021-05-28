@@ -2,7 +2,8 @@
 export const BASE_URL = 'http://localhost:3000/';
 export const BASE_API_URL = `/api/`;
 export const BASE_USERS_URL = `${BASE_URL}u/`;
-export const STATIC_IMAGE_PATH = '/i/s/';
+export const STATIC_IMAGE_PATH = '/public/i/s/';
+export const PUBLIC_USER_PATH = '/public/u/';
 
 // API Paths
 export const API_PATH_AUTH = 'auth/';

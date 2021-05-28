@@ -19,37 +19,37 @@ export default class PostUploadHelper {
 
                     switch (postTypeInt) {
                         case ClientConstants.POST_TYPES.IMAGE:
-                            FileHandler.createDirectoryIfNotExists(`${process.cwd()}/dist/i/u/${req.userId!}/i`).then(() => {
-                                cb(null, `${process.cwd()}/dist/i/u/${req.userId!}/i`);
+                            FileHandler.createDirectoryIfNotExists(`${process.cwd()}/dist/u/${req.userId!}/i`).then(() => {
+                                cb(null, `${process.cwd()}/dist/u/${req.userId!}/i`);
                             });
                             
                             break;
                         case ClientConstants.POST_TYPES.VIDEO:
-                            FileHandler.createDirectoryIfNotExists(`${process.cwd()}/dist/i/u/${req.userId!}/v`).then(() => {
-                                cb(null, `${process.cwd()}/dist/i/u/${req.userId!}/v`);
+                            FileHandler.createDirectoryIfNotExists(`${process.cwd()}/dist/u/${req.userId!}/v`).then(() => {
+                                cb(null, `${process.cwd()}/dist/u/${req.userId!}/v`);
                             });
                         
                             break;
                         case ClientConstants.POST_TYPES.AUDIO:
-                            FileHandler.createDirectoryIfNotExists(`${process.cwd()}/dist/i/u/${req.userId!}/a`).then(() => {
-                                cb(null, `${process.cwd()}/dist/i/u/${req.userId!}/a`);
+                            FileHandler.createDirectoryIfNotExists(`${process.cwd()}/dist/u/${req.userId!}/a`).then(() => {
+                                cb(null, `${process.cwd()}/dist/u/${req.userId!}/a`);
                             });
                         
                             break;
                         default:
-                            FileHandler.createDirectoryIfNotExists(`${process.cwd()}/dist/i/u/${req.userId!}`).then(() => {
-                                cb(null, `${process.cwd()}/dist/i/u/${req.userId!}`);
+                            FileHandler.createDirectoryIfNotExists(`${process.cwd()}/dist/u/${req.userId!}`).then(() => {
+                                cb(null, `${process.cwd()}/dist/u/${req.userId!}`);
                             });
                         
                             break;
                     }
                 }
                 else {
-                    cb(null, `${process.cwd()}/dist/i/u/${req.userId!}`);
+                    cb(null, `${process.cwd()}/dist/u/${req.userId!}`);
                 }
             }
             catch (err) {
-                cb(new Error(`Error determining post destination, falling back to default:${err.message}`), `${process.cwd()}/dist/i/u/${req.userId!}`);
+                cb(new Error(`Error determining post destination, falling back to default:${err.message}`), `${process.cwd()}/dist/u/${req.userId!}`);
             }
         },
         filename: (req: express.Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
