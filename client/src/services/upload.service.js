@@ -8,12 +8,19 @@ export default class UploadService {
 
         formData.append('pfp', pfp);
 
-        return axiosApi.post(Constants.API_PATH_USERS + Constants.API_PATH_PFP + 'upload', formData, {
+        let response = await axiosApi.post(Constants.API_PATH_USERS + Constants.API_PATH_PFP + 'upload', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }, 
             onUploadProgress
         });
+
+        if (response.data && response.data.success) {
+            let {pfp, pfpSmall} = response.data;
+            return { pfp, pfpSmall };
+        }
+
+        return null;
     }
 
     static async getPFP() {

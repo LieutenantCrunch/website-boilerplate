@@ -54,6 +54,7 @@ export const usersMiddleware = storeApi => next => action => {
                 let user = selectUserById(getState(), uniqueId);
 
                 console.log(`postUserUpdate received for user ${uniqueId}`);
+                break;
             }
             default:
                 break;

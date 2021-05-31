@@ -1,20 +1,20 @@
-import React, {useEffect, useRef, useState} from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import React, {useRef, useState} from 'react';
+import { shallowEqual, useSelector, useDispatch } from 'react-redux';
 import classNames from 'classnames';
 import ConnectionPreviewDialog from '../Dialogs/ConnectionPreview';
-import ConnectionListItem from './ConnectionListItem';
+import { ConnectionListItem } from './ConnectionListItem';
 import AddConnectionDialog from '../Dialogs/AddConnection';
 import YesNoMessageBox from '../MessageBoxes/YesNoMessageBox';
 
 import { 
     fetchOutgoingConnections, 
-    selectAllOutgoingConnections,
+    selectOutgoingConnectionIds,
     selectOutgoingConnectionsStatus
 } from '../../redux/connections/outgoingConnectionsSlice';
 
 import {
     fetchIncomingConnections,
-    selectAllIncomingConnections,
+    selectIncomingConnectionIds,
     selectIncomingConnectionsStatus
 } from '../../redux/connections/incomingConnectionsSlice';
 
@@ -27,9 +27,9 @@ import { selectUserById } from '../../redux/users/usersSlice';
 export default function ConnectionsSideMenuItem(props) {
     const dispatch = useDispatch();
     const outgoingConnectionsStatus = useSelector(selectOutgoingConnectionsStatus);
-    const outgoingConnections = useSelector(selectAllOutgoingConnections);
+    const outgoingConnectionIds = useSelector(selectOutgoingConnectionIds, shallowEqual);
     const incomingConnectionsStatus = useSelector(selectIncomingConnectionsStatus);
-    const incomingConnections = useSelector(selectAllIncomingConnections);
+    const incomingConnectionIds = useSelector(selectIncomingConnectionIds, shallowEqual);
 
     const [state, updateState] = useState({
         expanded: false,
@@ -139,9 +139,9 @@ export default function ConnectionsSideMenuItem(props) {
                         Loading...
                     </li>;
             case 'idle':
-                return outgoingConnections && outgoingConnections.length > 0
-                    ? outgoingConnections.map(outgoingConnection => (
-                        <ConnectionListItem key={outgoingConnection.uniqueId} connection={outgoingConnection} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
+                return outgoingConnectionIds && outgoingConnectionIds.length > 0
+                    ? outgoingConnectionIds.map(outgoingConnectionId => (
+                            <ConnectionListItem key={outgoingConnectionId} connectionId={outgoingConnectionId} handleConnectionClick={handleConnectionClick} handleRemoveConnectionClick={handleRemoveConnectionClick} />
                         )
                     )
                     : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>
@@ -162,9 +162,9 @@ export default function ConnectionsSideMenuItem(props) {
                         Loading...
                     </li>;
             case 'idle':
-                return incomingConnections && incomingConnections.length > 0
-                        ? incomingConnections.map(incomingConnection => (
-                                <ConnectionListItem key={incomingConnection.uniqueId} connection={incomingConnection} handleConnectionClick={handleConnectionClick} />
+                return incomingConnectionIds && incomingConnectionIds.length > 0
+                        ? incomingConnectionIds.map(incomingConnectionId => (
+                                <ConnectionListItem key={incomingConnectionId} connectionId={incomingConnectionId} handleConnectionClick={handleConnectionClick} />
                             )
                         )
                         : <li key="None" className="list-group-item text-center" style={{fontSize: '.9em'}}>
@@ -183,9 +183,9 @@ export default function ConnectionsSideMenuItem(props) {
         <div className={classNames('sideMenuItem', {'sideMenuItemExpanded': state.expanded})}
             onClick={toggleExpanded}
         >
-            <div className="sideMenuItemTab"></div>
+            <div className="sideMenuItemTab" title="Connections"></div>
             <div className="sideMenuItemDetails">
-                <div className="sideMenuItemTitle">
+                <div className="sideMenuItemTitle" title="Connections">
                     <h4 className="sideMenuItemText">Connections</h4>
                     <div className="sideMenuItemIcon"></div>
                 </div>
@@ -198,7 +198,7 @@ export default function ConnectionsSideMenuItem(props) {
                         margin: 0,
                         opacity: 1
                     }} />
-                    <button type="button" className="btn btn-sm btn-outline-primary border-0 w-100 text-left shadow-none" data-toggle="modal" data-target="#addConnection">
+                    <button type="button" className="btn btn-sm btn-outline-primary border-0 w-100 text-start shadow-none" data-bs-toggle="modal" data-bs-target="#addConnection">
                         <strong>Add New...</strong>
                     </button>
                     <hr style={{
@@ -219,7 +219,7 @@ export default function ConnectionsSideMenuItem(props) {
                             borderColor: 'rgb(204, 204, 204)'
                         }}>
                             <button type="button" className={
-                                    classNames("btn btn-sm btn-outline-primary border-0 w-100 text-left shadow-none dropdown-toggle", {'show': state.incomingExpanded})
+                                    classNames("btn btn-sm btn-outline-primary border-0 w-100 text-start shadow-none dropdown-toggle", {'show': state.incomingExpanded})
                                 }
                                 onClick={toggleIncomingExpanded}
                                 style={{
@@ -246,8 +246,8 @@ export default function ConnectionsSideMenuItem(props) {
             </div>
         </div>
 
-        <ConnectionPreviewDialog id="connectionDetails" userDetails={props.userDetails} connectionId={state.selectedConnectionId} />
-        <AddConnectionDialog id="addConnection" appState={props.appState} onAddedConnection={handleAddedConnection} />
+        <ConnectionPreviewDialog id="connectionDetails" connectionId={state.selectedConnectionId} />
+        <AddConnectionDialog id="addConnection" onAddedConnection={handleAddedConnection} />
         <YesNoMessageBox ref={yesNoMessageBoxRef}
                 caption={state.removeMessageTitle} 
                 message={state.removeMessageMessage} 

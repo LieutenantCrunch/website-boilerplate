@@ -1,16 +1,27 @@
+import * as http from 'http';
+import path from 'path';
 import express, {Request, Response, NextFunction} from 'express';
+import * as SocketIO from 'socket.io';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 
 import FileHandler from './utilities/fileHandler';
 
-import * as Constants from './constants/constants';
+import * as ClientConstants from './constants/constants.client';
 import AuthHelper from './utilities/authHelper';
 
+import { socketCache } from './utilities/socketCache';
+
+const LISTEN_PORT: number = 3000;
+
 const app: express.Application = express();
-const port: number = 3000;
+const server: http.Server = http.createServer(app);
+const io: SocketIO.Server = new SocketIO.Server();
+
+io.attach(server, { cookie: false });
+
 const corsOptions: Object = {
-    origin: Constants.BASE_API_URL
+    origin: ClientConstants.BASE_API_URL
 };
 
 function send404Response (res: Response, message = 'Not Found'): any {
@@ -25,7 +36,7 @@ app.use(/.*\.svgz$/, (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Serve static files out of the dist directory using the static middleware function
-app.use(express.static('dist'));
+app.use('/public', express.static(path.resolve(__dirname, '../dist')));
 // Parse request bodies as JSON
 app.use(express.json());
 // Parse url encoded request bodies, supporting qs, which allows nested objects in query strings
@@ -52,26 +63,47 @@ import {usersRouter} from './routers/users';
 app.use('/u', usersRouter);
 
 app.get(/^\/admin$/, [AuthHelper.verifyToken, AuthHelper.verifyAdmin], (req: Request, res: Response) => {
-    FileHandler.sendFileResponse(res, './dist/admin.html', 'text/html');
+    FileHandler.sendFileResponse(res, './dist/admin.html');
 });
 
 app.get(/^\/(index)?$/, (req: Request, res: Response) => {
-    FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+    FileHandler.sendFileResponse(res, './dist/index.html');
+});
+
+app.get('/feed', [AuthHelper.verifyToken], (req: Request, res: Response) => {
+    FileHandler.sendFileResponse(res, './dist/index.html');
 });
 
 app.get('/profile', [AuthHelper.verifyTokenAndPassThrough], (req: Request, res: Response) => {
-    FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+    FileHandler.sendFileResponse(res, './dist/index.html');
+});
+
+app.get('/view-post', [AuthHelper.verifyTokenAndPassThrough], (req: Request, res: Response) => {
+    FileHandler.sendFileResponse(res, './dist/index.html');
 });
 
 // It may be necessary to direct everything other than api calls to index due to the single page app
 app.get('*', (req: Request, res: Response) => {
-    FileHandler.sendFileResponse(res, './dist/index.html', 'text/html');
+    FileHandler.sendFileResponse(res, './dist/index.html');
 });
 
 app.use((req: Request, res: Response) => {
     send404Response(res);
 });
 
-app.listen(port, () => {
-    console.log(`Listening on http://localhost:${port}`);
+io.use(AuthHelper.verifySocketToken);
+
+io.on('connection', (socket: SocketIO.Socket) => {
+    console.log(`${socket.id} connected`);
+
+    // socket.server.sockets.sockets
+    socket.on('disconnect', () => {
+        let success: Boolean = socketCache.deleteSocket(socket.id);
+
+        console.log(`${socket.id} disconnected, socket deleted: ${success}`);
+    });
+});
+
+server.listen(LISTEN_PORT, () => {
+    console.log(`Listening on http://localhost:${LISTEN_PORT}`);
 });

@@ -48,12 +48,5 @@ export default outgoingConnectionsSlice.reducer;
 export const { outgoingConnectionAdded, outgoingConnectionRemoved } = outgoingConnectionsSlice.actions;
 
 // Selectors
-export const selectAllOutgoingConnections = state => {
-    let ids = state.connections.outgoingConnections.ids;
-    if (ids.length) {
-        return ids.map(id => state.users.entities[id]);
-    }
-
-    return ids;
-};
+export const selectOutgoingConnectionIds = state => state.connections.outgoingConnections.ids;
 export const selectOutgoingConnectionsStatus = state => state.connections.outgoingConnections.status;

@@ -2,17 +2,20 @@ import React, { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { HtmlTooltip } from '../HtmlTooltip';
 
-const TwoClickButton = ({ 
-    firstTitle, 
-    secondTitle, 
+export const TwoClickButton = ({ 
     className, 
     firstClassName, 
-    secondClassName, 
-    progressClassName, 
+    firstTitle, 
     firstTooltip,
-    secondTooltip,
+    onClick,
+    progressClassName,
+    resetAfterSecondClick = false, 
+    secondBackgroundColor = 'transparent',
+    secondClassName,
     secondDuration, 
-    onClick
+    secondTitle, 
+    secondTooltip,
+    tooltipColor = 'rgb(255,0,0)'
 }) => {
     const ANIMATION_FREQUENCY = 10; // Number of times a second the animation will fire. Max: 1000. Higher values will produce a smoother animation but will be more CPU intensive and may trigger script warnings.
     const UNCLICKED = 0;
@@ -54,7 +57,7 @@ const TwoClickButton = ({
         }
         else if (clickState === CLICKED_ONCE) {
             setProgressValue(0);
-            setClickState(CLICKED_TWICE);
+            setClickState(resetAfterSecondClick ? UNCLICKED : CLICKED_TWICE);
 
             // Perform the onClick handler
             onClick();
@@ -89,40 +92,35 @@ const TwoClickButton = ({
     return (
         <HtmlTooltip 
             title={getCurrentValues().tooltip}
-                enterDelay={500}
-                interactive
-                arrow
-                placement="bottom"
-                color='rgb(255,0,0)'
+            enterDelay={500}
+            arrow
+            placement="bottom"
+            color={tooltipColor}
+        >
+            <button ref={buttonEl} 
+                className={classNames(className, getCurrentValues().className)}
+                onClick={handleClick}
+                style={{
+                    position: 'relative',
+                    backgroundColor: clickState === CLICKED_ONCE ? secondBackgroundColor : '',
+                    pointerEvents: clickState === CLICKED_TWICE ? 'none' : 'auto'
+                }}
+                disabled={clickState === CLICKED_TWICE}
             >
-            <div>
-                <button ref={buttonEl} 
-                    className={classNames(className, getCurrentValues().className)}
-                    onClick={handleClick}
+                <div className={progressClassName} 
                     style={{
-                        position: 'relative',
-                        backgroundColor: clickState === CLICKED_ONCE ? 'transparent' : '',
-                        pointerEvents: clickState === CLICKED_TWICE ? 'none' : 'auto'
+                        display: clickState === CLICKED_ONCE ? '' : 'none',
+                        height: '100%',
+                        left: 0,
+                        opacity: .75,
+                        position: 'absolute',
+                        top: 0,
+                        width: `${progressValue}${progressValue > 0 ? '%' : ''}`,
+                        zIndex: -1 /* This will put it behind the text */
                     }}
-                    disabled={clickState === CLICKED_TWICE}
-                >
-                    <div className={progressClassName} 
-                        style={{
-                            display: clickState === CLICKED_ONCE ? '' : 'none',
-                            height: '100%',
-                            left: 0,
-                            opacity: .75,
-                            position: 'absolute',
-                            top: 0,
-                            width: `${progressValue}${progressValue > 0 ? '%' : ''}`,
-                            zIndex: -1 /* This will put it behind the text */
-                        }}
-                    ></div>
-                    {getCurrentValues().title}
-                </button>
-            </div>
+                ></div>
+                {getCurrentValues().title}
+            </button>
         </HtmlTooltip>
     );
 };
-
-export default TwoClickButton;

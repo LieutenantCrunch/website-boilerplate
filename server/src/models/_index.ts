@@ -1,22 +1,31 @@
-import * as Constants from '../constants/constants';
+import * as ServerConstants from '../constants/constants.server';
 
 import { Sequelize } from 'sequelize';
 import SequelizeSimpleCache from 'sequelize-simple-cache';
 import { DbInterface } from '../typings/DbInterface';
 
+// Main Tables
 import { DisplayNameFactory } from '../models/DisplayName';
 import { PasswordResetTokenFactory } from '../models/PasswordResetToken';
+import { PostFactory } from '../models/Post';
+import { PostCommentFactory } from '../models/PostComment';
+import { PostFileFactory } from '../models/PostFile';
+import { PostNotificationFactory } from '../models/PostNotification';
 import { ProfilePictureFactory } from '../models/ProfilePicture';
 import { RoleFactory } from '../models/Role';
 import { UserFactory } from '../models/User';
 import { UserBlockFactory } from '../models/UserBlock';
 import { UserConnectionFactory } from '../models/UserConnection';
 import { UserConnectionTypeFactory } from '../models/UserConnectionType';
-import { UserConnectionTypeJunctionFactory } from '../models/UserConnectionTypeJunction';
 import { UserJWTFactory } from '../models/UserJWT';
+
+// Junction Tables
+import { PostCustomAudienceFactory } from '../models/PostCustomAudience';
+import { UserConnectionTypeJunctionFactory } from '../models/UserConnectionTypeJunction';
 import { UserRoleJunctionFactory } from '../models/UserRoleJunction';
 
 // Views
+import { FeedViewFactory } from '../models/views/FeedView';
 import { UserConnectionViewFactory } from '../models/views/UserConnectionView';
 
 const dbconfig = require('../../private/dbconfig.json');
@@ -39,13 +48,18 @@ const sequelizeConfig = {
 const createModels = (sequelizeConfig: any): DbInterface => {
     const sequelize = new Sequelize(sequelizeConfig);
     const cache: SequelizeSimpleCache = new SequelizeSimpleCache({
-        UserConnectionType: { ttl: Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000 }
+        UserConnectionType: { ttl: ServerConstants.CACHE_DURATIONS.CONNECTION_TYPES }
     });
 
     const db: DbInterface = {
         sequelize,
         DisplayName: DisplayNameFactory(sequelize),
         PasswordResetToken: PasswordResetTokenFactory(sequelize),
+        Post: PostFactory(sequelize),
+        PostComment: PostCommentFactory(sequelize),
+        PostCustomAudience: PostCustomAudienceFactory(sequelize),
+        PostFile: PostFileFactory(sequelize),
+        PostNotification: PostNotificationFactory(sequelize),
         ProfilePicture: ProfilePictureFactory(sequelize),
         Role: RoleFactory(sequelize),
         User: UserFactory(sequelize),
@@ -56,6 +70,7 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         UserJWT: UserJWTFactory(sequelize),
         UserRoleJunction: UserRoleJunctionFactory(sequelize),
         Views: {
+            FeedView: FeedViewFactory(sequelize),
             UserConnectionView: UserConnectionViewFactory(sequelize)
         }
     };

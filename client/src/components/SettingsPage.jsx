@@ -3,8 +3,15 @@ import {withRouter} from 'react-router-dom';
 import AuthService from '../services/auth.service';
 import UserService from '../services/user.service';
 import { HtmlTooltip } from './HtmlTooltip';
+import * as Constants from '../constants/constants';
+
+// Redux
+import { useDispatch } from 'react-redux';
+import { currentUserDisplayNameUpdated } from '../redux/users/currentUserSlice';
 
 function SettingsPage(props) {
+    const dispatch = useDispatch();
+
     const [settingsPageAlert, setSettingsPageAlert] = useState({type: 'info', message: null});
     const settingsPageAlertEl = useRef(null);
     const [state, setState] = useState({displayName: '', displayNameError: false});
@@ -15,18 +22,19 @@ function SettingsPage(props) {
 
     useEffect(() => {
         if (state.displayNameError) {
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 setState(prevState => ({...prevState, displayNameError: false}))
             }, 1000);
-        }
 
+            return () => clearTimeout(timer);
+        }
     }, [state.displayNameError]);
 
     const handleLogoutFromEverywhereClick = async () => {
         await AuthService.logout(true, true);
         let logoutConfirm = bootstrap.Modal.getInstance(document.getElementById('logoutConfirm'));
         logoutConfirm.hide();
-        props.setUserInfo(null);
+        props.setLoginDetails(null);
         props.setStatusMessage({type: 'info', message: 'You have been logged out from everywhere'});
         props.history.push('/login');
     };
@@ -84,7 +92,7 @@ function SettingsPage(props) {
             }
 
             if (results.data.success) {
-                props.setUserDetails({...props.userDetails, displayName: state.displayName, displayNameIndex: results.data.displayNameIndex});
+                dispatch(currentUserDisplayNameUpdated({displayName: state.displayName, displayNameIndex: results.data.displayNameIndex}));
             }
         }, () => {});
     };
@@ -100,21 +108,21 @@ function SettingsPage(props) {
             <div className="container-fluid">
                 <div id="settingsPageAlertEl" ref={settingsPageAlertEl} className={`alert alert-${settingsPageAlert.type.toLocaleLowerCase()} alert-dismissible collapse w-100`} role="alert">
                     <strong>{settingsPageAlert.message}</strong>
-                    <button type="button" className="btn-close" aria-label="Close" data-target="#settingsPageAlertEl" data-toggle="collapse" aria-expanded="false" aria-controls="settingsPageAlert"></button>
+                    <button type="button" className="btn-close" aria-label="Close" data-bs-target="#settingsPageAlertEl" data-bs-toggle="collapse" aria-expanded="false" aria-controls="settingsPageAlert"></button>
                 </div>
                 <div className="text-center">
                     <h5 className="font-weight-bold">General</h5>
-                    <button type="button" className="btn btn-link" data-toggle="modal" data-target="#displayNameForm">Change Display Name</button>
+                    <button type="button" className="btn btn-link" data-bs-toggle="modal" data-bs-target="#displayNameForm">Change Display Name</button>
                     <h5 className="font-weight-bold">Security</h5>
-                    <button type="button" className="btn btn-link" data-toggle="modal" data-target="#logoutConfirm">Log out other sessions</button>
+                    <button type="button" className="btn btn-link" data-bs-toggle="modal" data-bs-target="#logoutConfirm">Log out other sessions</button>
                 </div>
             </div>
-            <div id="logoutConfirm" className="modal fade" tabIndex="-1" data-backdrop="static" data-keyboard="false" aria-labelledby="logoutConfirmLabel" aria-hidden="true">
+            <div id="logoutConfirm" className="modal fade" tabIndex="-1" data-backdrop="static" data-bs-keyboard="false" aria-labelledby="logoutConfirmLabel" aria-hidden="true">
                 <div className="modal-dialog">
                     <div className="modal-content">
                         <div className="modal-header">
                             <h5 className="modal-title" id="logoutConfirmLabel">Log Out Choices</h5>
-                            <button type="button" className="btn-close" data-dismiss="modal" aria-label="close"></button>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="close"></button>
                         </div>
                         <div className="modal-body">
                             <p>You can log out from everywhere (including here) or everywhere else (excluding here), which would you like to do?</p>
@@ -123,7 +131,7 @@ function SettingsPage(props) {
                         <div className="modal-footer">
                             <button type="button" className="btn btn-primary" onClick={handleLogoutFromEverywhereClick}>Everywhere</button>
                             <button type="button" className="btn btn-primary" onClick={handleLogoutFromEverywhereElseClick}>Everywhere Else</button>
-                            <button type="button" className="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         </div>
                     </div>
                 </div>
@@ -134,7 +142,7 @@ function SettingsPage(props) {
                         <div className="modal-content">
                             <div className="modal-header">
                                 <h5 className="modal-title" id="displayNameChangeLabel">Enter your new display name</h5>
-                                <button type="button" className="btn-close" data-dismiss="modal" arial-label="close"></button>
+                                <button type="button" className="btn-close" data-bs-dismiss="modal" arial-label="close"></button>
                             </div>
                             <div className="modal-body">
                                 <p>Please enter your new display name. It will be followed by a unique id number unless your account is verified.</p>
@@ -144,13 +152,12 @@ function SettingsPage(props) {
                                             <ul>
                                                 <li>Cannot contain '#' (pound/hash)</li>
                                                 <li>Does not have to be unique</li>
-                                                <li>Can only be changed {props.appConstants.DisplayNameChangeDays === 1 ? 'once a day' : `every ${props.appConstants.DisplayNameChangeDays} days`}</li>
+                                                <li>Can only be changed {Constants.DISPLAY_NAME_CHANGE_DAYS === 1 ? 'once a day' : `every ${Constants.DISPLAY_NAME_CHANGE_DAYS} days`}</li>
                                             </ul>
                                         </>
                                     }
                                     placement="bottom-start"
                                     enterDelay={500}
-                                    interactive
                                     disableHoverListener
                                     fontWeight='normal'
                                 >
@@ -159,7 +166,7 @@ function SettingsPage(props) {
                             </div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-primary" onClick={handleDisplayNameFormSubmitClick}>Submit</button>
-                                <button type="button" className="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                             </div>
                         </div>
                     </div>

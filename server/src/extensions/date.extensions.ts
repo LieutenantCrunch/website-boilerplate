@@ -2,6 +2,8 @@
 interface Date {
     addDays(days: number): Date;
     addMinutes(minutes: number): Date;
+    greaterThan(date: Date): Boolean;
+    lessThan(date: Date): Boolean;
 }
 
 Date.prototype.addDays = function (days: number): Date {
@@ -9,7 +11,7 @@ Date.prototype.addDays = function (days: number): Date {
         return this;
     }
 
-    let date = this;
+    let date: Date = this;
     
     date.setDate(date.getDate() + days);
 
@@ -21,9 +23,17 @@ Date.prototype.addMinutes = function (minutes: number): Date {
         return this;
     }
 
-    let date = this;
+    let date: Date = this;
 
     date.setTime(date.getTime() + minutes * 60000);
 
     return date;
+};
+
+Date.prototype.greaterThan = function (date: Date): Boolean {
+    return this.getTime() > date.getTime();
+};
+
+Date.prototype.lessThan = function (date: Date): Boolean {
+    return this.getTime() < date.getTime();
 };

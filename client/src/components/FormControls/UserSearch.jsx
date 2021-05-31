@@ -303,7 +303,7 @@ const UserSearch = forwardRef((props, ref) => {
         updateSearchSuggestions(event, true, {fetchTrigger: Constants.USER_SEARCH_TRIGGER.MOUSE});
     };
 
-    return <div ref={container} className={classNames('text-left', props.className)} style={{...props.style, position: 'relative'}}>
+    return <div ref={container} className={classNames('text-start', props.className)} style={{...props.style, position: 'relative'}}>
         <div className='w-100' style={{position: 'relative', height: '100%'}}>
             <input ref={autoFill} 
                 className='form-control w-100' 

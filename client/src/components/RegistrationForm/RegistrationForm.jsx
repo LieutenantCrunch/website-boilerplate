@@ -9,6 +9,9 @@ import AuthService from '../../services/auth.service';
 
 import { HtmlTooltip } from '../HtmlTooltip';
 
+// Redux
+import { useSelector } from 'react-redux';
+
 function RegistrationForm(props) {
     const [state, setState] = useState({password: '', confirmPassword: ''});
     const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {
@@ -49,7 +52,7 @@ function RegistrationForm(props) {
         else if (!sessionState.displayName.length || sessionState.displayName.indexOf('#') > -1) {
             setStatusMessage({type: 'danger', message: 'You must enter a display name and it must not contain #. Note that it does not have to be unique.'});
         }
-        else if (!sessionState.profileName.length || !props.appConstants.ProfileNameRegex.test(sessionState.profileName)) {
+        else if (!sessionState.profileName.length || !Constants.PROFILE_NAME_REGEX.test(sessionState.profileName)) {
             setStatusMessage({type: 'danger', message: 'You must enter a profile name, it must contain at least three alphanumeric characters, and may only contain the following symbols: - | . | _ | ~.'});
         }
         else if (state.password === state.confirmPassword) {
@@ -152,7 +155,7 @@ function RegistrationForm(props) {
             </div>
             <div className="card-body">
                 <form>
-                    <div className="mb-3 text-left">
+                    <div className="mb-3 text-start">
                         <label htmlFor="email">Email Address</label>
                         <input id="email"
                             type="email"
@@ -165,7 +168,7 @@ function RegistrationForm(props) {
                         />
                         <small id="emailHelp" className="form-text text-muted">Your email will not be shared with anyone else.</small>
                     </div>
-                    <div className="mb-3 text-left">
+                    <div className="mb-3 text-start">
                         <label htmlFor="displayName">Display Name</label>
                         <HtmlTooltip title={
                                 <>
@@ -173,13 +176,12 @@ function RegistrationForm(props) {
                                     <ul>
                                         <li>Cannot contain '#' (pound/hash)</li>
                                         <li>Does not have to be unique</li>
-                                        <li>Can only be changed {props.appConstants.DisplayNameChangeDays === 1 ? 'once a day' : `every ${props.appConstants.DisplayNameChangeDays} days`}</li>
+                                        <li>Can only be changed {Constants.DISPLAY_NAME_CHANGE_DAYS === 1 ? 'once a day' : `every ${Constants.DISPLAY_NAME_CHANGE_DAYS} days`}</li>
                                     </ul>
                                 </>
                             }
                             placement="bottom-start"
                             enterDelay={500}
-                            interactive
                             disableHoverListener
                             fontWeight='normal'
                         >
@@ -195,7 +197,7 @@ function RegistrationForm(props) {
                         </HtmlTooltip>
                         <small id="displayNameHelp" className="form-text text-muted">This is the name other users will see.  It will be followed by a unique id number unless your account is verified.</small>
                     </div>
-                    <div className="mb-3 text-left">
+                    <div className="mb-3 text-start">
                         <label htmlFor="profileName">Profile Name</label>
                         <HtmlTooltip title={
                                 <>
@@ -220,7 +222,6 @@ function RegistrationForm(props) {
                             placement="bottom-start"
                             TransitionComponent={Zoom}
                             enterDelay={500}
-                            interactive
                             disableHoverListener
                             fontWeight='normal'
                         >
@@ -235,7 +236,7 @@ function RegistrationForm(props) {
                             />
                         </HtmlTooltip>
                         <small id="profileNameHelp" className="form-text text-muted">
-                            This will be the URL to your profile, e.g., {`${props.appConstants.URLs && props.appConstants.URLs.BASE_USERS_URL ? props.appConstants.URLs.BASE_USERS_URL : 'https://this-site.com/' }yourProfileName`}. You will not be able to change it once it is set, so choose it carefully.&nbsp;
+                            This will be the URL to your profile, e.g., {`${Constants.URLs.BASE_USERS_URL}yourProfileName`}. You will not be able to change it once it is set, so choose it carefully.&nbsp;
                             <HtmlTooltip title={
                                     <>
                                         We reserve the right to change your profile name at a future date if we determine you are trying to impersonate an individual or business.
@@ -244,14 +245,13 @@ function RegistrationForm(props) {
                                 TransitionComponent={Zoom}
                                 enterDelay={500}
                                 arrow
-                                interactive
                                 color='rgb(255,0,0)'
                             >
                                 <small>(<span className="text-primary text-decoration-underline" style={{cursor: 'help'}}>Note</span>)</small>
                             </HtmlTooltip>
                         </small>
                     </div>
-                    <div className="mb-3 text-left">
+                    <div className="mb-3 text-start">
                         <label htmlFor="password">Password</label>
                         <input id="password"
                             type="password"
@@ -270,7 +270,7 @@ function RegistrationForm(props) {
                             </p>
                         </div>
                     </div>
-                    <div className="mb-3 text-left">
+                    <div className="mb-3 text-start">
                         <label htmlFor="confirmPassword">Confirm Password</label>
                         <input id="confirmPassword"
                             type="password"

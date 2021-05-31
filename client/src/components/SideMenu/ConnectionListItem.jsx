@@ -2,41 +2,53 @@ import React from 'react';
 import classNames from 'classnames';
 import {isMobile} from 'react-device-detect';
 
+// Redux
+import { useSelector } from 'react-redux';
+import { selectUserById } from '../../redux/users/usersSlice'
+
 import { HtmlTooltip } from '../HtmlTooltip';
 
-export default function ConnectionListItem(props) {
+export const ConnectionListItem = ({ connectionId, handleConnectionClick, handleRemoveConnectionClick }) => {
+    const connection = useSelector(state => selectUserById(state, connectionId));
     const handleRemoveClick = (event) => {
-        if (props.handleRemoveConnectionClick) {
-            props.handleRemoveConnectionClick(event);
+        if (handleRemoveConnectionClick) {
+            handleRemoveConnectionClick(event);
         }
     };
 
     return (
         <li className="sideMenuItemListItem">
             <div style={{width: '15%', padding: '1%'}}>
-                <img src={props.connection.pfpSmall} className="border border-secondary rounded-circle w-100" />
+                <img src={connection.pfpSmall} className="border border-secondary rounded-circle w-100" />
             </div>
             <div className="sideMenuItemListItemText" style={{overflow: 'hidden'}}>
                 <HtmlTooltip title={
                         <>
-                            {props.connection.displayName}<small>#{props.connection.displayNameIndex}</small>
+                            {connection.displayName}
+                            {
+                                connection.displayNameIndex !== 0 &&
+                                <small>#{connection.displayNameIndex}</small>
+                            }
                         </>
                     }
                     enterDelay={500}
                     arrow
-                    interactive
                 >
-                    <button type="button" className={classNames('btn btn-outline-primary border-0 w-100 text-left', {'btn-sm': !isMobile})} data-toggle="modal" data-target="#connectionDetails" data-connection={props.connection.uniqueId} onClick={props.handleConnectionClick}>
-                        {props.connection.displayName}<small className="text-muted">#{props.connection.displayNameIndex}</small>
+                    <button type="button" className={classNames('btn btn-outline-primary border-0 w-100 text-start', {'btn-sm': !isMobile})} data-bs-toggle="modal" data-bs-target="#connectionDetails" data-connection={connection.uniqueId} onClick={handleConnectionClick}>
+                        {connection.displayName}
+                        {
+                            connection.displayNameIndex !== 0 &&
+                            <small className="text-muted">#{connection.displayNameIndex}</small>
+                        }
                     </button>
                 </HtmlTooltip>
             </div>
-            <div className="sideMenuItemListItemIcon" style={{display: props.connection.isMutual ? '' : 'none'}}>
+            <div className="sideMenuItemListItemIcon" style={{display: connection.isMutual ? '' : 'none'}}>
                 <small>🤝</small>
             </div>
-            <div className="sideMenuItemListItemRemove" style={{display: props.handleRemoveConnectionClick ? '' : 'none'}}>
-                <button type="button" className="btn btn-close" arial-label="remove" style={{boxSizing: 'border-box'}} data-connection={props.connection.uniqueId} onClick={handleRemoveClick}></button>
+            <div className="sideMenuItemListItemRemove" style={{display: handleRemoveConnectionClick ? '' : 'none'}}>
+                <button type="button" className="btn btn-close" arial-label="remove" style={{boxSizing: 'border-box'}} data-connection={connection.uniqueId} onClick={handleRemoveClick}></button>
             </div>
         </li>
     );
-}
+};

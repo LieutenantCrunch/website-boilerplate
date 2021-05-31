@@ -13,6 +13,7 @@ declare namespace WebsiteBoilerplate {
         profileName: string;
         roles?: string[];
         uniqueId: string;
+        hasUnseenPostNotifications?: Boolean;
     }
 
     export interface UserSearchResults {
@@ -38,5 +39,65 @@ declare namespace WebsiteBoilerplate {
     export interface RemoveUserConnectionResults {
         success: Boolean;
         wasMutual: Boolean;
+    }
+
+    export interface Post {
+        lastEditedOn: Date | null;
+        commentCount: number;
+        postedOn: Date;
+        postText: string | null;
+        postTitle: string | null;
+        postType: number;
+        postedBy: {
+            displayName: string;
+            displayNameIndex: number;
+            pfpSmall: string;
+            profileName: string;
+            uniqueId: string;
+        };
+        uniqueId: string;
+        postFiles: PostFileInfo[] | undefined;
+        commentPage?: number;
+        postComments?: PostComment[];
+    }
+
+    export interface PostFileInfo {
+        fileName: string;
+        mimeType: string;
+        originalFileName: string;
+        size: number;
+        thumbnailFileName?: string;
+    }
+
+    export interface PostComment {
+        commentText: string;
+        parentComment?: {
+            commentText: string;
+            postedBy: {
+                displayName: string;
+                displayNameIndex: number;
+            };
+            uniqueId: string;
+        }
+        postedBy: {
+            displayName: string;
+            displayNameIndex: number;
+            pfpSmall: string;
+            profileName: string;
+            uniqueId: string;
+        };
+        uniqueId: string;
+        childComments?: PostComment[];
+    }
+
+    export interface PostNotification {
+        commentId?: string;
+        createdOn: Date;
+        message: string;
+        postId: string;
+        status: number;
+        triggeredBy?: string[];
+        type: number;
+        uniqueId: string;
     }
 }

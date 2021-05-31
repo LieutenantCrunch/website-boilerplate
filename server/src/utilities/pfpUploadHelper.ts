@@ -4,7 +4,7 @@ import multer from 'multer';
 export default class PFPUploadHelper {
     private static storage: multer.StorageEngine = multer.diskStorage({
         destination: (req: express.Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-            cb(null, `${process.cwd()}/dist/i/u/${req.userId!}`);
+            cb(null, `${process.cwd()}/dist/u/${req.userId!}`);
         },
         filename: (req: express.Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
             cb(null, `${Date.now()}.${file.originalname}`);

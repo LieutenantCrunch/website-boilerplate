@@ -39,6 +39,15 @@ export const UserConnectionTypeFactory = (sequelize: Sequelize): ModelCtor<UserC
                 field: 'registered_user_connection_type_id'
             }
         });
+
+        UserConnectionType.belongsToMany(models.Post, {
+            as: 'posts',
+            through: models.PostCustomAudience,
+            foreignKey: {
+                name: 'connectionTypeId',
+                field: 'connection_type_id'
+            }
+        });
     };
 
     return UserConnectionType;

@@ -1,29 +1,31 @@
 import express, {Request, Response, Router, NextFunction} from 'express';
 
-import {apiUserRouter} from './api/users';
 import {apiAuthRouter} from './api/auth';
+import { apiPostsRouter } from './api/posts';
+import {apiUserRouter} from './api/users';
 
-import * as Constants from '../constants/constants';
+import * as ClientConstants from '../constants/constants.client';
 
 const apiRouter = express.Router();
 
-apiRouter.use('/users', apiUserRouter);
 apiRouter.use('/auth', apiAuthRouter);
+apiRouter.use('/posts', apiPostsRouter);
+apiRouter.use('/users', apiUserRouter);
 
 apiRouter.get('/:methodName', async (req: Request, res: Response) => {
     switch (req.params.methodName)
     {
     case 'getConstants':
         res.status(200).json({
-            DisplayNameChangeDays: Constants.DISPLAY_NAME_CHANGE_DAYS,
+            DisplayNameChangeDays: ClientConstants.DISPLAY_NAME_CHANGE_DAYS,
             ProfileNameRegexDetails: {
-                Pattern: Constants.PROFILE_NAME_REGEX_PATTERN,
-                Flags: Constants.PROFILE_NAME_REGEX_FLAGS
+                Pattern: ClientConstants.PROFILE_NAME_REGEX_PATTERN,
+                Flags: ClientConstants.PROFILE_NAME_REGEX_FLAGS
             },
             URLs: {
-                BASE_URL: Constants.BASE_URL,
-                BASE_API_URL: Constants.BASE_API_URL,
-                BASE_USERS_URL: Constants.BASE_USERS_URL
+                BASE_URL: ClientConstants.BASE_URL,
+                BASE_API_URL: ClientConstants.BASE_API_URL,
+                BASE_USERS_URL: ClientConstants.BASE_USERS_URL
             }
         });
         break;

@@ -75,10 +75,10 @@ apiUserPFPRouter.post('/:methodName', [AuthHelper.verifyToken, PFPUploadHelper.u
 
         try
         {
-            let uploadResults: {success: Boolean} = await databaseHelper.addProfilePictureToUser(req.file.filename, smallFileName, req.file.originalname, req.file.mimetype, req.userId!);
+            let {success, pfp, pfpSmall}: {success: Boolean, pfp?: string, pfpSmall?: string} = await databaseHelper.addProfilePictureToUser(req.file.filename, smallFileName, req.file.originalname, req.file.mimetype, req.userId!);
 
-            if (uploadResults.success) {
-                return res.status(200).json({success: true, message: 'Upload success!'});
+            if (success) {
+                return res.status(200).json({success: true, message: 'Upload success!', pfp, pfpSmall});
             }
             else {
                 return res.status(500).json({success: false, message: 'An error has occurred while uploading your profile picture'});

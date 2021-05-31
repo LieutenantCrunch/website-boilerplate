@@ -1,5 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
-import classNames from 'classnames';
+import React, {useState, useRef} from 'react';
 import UserSearch from '../FormControls/UserSearch';
 import UserService from '../../services/user.service';
 import ConnectionButton from '../FormControls/ConnectionButton';
@@ -38,7 +37,7 @@ export default function AddConnectionDialog (props) {
                     <div className="modal-content">
                         <div className="modal-header card-header">
                             <h5 className="modal-title" id="connectionDetailsLabel">Add New Connection</h5>
-                            <button type="button" className="btn-close" data-dismiss="modal" arial-label="close" onClick={clearSelectedUser}></button>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" arial-label="close" onClick={clearSelectedUser}></button>
                         </div>
                         <div className="modal-body card-body">
                             <UserSearch ref={userSearch} className="w-100" onUserSelect={onUserSelect} selectAllOnFocus={true} excludeConnections={true} />

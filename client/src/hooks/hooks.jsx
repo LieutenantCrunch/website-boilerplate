@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from 'react';
+import { useHistory } from 'react-router-dom';
 
 export const useStateWithSessionStorage = (key, defaultValue) => {
     const [value, setValue] = useState(() => JSON.parse(sessionStorage.getItem(key)) || defaultValue);
@@ -36,4 +37,29 @@ export const useStateWithLocalStorage = (key, defaultValue) => {
     }, [key, value]);
 
     return [value, setValue];
+};
+
+// https://gal.hagever.com/posts/react-forms-and-history-state/
+export const useHistoryState = (key, initialValue) => {
+    const history = useHistory();
+
+    const [rawState, rawSetState] = useState(() => {
+        const value = history.location.state?.[key];
+            return value ?? initialValue;
+        }
+    );
+
+    const setState = (value) => {
+        history.replace({
+            ...history.location,
+            state: {
+                ...history.location.state,
+                [key]: value
+            }
+        });
+
+        rawSetState(value);
+    }
+
+    return [rawState, setState];
 };

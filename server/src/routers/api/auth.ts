@@ -4,7 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 import AuthHelper from '../../utilities/authHelper';
 import { databaseHelper } from '../../utilities/databaseHelper';
-import * as Constants from '../../constants/constants';
+import * as ClientConstants from '../../constants/constants.client';
+import * as ServerConstants from '../../constants/constants.server';
 
 import '../../extensions/date.extensions';
 import EmailHelper from '../../utilities/emailHelper';
@@ -74,7 +75,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
 
                 if (loginResults.success) {
                     let userID: string | null = loginResults.id;
-                    let expirationDate: Date = new Date(Date.now()).addDays(Constants.JWT_EXPIRATION_DAYS);
+                    let expirationDate: Date = new Date(Date.now()).addDays(ServerConstants.JWT_EXPIRATION_DAYS);
                     let jwtResults: {success: Boolean} = {success: false};
 
                     let authToken: string | undefined = undefined;
@@ -86,7 +87,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
                     else {
                         let secret: string = await AuthHelper.getJWTSecret();
                         let jti: string = uuidv4();
-                        authToken = jwt.sign({id: userID}, secret, {expiresIn: (60 * 60 * 24 * Constants.JWT_EXPIRATION_DAYS), jwtid: jti}); /* Could pass in options on the third parameter */
+                        authToken = jwt.sign({id: userID}, secret, {expiresIn: (60 * 60 * 24 * ServerConstants.JWT_EXPIRATION_DAYS), jwtid: jti}); /* Could pass in options on the third parameter */
 
                         jwtResults = await databaseHelper.addJWTToUser(userID!, {jti, expirationDate})
                     }
@@ -98,7 +99,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
                                 sameSite: true,
                                 expires: expirationDate
                             })
-                            .json({success: true, message: 'Login successful', userInfo: {
+                            .json({success: true, message: 'Login successful', loginDetails: {
                                 loginDate: Date.now(), 
                                 expirationDate: expirationDate.valueOf()
                             }});
@@ -120,13 +121,13 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
     case 'logout':
         if (req.userId && req.jti) {
             if (req.body.fromHere && req.body.fromOtherLocations) { // Everywhere - Here and Everywhere Else
-                await databaseHelper.invalidateJWTsForUser(req.userId, Constants.INVALIDATE_TOKEN_MODE.ALL, req.jti); 
+                await databaseHelper.invalidateJWTsForUser(req.userId, ServerConstants.INVALIDATE_TOKEN_MODE.ALL, req.jti); 
             }
             else if (!req.body.fromHere && req.body.fromOtherLocations) { // Everywhere Else - Not Here but Everywhere Else
-                await databaseHelper.invalidateJWTsForUser(req.userId, Constants.INVALIDATE_TOKEN_MODE.OTHERS, req.jti);
+                await databaseHelper.invalidateJWTsForUser(req.userId, ServerConstants.INVALIDATE_TOKEN_MODE.OTHERS, req.jti);
             }
             else { // Only Here
-                await databaseHelper.invalidateJWTsForUser(req.userId, Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, req.jti);
+                await databaseHelper.invalidateJWTsForUser(req.userId, ServerConstants.INVALIDATE_TOKEN_MODE.SPECIFIC, req.jti);
             }
         }
 
@@ -141,7 +142,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
             let message: string = 'If you are a valid user you will be sent a password reset email shortly. Please check your spam/junk folder if you do not see it soon.';
 
             if (tokenResults.token) {
-                let resetPasswordLink: string = `${Constants.BASE_URL}reset-password?token=${tokenResults.token}`;
+                let resetPasswordLink: string = `${ClientConstants.BASE_URL}reset-password?token=${tokenResults.token}`;
 
                 emailHelper.sendMail({
                     to: req.body.email,
@@ -189,7 +190,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
                     // Update their password with the new one
                     if (await databaseHelper.updateCredentials(req.body.email, req.body.password)) {
                         // Invalidate all of their existing JWTs
-                        await databaseHelper.invalidateJWTsForUser('', Constants.INVALIDATE_TOKEN_MODE.ALL);
+                        await databaseHelper.invalidateJWTsForUser('', ServerConstants.INVALIDATE_TOKEN_MODE.ALL);
 
                         // Clear their cookie if they have one and send them back to the login
                         res.status(200)

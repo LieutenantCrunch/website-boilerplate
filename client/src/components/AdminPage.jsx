@@ -38,8 +38,6 @@ export default function AdminPage() {
             selectedUserDetails = await UserService.getUserDetails(selectedUserId);
         }
 
-        console.log(`selectedUserDetails: ${selectedUserDetails}`);
-
         setState(prevState => {
             return {...prevState, selectedUserDetails};
         });
@@ -121,10 +119,10 @@ export default function AdminPage() {
                     }}
                 >
                     <strong>{state.adminPageAlert.message}</strong>
-                    <button type="button" className="btn-close" aria-label="Close" data-target="#adminPageAlertEl" data-toggle="collapse" aria-expanded="false" aria-controls="adminPageAlert"></button>
+                    <button type="button" className="btn-close" aria-label="Close" data-bs-target="#adminPageAlertEl" data-bs-toggle="collapse" aria-expanded="false" aria-controls="adminPageAlert"></button>
                 </div>
                 <div className="container-fluid d-flex align-items-center flex-column mt-2">
-                    <div className="card col-8 col-md-4 align-middle text-center">
+                    <div className="card col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 align-middle text-center">
                         <div className="card-header">
                             <h5 className="card-title">User Management</h5>
                         </div>
@@ -145,7 +143,7 @@ export default function AdminPage() {
                                 }}
                             />
                             <h5 className="card-subtitle mb-2 font-weight-bold">{state.selectedUserDetails?.displayName}</h5>
-                            <div className="card-text text-left">
+                            <div className="card-text text-start">
                                 <span className="font-weight-bold">Display Name Index:</span> {state.selectedUserDetails?.displayNameIndex}<br />
                                 <span className="font-weight-bold">Email:</span> {state.selectedUserDetails?.email}<br/>
                                 <span className="font-weight-bold">Roles:</span><br />
@@ -172,8 +170,8 @@ export default function AdminPage() {
                                 <button type="button" 
                                     className="btn btn-primary"
                                     onClick={handleVerifyDisplayNameClick}
-                                    data-toggle="modal" 
-                                    data-target="#adminPageConfirm">Verify Display Name</button>
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#adminPageConfirm">Verify Display Name</button>
                             </div>
                         </div>
                         <div className="card-footer">
@@ -189,7 +187,7 @@ export default function AdminPage() {
                                 <button type="button" 
                                     className="btn-close" 
                                     onClick={handleConfirmNoClick}
-                                    data-dismiss="modal" 
+                                    data-bs-dismiss="modal" 
                                     arial-label="close"
                                 ></button>
                             </div>
@@ -200,14 +198,14 @@ export default function AdminPage() {
                                 <button type="button" 
                                     className="btn btn-primary" 
                                     onClick={handleConfirmYesClick}
-                                    data-dismiss="modal" 
+                                    data-bs-dismiss="modal" 
                                 >
                                     Yes
                                 </button>
                                 <button type="button" 
                                     className="btn btn-secondary" 
                                     onClick={handleConfirmNoClick}
-                                    data-dismiss="modal"
+                                    data-bs-dismiss="modal"
                                 >
                                     No
                                 </button>

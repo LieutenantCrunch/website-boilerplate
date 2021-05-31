@@ -6,18 +6,28 @@ import { Op } from 'sequelize';
 import { Sequelize } from 'sequelize';
 import { v4 as uuidv4 } from 'uuid';
 
-import * as Constants from '../constants/constants';
+import * as ClientConstants from '../constants/constants.client';
+import * as ServerConstants from '../constants/constants.server';
+import { adjustGUIDDashes, isNullOrWhiteSpaceOnly } from './utilityFunctions';
+import { SocketHelper } from './socketHelper';
 
 import { db } from '../models/_index';
 import { UserInstance } from '../models/User';
 import { ProfilePictureInstance } from '../models/ProfilePicture';
 import { UserJWTInstance } from '../models/UserJWT';
-import { UserConnectionViewInstance } from '../models/views/UserConnectionView';
 import { DisplayNameInstance } from '../models/DisplayName';
 import { UserConnectionInstance } from '../models/UserConnection';
 import { UserConnectionTypeInstance } from '../models/UserConnectionType';
 import { PasswordResetTokenInstance } from '../models/PasswordResetToken';
 import { UserBlockInstance } from '../models/UserBlock';
+
+import { FeedViewInstance } from '../models/views/FeedView';
+import { UserConnectionViewInstance } from '../models/views/UserConnectionView';
+import { PostInstance } from '../models/Post';
+import { PostFileInstance } from '../models/PostFile';
+import { PostCommentInstance } from '../models/PostComment';
+import { notificationHelper } from './notificationHelper';
+import { PostNotificationInstance } from '../models/PostNotification';
 
 class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -73,15 +83,7 @@ class DatabaseHelper {
     async userExistsForProfileName(currentUserUniqueId: string | undefined, profileName: string): Promise<{exists: Boolean, allowPublicAccess: Boolean}> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
-                where: {
-                    profileName: profileName.toLowerCase()
-                },
-                attributes: [
-                    'id',
-                    'allowPublicAccess'
-                ]
-            });
+            let registeredUser: UserInstance | null = await this.getUserWithProfileName(profileName);
 
             if (registeredUser) {
                 let exists: Boolean = true;
@@ -244,8 +246,8 @@ class DatabaseHelper {
                         displayNameIndex: displayName ? displayName.displayNameIndex : -1,
                         isBlocked: false, /* This is a public user so they won't have been blocked */
                         isMutual,
-                        pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
-                        pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                        pfp: profilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/${profilePicture.fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
+                        pfpSmall: profilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/${profilePicture.smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
                         profileName,
                         uniqueId: registeredUser.uniqueId
                     };
@@ -287,8 +289,8 @@ class DatabaseHelper {
                         displayNameIndex: displayName ? displayName.displayNameIndex : -1,
                         isBlocked,
                         isMutual,
-                        pfp: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.fileName}` : '/i/s/pfpDefault.svgz',
-                        pfpSmall: profilePicture ? `/i/u/${registeredUser.uniqueId}/${profilePicture.smallFileName}` : '/i/s/pfpDefault.svgz',
+                        pfp: profilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/${profilePicture.fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
+                        pfpSmall: profilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/${profilePicture.smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
                         profileName,
                         uniqueId: registeredUser.uniqueId
                     };
@@ -302,7 +304,7 @@ class DatabaseHelper {
         return null;
     }
 
-    async getUserIdForUniqueId(uniqueId: string): Promise<number | undefined> {
+    async _getUserIdForUniqueId(uniqueId: string): Promise<number | undefined> {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
@@ -326,7 +328,92 @@ class DatabaseHelper {
         return undefined;
     }
 
-    async getUserWithUniqueId(uniqueId: string): Promise<UserInstance | null> {
+    getUserIdForUniqueId = memoize(this._getUserIdForUniqueId, {
+        maxAge: ServerConstants.CACHE_DURATIONS.USER_BY_UNIQUE_ID,
+        promise: true
+    });
+
+    async _getUniqueIdForUserId(id: number): Promise<string | undefined> {
+        try
+        {
+            let registeredUser: UserInstance | null = await db.User.findOne({
+                where: {
+                    id
+                },
+                attributes: [
+                    'uniqueId'
+                ]
+            });
+
+            if (registeredUser) {
+                return registeredUser.uniqueId;
+            }
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with id ${id}: ${err.message}`);
+        }
+
+        return undefined;
+    }
+
+    getUniqueIdForUserId = memoize(this._getUniqueIdForUserId, {
+        maxAge: ServerConstants.CACHE_DURATIONS.USER_BY_ID,
+        promise: true
+    });
+
+    async _getUserWithId(id: number): Promise<UserInstance | null> {
+        try
+        {
+            let registeredUser: UserInstance | null = await db.User.findOne({
+                where: {
+                    id
+                },
+                include: [
+                    {
+                        model: db.DisplayName,
+                        as: 'displayNames',
+                        where: {
+                            isActive: true
+                        },
+                        attributes: [
+                            'displayName',
+                            'displayNameIndex'
+                        ]
+                    },
+                    {
+                        model: db.ProfilePicture,
+                        as: 'profilePictures',
+                        required: false,
+                        on: {
+                            id: {
+                                [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `User`.`id` order by `profile_picture`.`id` desc limit 1)')
+                            }
+                        },
+                        attributes: [
+                            'fileName',
+                            'smallFileName'
+                        ]
+                    }
+                ]
+            });
+
+            return registeredUser;
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with id ${id}: ${err.message}`);
+        }
+        
+        return null;
+    }
+
+    getUserWithId = memoize(this._getUserWithId, {
+        maxAge: ServerConstants.CACHE_DURATIONS.USER_BY_ID,
+        promise: true
+    });
+
+    async _getUserWithUniqueId(uniqueId: string): Promise<UserInstance | null> {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
@@ -372,13 +459,69 @@ class DatabaseHelper {
         return null;
     }
 
+    getUserWithUniqueId = memoize(this._getUserWithUniqueId, {
+        maxAge: ServerConstants.CACHE_DURATIONS.USER_BY_UNIQUE_ID,
+        promise: true
+    });
+
+    async _getUserWithProfileName(profileName: string): Promise<UserInstance | null> {
+        try
+        {
+            let registeredUser: UserInstance | null = await db.User.findOne({
+                where: {
+                    profileName
+                },
+                include: [
+                    {
+                        model: db.DisplayName,
+                        as: 'displayNames',
+                        where: {
+                            isActive: true
+                        },
+                        attributes: [
+                            'displayName',
+                            'displayNameIndex'
+                        ]
+                    },
+                    {
+                        model: db.ProfilePicture,
+                        as: 'profilePictures',
+                        required: false,
+                        on: {
+                            id: {
+                                [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `User`.`id` order by `profile_picture`.`id` desc limit 1)')
+                            }
+                        },
+                        attributes: [
+                            'fileName',
+                            'smallFileName'
+                        ]
+                    }
+                ]
+            });
+
+            return registeredUser;
+        }
+        catch (err)
+        {
+            console.error(`Error looking up user with profileName ${profileName}: ${err.message}`);
+        }
+        
+        return null;
+    }
+
+    getUserWithProfileName = memoize(this._getUserWithProfileName, {
+        maxAge: ServerConstants.CACHE_DURATIONS.USER_BY_PROFILE_NAME,
+        promise: true
+    });
+
     async registerNewUser(email: string, displayName: string, profileName: string, password: string): Promise<{id: string | null, success: Boolean}> {
         try
         {
             if (!displayName || displayName.length > 100 || displayName.indexOf('#') > -1) {
                 return {id: null, success: false};
             }
-            else if (!profileName || profileName.length > 20 || !Constants.PROFILE_NAME_REGEX.test(profileName)) {
+            else if (!profileName || profileName.length > 20 || !ClientConstants.PROFILE_NAME_REGEX.test(profileName)) {
                 return {id: null, success: false};
             }
 
@@ -484,10 +627,10 @@ class DatabaseHelper {
             });
 
             if (registeredUser) {
-                if (registeredUser.passwordResetTokens && registeredUser.passwordResetTokens.length < Constants.RPT_MAX_ACTIVE_TOKENS) {
+                if (registeredUser.passwordResetTokens && registeredUser.passwordResetTokens.length < ServerConstants.RPT_MAX_ACTIVE_TOKENS) {
                     token = uuidv4();
 
-                    let expirationDate: Date = new Date(Date.now()).addMinutes(Constants.RPT_EXPIRATION_MINUTES);
+                    let expirationDate: Date = new Date(Date.now()).addMinutes(ServerConstants.RPT_EXPIRATION_MINUTES);
 
                     let newResetToken: PasswordResetTokenInstance = await registeredUser.createPasswordResetToken({
                         token,
@@ -542,20 +685,25 @@ class DatabaseHelper {
         return false;
     }
 
-    async addProfilePictureToUser(fileName: string, smallFileName: string, originalFileName: string, mimeType: string, userId: string): Promise<{success: Boolean}> {
+    async addProfilePictureToUser(fileName: string, smallFileName: string, originalFileName: string, mimeType: string, userUniqueId: string): Promise<{success: Boolean, pfp?: string, pfpSmall?: string}> {
         try
         {
-            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(userId);
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(userUniqueId);
             
             if (registeredUser) {
                 let newPFP: ProfilePictureInstance | null = await registeredUser.createProfilePicture({
                     fileName,
-                    smallFileName,
-                    originalFileName
+                    originalFileName,
+                    mimeType,
+                    smallFileName
                 });
 
                 if (newPFP) {
-                    return {success: true};
+                    return {
+                        success: true, 
+                        pfp: `${ClientConstants.PUBLIC_USER_PATH}${userUniqueId}/${fileName}`,
+                        pfpSmall: `${ClientConstants.PUBLIC_USER_PATH}${userUniqueId}/${smallFileName}`
+                    };
                 }
             }
         }
@@ -696,26 +844,26 @@ class DatabaseHelper {
         return false;
     }
 
-    async invalidateJWTsForUser(uniqueId: string, mode: number = Constants.INVALIDATE_TOKEN_MODE.SPECIFIC, jti?: string): Promise<{success: Boolean}> {
+    async invalidateJWTsForUser(uniqueId: string, mode: number = ServerConstants.INVALIDATE_TOKEN_MODE.SPECIFIC, jti?: string): Promise<{success: Boolean}> {
         try
         {
             if (!jti) { // If we don't have an ID, then we have to expire all of them
-                mode = Constants.INVALIDATE_TOKEN_MODE.ALL;
+                mode = ServerConstants.INVALIDATE_TOKEN_MODE.ALL;
             }
 
             let additionalQueryOptions: {[key: string]: any;} = {};
             
             switch (mode) {
-                case Constants.INVALIDATE_TOKEN_MODE.ALL:
+                case ServerConstants.INVALIDATE_TOKEN_MODE.ALL:
                     break;
-                case Constants.INVALIDATE_TOKEN_MODE.OTHERS:
+                case ServerConstants.INVALIDATE_TOKEN_MODE.OTHERS:
                     additionalQueryOptions = {
                         jti: {
                             [Op.ne]: jti
                         }
                     };
                     break;
-                case Constants.INVALIDATE_TOKEN_MODE.SPECIFIC:
+                case ServerConstants.INVALIDATE_TOKEN_MODE.SPECIFIC:
                 default:
                     additionalQueryOptions = {
                         jti
@@ -868,10 +1016,10 @@ class DatabaseHelper {
 
                 // Check if they haven't changed their name in at least the configured amount of days
 
-                if ((currentDate.getTime() - mostRecentChange.getTime())/(1000 * 60 * 60 * 24) <= Constants.DISPLAY_NAME_CHANGE_DAYS) {
-                    let nextAvailableChange: Date = new Date(mostRecentChange.getTime() + (1000 * 60 * 60 * 24 * Constants.DISPLAY_NAME_CHANGE_DAYS));
+                if ((currentDate.getTime() - mostRecentChange.getTime())/(1000 * 60 * 60 * 24) <= ClientConstants.DISPLAY_NAME_CHANGE_DAYS) {
+                    let nextAvailableChange: Date = new Date(mostRecentChange.getTime() + (1000 * 60 * 60 * 24 * ClientConstants.DISPLAY_NAME_CHANGE_DAYS));
                     // Fail with message
-                    return {success: false, message: `It hasn't been ${Constants.DISPLAY_NAME_CHANGE_DAYS} day${Constants.DISPLAY_NAME_CHANGE_DAYS === 1 ? '' : 's'} since the last time you changed your display name. You can change your display name again on ${nextAvailableChange.toLocaleString()}.`};
+                    return {success: false, message: `It hasn't been ${ClientConstants.DISPLAY_NAME_CHANGE_DAYS} day${ClientConstants.DISPLAY_NAME_CHANGE_DAYS === 1 ? '' : 's'} since the last time you changed your display name. You can change your display name again on ${nextAvailableChange.toLocaleString()}.`};
                 }
 
                 if (currentDisplayName) {
@@ -971,7 +1119,9 @@ class DatabaseHelper {
 
     async getUserDetails(currentUniqueId: string | undefined, uniqueId: string, includeEmail: Boolean): Promise<WebsiteBoilerplate.UserDetails | null> {
         try {
-            let getConnectionTypes = currentUniqueId && currentUniqueId !== uniqueId;
+            let currentUniqueIdExists: Boolean = !isNullOrWhiteSpaceOnly(currentUniqueId);
+            let userIsCurrent: Boolean = currentUniqueIdExists && currentUniqueId === uniqueId;
+            let getConnectionTypes: Boolean = currentUniqueIdExists && currentUniqueId !== uniqueId;
             let currentUser: UserInstance | null = null;
             
             if (currentUniqueId) {
@@ -1043,12 +1193,31 @@ class DatabaseHelper {
                     displayNameIndex: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayNameIndex : -1),
                     isBlocked: false, /* Handled below */
                     isMutual,
-                    pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                    pfpSmall: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `/i/u/${uniqueId}/${registeredUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                    pfp: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${uniqueId}/${registeredUser.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                    pfpSmall: (registeredUser.profilePictures && registeredUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${uniqueId}/${registeredUser.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                     profileName: registeredUser.profileName,
                     roles: (registeredUser.roles ? registeredUser.roles.map(role => role.roleName) : []),
                     uniqueId
                 };
+
+                if (userIsCurrent) {
+                    let unseenPostNotifications: PostNotificationInstance[] = await db.PostNotification.findAll({
+                        attributes: [
+                            'postId',
+                            'notificationType'
+                        ],
+                        where: {
+                            registeredUserId: registeredUser.id!,
+                            notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNSEEN
+                        },
+                        group: [
+                            'postId',
+                            'notificationType'
+                        ]
+                    });
+
+                    userDetails.hasUnseenPostNotifications = unseenPostNotifications.length > 0;
+                }
 
                 if (includeEmail) {
                     userDetails.email = registeredUser.email;
@@ -1233,8 +1402,8 @@ class DatabaseHelper {
                         ['displayName', 'ASC'], 
                         ['displayNameIndex', 'ASC']
                     ],
-                    offset: pageNumber * Constants.DB_USER_FETCH_PAGE_SIZE,
-                    limit: Constants.DB_USER_FETCH_PAGE_SIZE,
+                    offset: pageNumber * ServerConstants.DB_USER_FETCH_PAGE_SIZE,
+                    limit: ServerConstants.DB_USER_FETCH_PAGE_SIZE,
                     subQuery: false // See below
                 };
 
@@ -1385,8 +1554,8 @@ class DatabaseHelper {
                             displayNameIndex: displayName.displayNameIndex, 
                             isBlocked,
                             isMutual,
-                            pfp: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                            pfpSmall: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `/i/u/${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                            pfp: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                            pfpSmall: (displayName.registeredUser!.profilePictures && displayName.registeredUser!.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${displayName.registeredUser!.uniqueId}/${displayName.registeredUser!.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                             profileName: displayName.registeredUser!.profileName,
                             uniqueId: displayName.registeredUser!.uniqueId
                         };
@@ -1441,6 +1610,7 @@ class DatabaseHelper {
                                 model: db.ProfilePicture,
                                 as: 'profilePictures',
                                 attributes: [
+                                    'fileName',
                                     'smallFileName'
                                 ],
                                 order: [['id', 'DESC']],
@@ -1515,6 +1685,8 @@ class DatabaseHelper {
                             }), {});
                         }
 
+                        let connectedUserUniqueId: string = connectedUser.uniqueId;
+
                         return {
                             allowPublicAccess: connectedUser!.allowPublicAccess,
                             connectedToCurrentUser: true, /* Outgoing connections are always connected to the user */
@@ -1523,10 +1695,10 @@ class DatabaseHelper {
                             displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
                             isBlocked: false, /* Outgoing connections shouldn't be blocked */
                             isMutual: connectionView.isMutual,
-                            pfp: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${uniqueId}/${connectedUser!.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                            pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `/i/u/${uniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                            pfp: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser!.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                            pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                             profileName: connectedUser!.profileName,
-                            uniqueId: connectedUser!.uniqueId
+                            uniqueId: connectedUserUniqueId
                         };
                     });
                 }
@@ -1585,6 +1757,7 @@ class DatabaseHelper {
                                             model: db.ProfilePicture,
                                             as: 'profilePictures',
                                             attributes: [
+                                                'fileName',
                                                 'smallFileName'
                                             ],
                                             order: [['id', 'DESC']],
@@ -1649,6 +1822,8 @@ class DatabaseHelper {
                                 isBlocked = true;
                             }
 
+                            let requestedUserUniqueId: string = requestedUser.uniqueId;
+
                             results.push({
                                 allowPublicAccess: requestedUser.allowPublicAccess,
                                 connectedToCurrentUser: false, /* This list will only contain users who are not connected */
@@ -1657,10 +1832,10 @@ class DatabaseHelper {
                                 displayNameIndex: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayNameIndex : -1),
                                 isBlocked,
                                 isMutual: false, /* Incoming connections will never be mutual */
-                                pfp: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `/i/u/${uniqueId}/${requestedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                pfp: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${requestedUserUniqueId}/${requestedUser.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                                pfpSmall: (requestedUser.profilePictures && requestedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${requestedUserUniqueId}/${requestedUser.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                                 profileName: requestedUser.profileName,
-                                uniqueId: requestedUser.uniqueId
+                                uniqueId: requestedUserUniqueId
                             });
                         }
 
@@ -1678,7 +1853,7 @@ class DatabaseHelper {
 
     async getConnectionTypeDict(): Promise<WebsiteBoilerplate.UserConnectionTypeDictionary> {
         try {
-            let connectionTypesDict: WebsiteBoilerplate.UserConnectionTypeDictionary | undefined = this.nodeCache.get(Constants.CACHE_KEY_CONNECTION_TYPES_DICT);
+            let connectionTypesDict: WebsiteBoilerplate.UserConnectionTypeDictionary | undefined = this.nodeCache.get(ServerConstants.CACHE_KEY_CONNECTION_TYPES_DICT);
 
             if (!connectionTypesDict) {
                 let connectionTypes: UserConnectionTypeInstance[] = await this.getConnectionTypes();
@@ -1690,7 +1865,7 @@ class DatabaseHelper {
                     }
                 }, {});
 
-                this.nodeCache.set(Constants.CACHE_KEY_CONNECTION_TYPES_DICT, connectionTypesDict, Constants.CONNECTION_TYPES_CACHE_HOURS * 60 * 60 * 1000);
+                this.nodeCache.set(ServerConstants.CACHE_KEY_CONNECTION_TYPES_DICT, connectionTypesDict, ServerConstants.CACHE_DURATIONS.CONNECTION_TYPES);
             }
 
             return connectionTypesDict;
@@ -1760,7 +1935,7 @@ class DatabaseHelper {
 
     async updateUserConnection(currentUserUniqueId: string, connectionUpdates: WebsiteBoilerplate.UserDetails): Promise<WebsiteBoilerplate.UpdateUserConnectionResults> {
         let results: WebsiteBoilerplate.UpdateUserConnectionResults = {
-            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.NONE,
+            actionTaken: ClientConstants.UPDATE_USER_CONNECTION_ACTIONS.NONE,
             success: false,
             userConnection: connectionUpdates
         };
@@ -1869,7 +2044,7 @@ class DatabaseHelper {
 
                         results = {
                             ...results,
-                            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.UPDATED,
+                            actionTaken: ClientConstants.UPDATE_USER_CONNECTION_ACTIONS.UPDATED,
                             success: true,
                             userConnection: {
                                 allowPublicAccess: connectedUser.allowPublicAccess,
@@ -1877,8 +2052,8 @@ class DatabaseHelper {
                                 connectionTypes,
                                 displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
                                 displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
-                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                                 isBlocked: false, /* Outgoing connections shouldn't be blocked */
                                 isMutual: incomingConnection !== null,
                                 profileName: connectedUser.profileName,
@@ -1904,7 +2079,7 @@ class DatabaseHelper {
 
                         results = {
                             ...results,
-                            actionTaken: Constants.UPDATE_USER_CONNECTION_ACTIONS.ADDED,
+                            actionTaken: ClientConstants.UPDATE_USER_CONNECTION_ACTIONS.ADDED,
                             success: true,
                             userConnection: {
                                 allowPublicAccess: connectedUser.allowPublicAccess,
@@ -1912,8 +2087,8 @@ class DatabaseHelper {
                                 connectionTypes,
                                 displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
                                 displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
-                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : '/i/s/pfpDefault.svgz'),
-                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `/i/u/${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : '/i/s/pfpDefault.svgz'),
+                                pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                                pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
                                 isBlocked: false, /* Outgoing connections shouldn't be blocked */
                                 isMutual: incomingConnection !== null,
                                 profileName: connectedUser.profileName,
@@ -1981,6 +2156,1191 @@ class DatabaseHelper {
         }
 
         return false;
+    }
+
+    // *********************
+    // Post Methods
+    // *********************
+
+    // The end date is used to prevent new posts from coming back and winding up inserted in a strange place in the list. If they want the latest posts, they'll have to refresh the page
+    async getPostsByUser(requestingUserUniqueId: string | undefined, postedByUniqueId: string | undefined, profileName: string | undefined, postType: number | null, endDate: Date | undefined, pageNumber: number | undefined): Promise<{posts: WebsiteBoilerplate.Post[], total: number}> {
+        let posts: WebsiteBoilerplate.Post[] = [];
+        let total: number = 0;
+
+        try {
+            let registeredUser: UserInstance | null = null;
+            
+            if (!isNullOrWhiteSpaceOnly(postedByUniqueId)) {
+                registeredUser = await this.getUserWithUniqueId(postedByUniqueId!);
+            }
+            else if (!isNullOrWhiteSpaceOnly(profileName)) {
+                registeredUser = await this.getUserWithProfileName(profileName!);
+            }
+
+            if (registeredUser) {
+                let registeredUserId: number = registeredUser.id!;
+
+                // Set it just in case it's not set already
+                postedByUniqueId = registeredUser.uniqueId;
+
+                // Make sure the user can view the posts
+                let canView: Boolean = false;
+                let isPublicUser: Boolean = isNullOrWhiteSpaceOnly(requestingUserUniqueId);
+
+                if (requestingUserUniqueId === postedByUniqueId) {
+                    // You can always view your own posts
+                    canView = true;
+                }
+                /*## Disabled for testing
+                else if (await this.checkUserForRole(registeredUser.id!, 'Administrator')) {
+                    // Administrators can view all posts
+                    canView = true;
+                }*/
+                else if (isPublicUser && registeredUser.allowPublicAccess) {
+                    // Public users can view posts of registered users that allow it
+                    canView = true;
+                }
+                else if (!isPublicUser && !(await this.checkIfFirstUserIsBlockingSecond(registeredUserId, requestingUserUniqueId!))) {
+                    // If the requesting user is an actual user and they're not blocked
+                    canView = true;
+                }
+
+                if (canView) {
+                    // This has to be done separate due to the fact that the files are being joined in, 
+                    // thus causing single posts to be counted multiple times when there are multiple 
+                    // images for a particular post
+                    let count: number = await db.Views.FeedView.count({
+                        where: {
+                            userUniqueId: isPublicUser ? { [Op.is]: null } : requestingUserUniqueId,
+                            postedByUniqueId,
+                            postedOn: {
+                                [Op.lte]: endDate || new Date(Date.now())
+                            }
+                        }
+                    });
+
+                    let rows: FeedViewInstance[] = await db.Views.FeedView.findAll({
+                        where: {
+                            userUniqueId: isPublicUser ? { [Op.is]: null } : requestingUserUniqueId,
+                            postedByUniqueId,
+                            postedOn: {
+                                [Op.lte]: endDate || new Date(Date.now())
+                            }
+                        },
+                        order: [
+                            ['id', 'DESC']
+                        ],
+                        include: [
+                            {
+                                model: db.PostFile,
+                                as: 'postFiles'
+                            }
+                        ],
+                        offset: (pageNumber || 0) * ServerConstants.DB_FEED_FETCH_PAGE_SIZE,
+                        limit: ServerConstants.DB_FEED_FETCH_PAGE_SIZE,
+                        subQuery: false // See subquery note
+                    });
+
+                    posts = rows.map(row => {
+                        let dbPostFiles: PostFileInstance[] | undefined = row.postFiles;
+                        let postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined = undefined;
+        
+                        if (dbPostFiles && dbPostFiles.length > 0) {
+                            let filePath: string = `${ClientConstants.PUBLIC_USER_PATH}${postedByUniqueId}/`;
+        
+                            switch (row.postType) {
+                                case ClientConstants.POST_TYPES.AUDIO:
+                                    filePath += 'a/';
+                                    break;
+                                case ClientConstants.POST_TYPES.IMAGE:
+                                    filePath += 'i/';
+                                    break;
+                                case ClientConstants.POST_TYPES.VIDEO:
+                                    filePath += 'v/';
+                                    break;
+                                default:
+                                    break;
+                            }
+        
+                            postFiles = dbPostFiles.map(dbPostFile => ({
+                                fileName: `${filePath}${dbPostFile.fileName}`,
+                                mimeType: dbPostFile.mimeType,
+                                originalFileName: dbPostFile.originalFileName,
+                                size: dbPostFile.fileSize,
+                                thumbnailFileName: dbPostFile.thumbnailFileName ? `${filePath}${dbPostFile.thumbnailFileName}` : undefined
+                            }));
+                        }
+        
+                        return {
+                            lastEditedOn: row.lastEditedOn,
+                            commentCount: row.commentCount,
+                            postedOn: row.postedOn,
+                            postText: row.postText,
+                            postTitle: row.postTitle,
+                            postType: row.postType,
+                            postedBy: {
+                                displayName: row.postedByDisplayName,
+                                displayNameIndex: row.postedByDisplayNameIndex,
+                                pfpSmall: row.postedByPfpSmall ? `${ClientConstants.PUBLIC_USER_PATH}${postedByUniqueId!}/${row.postedByPfpSmall}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
+                                profileName: row.postedByProfileName,
+                                uniqueId: postedByUniqueId!
+                            },
+                            uniqueId: row.uniqueId,
+                            postFiles
+                        };
+                    });
+        
+                    total = ((count as unknown) as Array<{count: number}>).length ? ((count as unknown) as Array<{count: number}>).length : count;
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error getting posts for user ${postedByUniqueId}:\n${err.message}`);
+        }
+
+        return {posts, total};
+    }
+
+    // The end date is used to prevent new posts from coming back and winding up inserted in a strange place in the list. If they want the latest posts, they'll have to refresh the page
+    async getFeed(uniqueId: string | number | undefined, postType: number | undefined, endDate: Date | undefined, pageNumber: number | undefined): Promise<{posts: WebsiteBoilerplate.Post[], total: number}> {
+        let posts: WebsiteBoilerplate.Post[] = [];
+        let total: number = 0;
+
+        if (typeof uniqueId === 'number') {
+            uniqueId = await this.getUniqueIdForUserId(uniqueId);
+        }
+
+        if (uniqueId !== undefined) {
+            // This has to be done separate due to the fact that the files are being joined in, 
+            // thus causing single posts to be counted multiple times when there are multiple 
+            // images for a particular post
+            let whereOptions: {[key: string]: any;} = {
+                userUniqueId: uniqueId,
+                postedOn: {
+                    [Op.lte]: endDate || new Date(Date.now())
+                }
+            };
+
+            if (true) { //## User Preference: Show my posts in my feed
+                whereOptions.postedByUniqueId = { [Op.ne]: uniqueId };
+            }
+
+            if (postType !== undefined && postType !== ClientConstants.POST_TYPES.ALL) {
+                whereOptions.postType = postType;
+            }
+            
+            const count: number = await db.Views.FeedView.count({
+                where: whereOptions
+            });
+
+            const rows: FeedViewInstance[] = await db.Views.FeedView.findAll({
+                where: whereOptions,
+                order: [
+                    ['id', 'DESC']
+                ],
+                include: [
+                    {
+                        model: db.PostFile,
+                        as: 'postFiles'
+                    }
+                ],
+                offset: (pageNumber || 0) * ServerConstants.DB_FEED_FETCH_PAGE_SIZE,
+                limit: ServerConstants.DB_FEED_FETCH_PAGE_SIZE
+            });
+
+            posts = rows.map(row => {
+                let dbPostFiles: PostFileInstance[] | undefined = row.postFiles;
+                let postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined = undefined;
+
+                if (dbPostFiles && dbPostFiles.length > 0) {
+                    let filePath: string = `${ClientConstants.PUBLIC_USER_PATH}${row.postedByUniqueId}/`;
+
+                    switch (row.postType) {
+                        case ClientConstants.POST_TYPES.AUDIO:
+                            filePath += 'a/';
+                            break;
+                        case ClientConstants.POST_TYPES.IMAGE:
+                            filePath += 'i/';
+                            break;
+                        case ClientConstants.POST_TYPES.VIDEO:
+                            filePath += 'v/';
+                            break;
+                        default:
+                            break;
+                    }
+
+                    postFiles = dbPostFiles.map(dbPostFile => ({
+                        fileName: `${filePath}${dbPostFile.fileName}`,
+                        mimeType: dbPostFile.mimeType,
+                        originalFileName: dbPostFile.originalFileName,
+                        size: dbPostFile.fileSize,
+                        thumbnailFileName: dbPostFile.thumbnailFileName ? `${filePath}${dbPostFile.thumbnailFileName}` : undefined
+                    }));
+                }
+
+                return {
+                    lastEditedOn: row.lastEditedOn,
+                    commentCount: row.commentCount,
+                    postedOn: row.postedOn,
+                    postText: row.postText,
+                    postTitle: row.postTitle,
+                    postType: row.postType,
+                    postedBy: {
+                        displayName: row.postedByDisplayName,
+                        displayNameIndex: row.postedByDisplayNameIndex,
+                        pfpSmall: row.postedByPfpSmall ? `${ClientConstants.PUBLIC_USER_PATH}${row.postedByUniqueId}/${row.postedByPfpSmall}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
+                        profileName: row.postedByProfileName,
+                        uniqueId: row.postedByUniqueId
+                    },
+                    uniqueId: row.uniqueId,
+                    postFiles
+                };
+            });
+
+            total = count;
+        }
+
+        return {posts, total};
+    }
+
+    async addNewPost(uniqueId: string, postType: number, postTitle: string | undefined, postText: string | undefined, audience: number, customAudience: string | undefined, postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined): Promise<{newPost: WebsiteBoilerplate.Post | undefined, postId: number | undefined}> {
+        try
+        {
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(uniqueId);
+
+            if (registeredUser) {
+                let failedValidation: Boolean = false;
+
+                // First, run server-side validation as a last minute check to try to prevent bad posts
+                if (postTitle && postTitle.length > 50) {
+                    failedValidation = true;
+                }
+                else if (postText && postText.length > 2000) {
+                    failedValidation = true;
+                }
+
+                // If there are files, verify only the allowed amounts are present and that the mimetypes are correct
+                let fileCount: number = 0;
+                let filePath: string = `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/`;
+
+                switch (postType) {
+                    case ClientConstants.POST_TYPES.AUDIO:
+                        if (isNullOrWhiteSpaceOnly(postTitle)) {
+                            failedValidation = true;
+                        }
+
+                        filePath += 'a/';
+                        break;
+                    case ClientConstants.POST_TYPES.IMAGE:
+                        filePath += 'i/';
+                        break;
+                    case ClientConstants.POST_TYPES.VIDEO:
+                        if (isNullOrWhiteSpaceOnly(postTitle)) {
+                            failedValidation = true;
+                        }
+
+                        filePath += 'v/';
+                        break;
+                    default:
+                        if (isNullOrWhiteSpaceOnly(postText)) {
+                            failedValidation = true;
+                        }
+
+                        break;
+                }
+
+                if (postFiles) {
+                    fileCount = postFiles.length;
+
+                    // Last minute check to prevent uploading more files than allowed
+                    if (fileCount > 0) {
+                        switch (postType) {
+                            case ClientConstants.POST_TYPES.AUDIO: {
+                                let audioFile: WebsiteBoilerplate.PostFileInfo = postFiles[0];
+                                let foundError: Boolean = false;
+
+                                if (fileCount > 1) {
+                                    postFiles.splice(1);
+                                }
+
+                                if (!audioFile.mimeType.startsWith('audio/')) {
+                                    foundError = true;
+                                }
+                                else if (audioFile.originalFileName.length > 150) {
+                                    foundError = true;
+                                }
+
+                                if (foundError) {
+                                    postFiles = [];
+                                }
+
+                                break;
+                            }
+                            case ClientConstants.POST_TYPES.IMAGE: {
+                                let foundError: Boolean = false;
+
+                                if (fileCount > 4) {
+                                    postFiles.splice(4);
+                                }
+    
+                                if (postFiles.some(postFile => (!postFile.mimeType.startsWith('image/') || postFile.originalFileName.length > 150))) {
+                                    foundError = true;
+                                }
+
+                                if (foundError) {
+                                    postFiles = [];
+                                }
+
+                                break;
+                            }
+                            case ClientConstants.POST_TYPES.VIDEO: {
+                                let videoFile: WebsiteBoilerplate.PostFileInfo = postFiles[0];
+                                let foundError: Boolean = false;
+
+                                if (fileCount > 1) {
+                                    postFiles.splice(1);
+                                }
+
+                                if (!videoFile.mimeType.startsWith('video/')) {
+                                    foundError = true;
+                                }
+                                else if (videoFile.originalFileName.length > 150) {
+                                    foundError = true;
+                                }
+
+                                if (foundError) {
+                                    postFiles = [];
+                                }
+
+                                break;
+                            }
+                            case ClientConstants.POST_TYPES.TEXT:
+                            default: {
+                                postFiles = [];
+
+                                break;
+                            }
+                        }
+                    }
+
+                    fileCount = postFiles.length;
+                }
+
+                if ((fileCount === 0 && !postText) || failedValidation) {
+                    return {newPost: undefined, postId: undefined};
+                }
+
+                let postedOn: Date = new Date(Date.now());
+                let postUniqueId: string = uuidv4();
+
+                let newPost: PostInstance | null = await db.Post.create({
+                    audience,
+                    postedOn,
+                    postText: postText || null,
+                    postTitle: postTitle || null,
+                    postType,
+                    registeredUserId: registeredUser.id!,
+                    uniqueId: postUniqueId
+                });
+
+                if (newPost) {
+                    let parsedConnectionTypes: string [] = [];
+
+                    if (customAudience) {
+                        parsedConnectionTypes = customAudience.split(',');
+
+                        let connectionTypes: UserConnectionTypeInstance[] = await db.UserConnectionType.findAll({
+                            where: {
+                                displayName: {
+                                    [Op.in]: parsedConnectionTypes
+                                }
+                            }
+                        });
+
+                        if (connectionTypes.length > 0) {
+                            await newPost.addConnectionTypes(connectionTypes);
+                        }
+                    }
+
+                    if (fileCount > 0) {
+                        for (let postFile of postFiles!) {
+                            await db.PostFile.create({
+                                postId: newPost!.id,
+                                registeredUserId: registeredUser.id!,
+                                fileName: postFile.fileName,
+                                fileSize: postFile.size,
+                                mimeType: postFile.mimeType,
+                                originalFileName: postFile.originalFileName,
+                                thumbnailFileName: postFile.thumbnailFileName || null
+                            });
+                        }
+                    }
+
+                    let displayNames: DisplayNameInstance[] = registeredUser.displayNames!;
+                    let displayName: DisplayNameInstance = displayNames[0];
+                    let profilePictures: ProfilePictureInstance[] = registeredUser.profilePictures!;
+                    let profilePicture: ProfilePictureInstance | undefined = profilePictures[0];
+
+                    let returnPostFiles: WebsiteBoilerplate.PostFileInfo[] = [];
+
+                    if (fileCount > 0) {
+                        returnPostFiles = postFiles!.map(file => ({
+                            ...file,
+                            fileName: `${filePath}${file.fileName}`,
+                            thumbnailFileName: file.thumbnailFileName ? `${filePath}${file.thumbnailFileName}` : undefined
+                        }));
+                    }
+
+                    return { 
+                        newPost: {
+                            lastEditedOn: null,
+                            commentCount: 0,
+                            postedOn,
+                            postText: postText || null,
+                            postTitle: postTitle || null,
+                            postType,
+                            postedBy: {
+                                displayName: displayName.displayName,
+                                displayNameIndex: displayName.displayNameIndex,
+                                pfpSmall: profilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${registeredUser.uniqueId}/${profilePicture.smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
+                                profileName: registeredUser.profileName,
+                                uniqueId: registeredUser.uniqueId
+                            },
+                            uniqueId: postUniqueId,
+                            postFiles: returnPostFiles
+                        },
+                        postId: newPost.id!
+                    };
+                }
+            }
+        }
+        catch(err)
+        {
+            console.error(`Error adding new post:\n${err.message}`);
+        }
+
+        return {newPost: undefined, postId: undefined};
+    }
+
+    async getPost(userUniqueId: string | undefined, postUniqueId: string, commentUniqueId: string | undefined): Promise<WebsiteBoilerplate.Post | undefined> {
+        let isPublicUser: Boolean = isNullOrWhiteSpaceOnly(userUniqueId);
+        let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
+            where: {
+                uniqueId: postUniqueId,
+                userUniqueId: isPublicUser ? { [Op.is]: null } : userUniqueId
+            },
+            include: [
+                {
+                    model: db.PostFile,
+                    as: 'postFiles'
+                }
+            ],
+            subQuery: false
+        });
+
+        if (postInfo) {
+            let postComments: WebsiteBoilerplate.PostComment[] = [];
+            let commentPage: number = 0;
+
+            if (!isPublicUser && commentUniqueId !== undefined) {
+                let endDate: Date = new Date(Date.now());
+                let commentFound: Boolean = false;
+                let fetchedCount: number = 0;
+
+                do {
+                    let { comments: fetchedComments }: { comments: WebsiteBoilerplate.PostComment[] } = await this.getCommentsForPost(userUniqueId!, postUniqueId, endDate, commentPage);
+                    commentPage++;
+                    fetchedCount = fetchedComments.length;
+
+                    if (fetchedComments.find(fetchedComment => fetchedComment.uniqueId === commentUniqueId)) {
+                        commentFound = true;
+                        commentPage--; // Back the commentPage up one
+                    }
+
+                    postComments.push(...fetchedComments);
+
+                } while (fetchedCount && !commentFound);
+
+                if (!commentFound) {
+                    postComments = [];
+                }
+            }
+
+            let dbPostFiles: PostFileInstance[] | undefined = postInfo.postFiles;
+            let postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined = undefined;
+
+            if (dbPostFiles && dbPostFiles.length > 0) {
+                let filePath: string = `${ClientConstants.PUBLIC_USER_PATH}${postInfo.postedByUniqueId}/`;
+
+                switch (postInfo.postType) {
+                    case ClientConstants.POST_TYPES.AUDIO:
+                        filePath += 'a/';
+                        break;
+                    case ClientConstants.POST_TYPES.IMAGE:
+                        filePath += 'i/';
+                        break;
+                    case ClientConstants.POST_TYPES.VIDEO:
+                        filePath += 'v/';
+                        break;
+                    default:
+                        break;
+                }
+
+                postFiles = dbPostFiles.map(dbPostFile => ({
+                    fileName: `${filePath}${dbPostFile.fileName}`,
+                    mimeType: dbPostFile.mimeType,
+                    originalFileName: dbPostFile.originalFileName,
+                    size: dbPostFile.fileSize,
+                    thumbnailFileName: dbPostFile.thumbnailFileName ? `${filePath}${dbPostFile.thumbnailFileName}` : undefined
+                }));
+            }
+
+            return {
+                lastEditedOn: postInfo.lastEditedOn,
+                commentCount: postInfo.commentCount,
+                postedOn: postInfo.postedOn,
+                postText: postInfo.postText,
+                postTitle: postInfo.postTitle,
+                postType: postInfo.postType,
+                postedBy: {
+                    displayName: postInfo.postedByDisplayName,
+                    displayNameIndex: postInfo.postedByDisplayNameIndex,
+                    pfpSmall: postInfo.postedByPfpSmall ? `${ClientConstants.PUBLIC_USER_PATH}${postInfo.postedByUniqueId}/${postInfo.postedByPfpSmall}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
+                    profileName: postInfo.postedByProfileName,
+                    uniqueId: postInfo.postedByUniqueId
+                },
+                uniqueId: postInfo.uniqueId,
+                postFiles,
+                commentPage,
+                postComments
+            };
+        }
+
+        return undefined;
+    }
+
+    // The end date is used to prevent new comments from coming back and winding up inserted in a strange place in the list. If they want the latest comments, they'll have to refresh the page
+    async getCommentsForPost(userUniqueId: string, postUniqueId: string, endDate: Date | undefined, pageNumber: number | undefined): Promise<{comments: WebsiteBoilerplate.PostComment[], total: number}> {
+        let comments: WebsiteBoilerplate.PostComment[] = [];
+        let total: number = 0;
+
+        try {
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(userUniqueId);
+
+            // Validate that this user can actually view the post
+            let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
+                attributes: [
+                    'id'
+                ],
+                where: {
+                    userUniqueId,
+                    uniqueId: postUniqueId,
+                    postedOn: {
+                        [Op.lte]: endDate || new Date(Date.now())
+                    }
+                }
+            });
+
+            if (registeredUser && postInfo) {
+                let isAdministrator: Boolean = await this.checkUserForRole(registeredUser.id!, 'Administrator');
+                isAdministrator = false; //## Temp override for development
+
+                let parentCommentInclude: Array<any> = [
+                    {
+                        model: db.User,
+                        as: 'registeredUser',
+                        attributes: [
+                            'id'
+                        ],
+                        include: [
+                            {
+                                /* Include DisplayName only for parentComment previews */
+                                model: db.DisplayName,
+                                as: 'displayNames',
+                                where: {
+                                    isActive: true
+                                },
+                                attributes: [
+                                    'displayName',
+                                    'displayNameIndex'
+                                ]
+                            }
+                        ]
+                    }
+                ];
+
+                if (!isAdministrator) {
+                    parentCommentInclude.push({
+                        model: db.UserBlock,
+                        as: 'userBlocks',
+                        on: {
+                            [Op.or]: [
+                                {
+                                    [Op.and]: [
+                                        {
+                                            'registered_user_id': {
+                                                [Op.eq]: Sequelize.col('parentComment.registered_user_id')
+                                            }
+                                        },
+                                        {
+                                            'blocked_user_id': registeredUser.id!
+                                        }
+                                    ]
+                                },
+                                {
+                                    [Op.and]: [
+                                        {
+                                            'blocked_user_id': {
+                                                [Op.eq]: Sequelize.col('parentComment.registered_user_id')
+                                            }
+                                        },
+                                        {
+                                            'registered_user_id': registeredUser.id!
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    });
+                }
+
+                let postCommentInclude: Array<any> = [
+                    {
+                        model: db.User,
+                        as: 'registeredUser',
+                        attributes: [
+                            'id',
+                            'profileName',
+                            'uniqueId'
+                        ],
+                        include: [
+                            /* Include DisplayName and ProfilePicture for top-level comments */
+                            {
+                                model: db.DisplayName,
+                                as: 'displayNames',
+                                where: {
+                                    isActive: true
+                                },
+                                attributes: [
+                                    'displayName',
+                                    'displayNameIndex'
+                                ]
+                            },
+                            {
+                                model: db.ProfilePicture,
+                                as: 'profilePictures',
+                                required: false,
+                                on: {
+                                    id: {
+                                        [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `registeredUser`.`id` order by `profile_picture`.`id` desc limit 1)')
+                                    }
+                                },
+                                attributes: [
+                                    'smallFileName'
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        model: db.PostComment,
+                        as: 'parentComment',
+                        required: false,
+                        attributes: [
+                            'commentText',
+                            'uniqueId'
+                        ],
+                        include: parentCommentInclude
+                    }
+                ];
+
+                if (!isAdministrator) {
+                    postCommentInclude.push({
+                        model: db.UserBlock,
+                        as: 'userBlocks',
+                        on: {
+                            [Op.or]: [
+                                {
+                                    [Op.and]: [
+                                        {
+                                            'registered_user_id': {
+                                                [Op.eq]: Sequelize.col('PostComment.registered_user_id')
+                                            }
+                                        },
+                                        {
+                                            'blocked_user_id': registeredUser.id!
+                                        }
+                                    ]
+                                },
+                                {
+                                    [Op.and]: [
+                                        {
+                                            'blocked_user_id': {
+                                                [Op.eq]: Sequelize.col('PostComment.registered_user_id')
+                                            }
+                                        },
+                                        {
+                                            'registered_user_id': registeredUser.id!
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    });
+                }
+
+                const {rows, count}: {rows: PostCommentInstance[]; count: number} = await db.PostComment.findAndCountAll({
+                    where: {
+                        postId: postInfo.id!
+                    },
+                    order: [
+                        ['id', 'DESC']
+                    ],
+                    include: postCommentInclude,
+                    offset: (pageNumber || 0) * ServerConstants.DB_COMMENT_FETCH_PAGE_SIZE,
+                    limit: ServerConstants.DB_COMMENT_FETCH_PAGE_SIZE,
+                    subQuery: false // See subquery note
+                });
+
+                comments = rows.map(row => {
+                    let commenter: UserInstance = row.registeredUser!;
+                    let displayNames: DisplayNameInstance[] = commenter.displayNames!;
+                    let pfps: ProfilePictureInstance[] | undefined = commenter.profilePictures;
+                    let parentComment: {
+                        commentText: string;
+                        postedBy: {
+                            displayName: string;
+                            displayNameIndex: number;
+                        };
+                        uniqueId: string;
+                    } | undefined = row.parentCommentId /* If there's no parent comment, but there's a parent comment id, then the parent comment was deleted */
+                        ? {
+                            commentText: '{This Comment Not Available}',
+                            postedBy: {
+                                /* Do not display the user's name */
+                                displayName: '',
+                                /* A value of 0 will keep the #index from displaying */
+                                displayNameIndex: 0
+                            },
+                            uniqueId: ''
+                        }
+                        : undefined;
+
+                    let posterBlocked: Boolean = false;
+
+                    if (row.userBlocks && row.userBlocks[0]) {
+                        posterBlocked = true;
+                    }
+
+                    if (row.parentComment) {
+                        let tempComment: PostCommentInstance = row.parentComment;
+                        let parentCommenter: UserInstance = tempComment.registeredUser!;
+                        let parentDisplayNames: DisplayNameInstance[] = parentCommenter.displayNames!;
+
+                        // If there are no blocks on the parent comment
+                        if (!(tempComment.userBlocks && tempComment.userBlocks[0])) {
+                            // then we can fill in the parent comment with the actual data
+                            parentComment = {
+                                commentText: tempComment.commentText,
+                                postedBy: {
+                                    displayName: parentDisplayNames[0].displayName,
+                                    displayNameIndex: parentDisplayNames[0].displayNameIndex
+                                },
+                                uniqueId: tempComment.uniqueId
+                            };
+                        }
+                    }
+
+                    return {
+                        commentText: posterBlocked ? '{This Comment Not Available}' : row.commentText,
+                        parentComment,
+                        postedBy: {
+                            /* Do not display the user's name */
+                            displayName: posterBlocked ? '' : displayNames[0].displayName,
+                            /* A value of 0 will keep the #index from displaying */
+                            displayNameIndex: posterBlocked ? 0 : displayNames[0].displayNameIndex,
+                            /* Display the default pfp if blocked */
+                            pfpSmall: !posterBlocked && pfps && pfps[0] ? `${ClientConstants.PUBLIC_USER_PATH}${commenter.uniqueId}/${pfps[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
+                            profileName: posterBlocked ? '' : commenter.profileName,
+                            uniqueId: posterBlocked ? '' : commenter.uniqueId
+                        },
+                        uniqueId: row.uniqueId
+                    };
+                });
+
+                total = count;
+            }
+        }
+        catch (err) {
+            console.error(`Error looking up comments for post:\n${err.message}`);
+        }
+
+        return {comments, total};
+    }
+
+    async addNewPostComment(userUniqueId: string, postUniqueId: string, commentText: string, parentCommentUniqueId: string | undefined): Promise<WebsiteBoilerplate.PostComment | undefined> {
+        try {
+            // Validate that this user can actually comment on the post
+            let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
+                attributes: [
+                    'id',
+                    'postedByUniqueId',
+                    'uniqueId'
+                ],
+                where: {
+                    userUniqueId,
+                    uniqueId: postUniqueId
+                }
+            });
+
+            let commenter: UserInstance | null = await this.getUserWithUniqueId(userUniqueId);
+            
+            if (postInfo && commenter) {
+                let postAuthor: UserInstance | null = await this.getUserWithUniqueId(postInfo.postedByUniqueId);
+
+                if (postAuthor) {
+                    let postedOn: Date = new Date(Date.now());
+                    let parentCommentId: number | undefined = undefined;
+                    let parentComment: PostCommentInstance | null = null;
+
+                    if (parentCommentUniqueId) {
+                        parentComment = await db.PostComment.findOne({
+                            attributes: [
+                                'id',
+                                'commentText',
+                                'registeredUserId',
+                                'uniqueId'
+                            ],
+                            where: {
+                                uniqueId: parentCommentUniqueId
+                            }
+                        });
+
+                        if (parentComment) {
+                            parentCommentId = parentComment.id!;
+                        }
+                    }
+
+                    let uniqueId: string = uuidv4();
+
+                    let newPostComment: PostCommentInstance | null = await db.PostComment.create({
+                        postedOn,
+                        postId: postInfo.id!,
+                        registeredUserId: commenter.id!,
+                        commentText,
+                        uniqueId,
+                        parentCommentId
+                    });
+
+                    if (newPostComment) {
+                        let commenterDisplayNames: DisplayNameInstance[] = commenter.displayNames!;
+                        let commenterDisplayName: DisplayNameInstance = commenterDisplayNames[0];
+                        let commenterProfilePictures: ProfilePictureInstance[] = commenter.profilePictures!;
+                        let commenterProfilePicture: ProfilePictureInstance | undefined = commenterProfilePictures[0];
+
+                        let returnComment: WebsiteBoilerplate.PostComment = {
+                            commentText,
+                            postedBy: {
+                                displayName: commenterDisplayName.displayName,
+                                displayNameIndex: commenterDisplayName.displayNameIndex,
+                                pfpSmall: commenterProfilePicture ? `${ClientConstants.PUBLIC_USER_PATH}${commenter.uniqueId}/${commenterProfilePicture.smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`,
+                                profileName: commenter.profileName,
+                                uniqueId: commenter.uniqueId
+                            },
+                            uniqueId
+                        };
+
+                        if (parentComment !== null) {
+                            let parentCommenter: UserInstance | null = await this.getUserWithId(parentComment.registeredUserId);
+
+                            if (parentCommenter) {
+                                let parentCommenterDisplayNames: DisplayNameInstance[] = parentCommenter.displayNames!;
+                                let parentCommenterDisplayName: DisplayNameInstance = parentCommenterDisplayNames[0];
+
+                                returnComment.parentComment = {
+                                    commentText: parentComment.commentText,
+                                    postedBy: {
+                                        displayName: parentCommenterDisplayName.displayName,
+                                        displayNameIndex: parentCommenterDisplayName.displayNameIndex
+                                    },
+                                    uniqueId: parentComment.uniqueId
+                                };
+
+                                db.PostNotification.create({
+                                    commentId: newPostComment.id!,
+                                    createdOn: postedOn,
+                                    notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNSEEN, /* This is defaulted in the model, but set it here to be safe */
+                                    notificationType: ClientConstants.NOTIFICATION_TYPES.COMMENT_REPLY,
+                                    postId: postInfo.id,
+                                    registeredUserId: parentCommenter.id!,
+                                    triggeredByUserId: commenter.id!
+                                });
+
+                                SocketHelper.notifyUser(parentCommenter.uniqueId, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT);
+                            };
+                        }
+
+                        let { postedByUniqueId }: { postedByUniqueId: string } = postInfo;
+
+                        // Shouldn't have to wait for the Post Notification to be created
+                        // let postNotification: PostNotificationInstance = await db.PostNotification.create({
+                        db.PostNotification.create({
+                            commentId: newPostComment.id!,
+                            createdOn: postedOn,
+                            notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNSEEN, /* This is defaulted in the model, but set it here to be safe */
+                            notificationType: 0,
+                            postId: postInfo.id,
+                            registeredUserId: postAuthor.id!,
+                            triggeredByUserId: commenter.id!
+                        });
+
+                        SocketHelper.notifyUser(postedByUniqueId, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT);
+
+                        return returnComment;
+                    }
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error adding new comment:\n${err.message}`);
+        }
+
+        return undefined;
+    }
+    
+    async getPostNotifications(uniqueId: string): Promise<WebsiteBoilerplate.PostNotification[]> {
+        let notifications: WebsiteBoilerplate.PostNotification[] = [];
+
+        try {
+            let registeredUser: UserInstance | null = await this.getUserWithUniqueId(uniqueId);
+
+            if (registeredUser) {
+                let postNotifications: PostNotificationInstance[] = await registeredUser.getPostNotifications({
+                    include: [
+                        {
+                            model: db.User,
+                            as: 'triggeredByUser',
+                            attributes: [
+                                'id'
+                            ],
+                            include: [
+                                {
+                                    model: db.DisplayName,
+                                    as: 'displayNames',
+                                    where: {
+                                        isActive: true
+                                    },
+                                    attributes: [
+                                        'displayName',
+                                        'displayNameIndex'
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            model: db.Post,
+                            as: 'post',
+                            attributes: [
+                                'postTitle',
+                                'uniqueId'
+                            ]
+                        },
+                        {
+                            model: db.PostComment,
+                            as: 'comment',
+                            required: false,
+                            attributes: [
+                                'uniqueId'
+                            ]
+                        }
+                    ],
+                    // Order ascending:
+                    // If one user triggers multiple notifications for the same post, there will still only be one
+                    // notification after they're processed. Because there will only be one notification for a single user,
+                    // it will include the commentId in the notification. We want the commentId to be the oldest comment
+                    // by the user, so by ordering ascending, the first comment to be hit and stored will be the oldest one.
+                    // The notifications will then get sorted by date descending, making sure they end in the right order.
+                    order: [['id', 'ASC']]
+                });
+
+                if (postNotifications.length > 0) {
+                    let { postNotifications: filteredNotifications, purgeNotifications }: { postNotifications: WebsiteBoilerplate.PostNotification[], purgeNotifications: PostNotificationInstance[] } = notificationHelper.processPostNotifications(postNotifications);
+
+                    notifications = filteredNotifications;
+
+                    if (purgeNotifications.length > 0) {
+                        db.PostNotification.destroy({
+                            where: {
+                                id: purgeNotifications.map(notification => notification.id!)
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error getting post notifications for user ${uniqueId}:\n${err.message}`);
+        }
+
+        return notifications;
+    }
+
+    async markPostNotificationsAsRead(uniqueId: string, postId: string, endDate: Date | undefined) {
+        try {
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+
+            if (registeredUserId) {
+                let adjustedPostId: string | undefined = adjustGUIDDashes(postId, true);
+
+                if (adjustedPostId) {
+                    let whereOptions: { [key: string]: any} = {
+                        postId: {
+                            [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post\` where \`post\`.\`unique_id\` = '${adjustedPostId}')`)
+                        },
+                        registeredUserId,
+                        notificationStatus: {
+                            [Op.ne]: ClientConstants.NOTIFICATION_STATUS.READ /* Knock out unseen and unread at the same time */
+                        }
+                    };
+                    
+                    if (endDate) {
+                        whereOptions.createdOn = {
+                            [Op.lte]: endDate
+                        };
+                    }
+
+                    // Don't need to wait
+                    db.PostNotification.update({
+                            notificationStatus: ClientConstants.NOTIFICATION_STATUS.READ
+                        },
+                        {
+                            where: whereOptions
+                        }
+                    );
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error marking unseen notifications as read:\n${err.message}`);
+        }
+    }
+
+    async markAllPostNotificationsAsSeen(uniqueId: string, endDate: Date | undefined) {
+        try {
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+
+            if (registeredUserId) {
+                let whereOptions: { [key: string]: any} = {
+                    registeredUserId,
+                    notificationStatus: ClientConstants.NOTIFICATION_STATUS.SEEN_ONCE,
+                };
+
+                if (endDate) {
+                    whereOptions.createdOn = {
+                        [Op.lte]: endDate
+                    };
+                }
+
+                // Mark all that they've seen at least once before as Unread
+                // Need to wait so we don't accidentally update the same notification twice
+                await db.PostNotification.update({
+                        notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNREAD
+                    },
+                    {
+                        where: whereOptions
+                    }
+                );
+
+                whereOptions.notificationStatus = ClientConstants.NOTIFICATION_STATUS.UNSEEN;
+
+                // Mark all that they haven't seen as Seen Once
+                // Don't need to wait
+                db.PostNotification.update({
+                        notificationStatus: ClientConstants.NOTIFICATION_STATUS.SEEN_ONCE
+                    },
+                    {
+                        where: whereOptions
+                    }
+                );
+            }
+        }
+        catch (err) {
+            console.error(`Error marking unseen notifications as seen/unread:\n${err.message}`);
+        }
+    }
+
+    async removePostNotifications(uniqueId: string, postId: string, endDate: Date | undefined) {
+        try {
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+
+            if (registeredUserId) {
+                let adjustedPostId: string | undefined = adjustGUIDDashes(postId, true);
+
+                if (adjustedPostId) {
+                    let whereOptions: { [key: string]: any} = {
+                        postId: {
+                            [Op.eq]: Sequelize.literal(`(select \`id\` FROM \`post\` where \`post\`.\`unique_id\` = '${adjustedPostId}')`)
+                        },
+                        registeredUserId
+                    };
+
+                    if (endDate) {
+                        whereOptions.createdOn = {
+                            [Op.lte]: endDate
+                        };
+                    }
+
+                    await db.PostNotification.destroy({
+                        where: whereOptions
+                    });
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error removing notifications:\n${err.message}`);
+        }
+    }
+
+    async removeAllPostNotifications(uniqueId: string, endDate: Date | undefined) {
+        try {
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+
+            if (registeredUserId) {
+                let whereOptions: { [key: string]: any} = {
+                    registeredUserId
+                };
+
+                if (endDate) {
+                    whereOptions.createdOn = {
+                        [Op.lte]: endDate
+                    };
+                }
+
+                await db.PostNotification.destroy({
+                    where: whereOptions
+                });
+            }
+        }
+        catch (err) {
+            console.error(`Error removing all notifications:\n${err.message}`);
+        }
+    }
+
+    async updateThumbnailForPostFile(postId: number, thumbnailFileName: string) {
+        try {
+            let postFile: PostFileInstance | null = await db.PostFile.findOne({
+                where: {
+                    postId
+                }
+            });
+
+            if (postFile) {
+                postFile.thumbnailFileName = thumbnailFileName;
+                await postFile.save();
+            }
+        }
+        catch (err) {
+            console.error(`Error updating thumbnail for postFile:\n${err.message}`);
+        }
     }
 };
 

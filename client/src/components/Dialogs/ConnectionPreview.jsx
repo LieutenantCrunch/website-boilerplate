@@ -1,11 +1,14 @@
-import React, {useState, useRef, useEffect} from 'react';
-import classNames from 'classnames';
+import React, {useRef} from 'react';
 import ConnectionButton from '../FormControls/ConnectionButton';
+
+// Redux
 import { useSelector } from 'react-redux';
 import { selectUserById } from '../../redux/users/usersSlice';
+import { selectCurrentUserAllowPublicAccess } from '../../redux/users/currentUserSlice';
 
 export default function ConnectionPreviewDialog (props) {
     const connection = useSelector(state => selectUserById(state, props.connectionId));
+    const currentUserAllowPublicAccess = useSelector(selectCurrentUserAllowPublicAccess);
     const mainDiv = useRef();
 
     const handleCloseClick = (event) => {
@@ -21,7 +24,7 @@ export default function ConnectionPreviewDialog (props) {
     };
 
     const isBlockedWarningDisplayed = () => {
-        return connection?.isBlocked && props.userDetails?.allowPublicAccess;
+        return connection?.isBlocked && currentUserAllowPublicAccess;
     };
 
     return (
@@ -31,13 +34,13 @@ export default function ConnectionPreviewDialog (props) {
                     <div className="modal-content">
                         <div className="modal-header card-header">
                             <h5 className="modal-title" id="connectionDetailsLabel">{connection?.displayName}<small className="text-muted">#{connection?.displayNameIndex}</small></h5>
-                            <button type="button" className="btn-close" data-dismiss="modal" arial-label="close" onClick={handleCloseClick}></button>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" arial-label="close" onClick={handleCloseClick}></button>
                         </div>
                         <div className="modal-body">
                             <p className="text-center">
                                 <img src={connection?.pfpSmall} className="border rounded-circle w-25" />
                             </p>
-                            <div className="text-right">
+                            <div className="text-end">
                                 <ConnectionButton uniqueId={connection?.uniqueId} />
                             </div>
                         </div>
