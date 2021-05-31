@@ -14,7 +14,7 @@ import classNames from 'classnames';
 import { usePopper } from 'react-popper';
 import { HtmlTooltip } from '../HtmlTooltip';
 import SwitchCheckbox from './SwitchCheckbox';
-import TwoClickButton from './TwoClickButton';
+import { TwoClickButton } from './TwoClickButton';
 import UserService from '../../services/user.service';
 
 const ConnectionButton = ({

@@ -1,30 +1,39 @@
 // https://medium.com/technoetics/create-basic-login-forms-using-react-js-hooks-and-bootstrap-2ae36c15e551
 import React, { useEffect, useRef, useState } from 'react';
 import { withRouter, Link } from 'react-router-dom';
+import classNames from 'classnames';
 import AuthService from '../services/auth.service';
 import { reduxLogout } from '../redux/rootReducer';
-import { capitalizeString, isNullOrWhiteSpaceOnly } from '../utilities/TextUtilities';
-import * as Constants from '../constants/constants';
-import { v4 as uuidv4 } from 'uuid';
+import { capitalizeString } from '../utilities/TextUtilities';
 
 // Other Components
 import { PostNotification } from './PostNotification';
+import { TwoClickButton } from './FormControls/TwoClickButton';
 
 // Redux
 import { shallowEqual, useDispatch, useSelector } from 'react-redux';
-import { fetchPostNotifications, invalidatePostNotifications, markAllPostNotificationsAsSeen, selectAllPostNotificationIds, selectFetchPostNotificationsStatus } from '../redux/notifications/postsSlice';
-import { selectCurrentUserRoles, seenPostNotifications, selectHasUnseenPostNotifications, unseenPostNotificationAdded } from '../redux/users/currentUserSlice';
+import { fetchPostNotifications, markAllPostNotificationsAsSeen, removeAllPostNotifications, selectAllPostNotificationIds, selectFetchPostNotificationsStatus } from '../redux/notifications/postsSlice';
+import { selectCurrentUserRoles, seenPostNotifications, selectHasUnseenPostNotifications } from '../redux/users/currentUserSlice';
 
 // Material UI
 import Badge from '@material-ui/core/Badge';
 import NotificationsOutlinedIcon from '@material-ui/icons/NotificationsOutlined';
-import { withStyles } from '@material-ui/core/styles';
+import { makeStyles, withStyles } from '@material-ui/core/styles';
 
 const StyledBadge = withStyles((theme) => ({
     badge: {
         backgroundColor: 'rgb(11,94,215)'
     }
 }))(Badge);
+
+const useStyles = makeStyles(() => ({
+    notificationsContainer: {
+        textAlign: 'right'
+    },
+    clearButtonSecondClick: {
+        borderColor: 'rgb(255,100,100)'
+    }
+}));
 
 function Header(props) {
     const [state, setState] = useState({
@@ -33,6 +42,8 @@ function Header(props) {
         navbarExpanded: false,
         navbarCollapse: null
     });
+
+    const classes = useStyles();
 
     const dispatch = useDispatch();
     const currentRoles = useSelector(selectCurrentUserRoles);
@@ -233,7 +244,26 @@ function Header(props) {
                         <span className="navbar-toggler-icon"></span>
                     </button>
                 </div>
-                <div ref={headerNotifications} className="collapse navbar-collapse">
+                <div ref={headerNotifications} className={`collapse navbar-collapse ${classes.notificationsContainer}`}>
+                    {
+                        postNotificationIds && postNotificationIds.length > 0 &&
+                        <TwoClickButton 
+                            className="btn btn-sm mt-2"     
+                            firstClassName="btn-outline-danger" 
+                            firstTitle="Clear All" 
+                            firstTooltip={`Clear all notifications?`}
+                            onClick={(event) => {
+                                dispatch(removeAllPostNotifications());
+                            }}
+                            progressClassName="bg-danger" 
+                            resetAfterSecondClick
+                            secondClassName={classes.clearButtonSecondClick}
+                            secondDuration={5}     
+                            secondTitle="Confirm Clear" 
+                            secondTooltip={`Confirm you want to clear all notifications`}
+                            secondBackgroundColor="rgba(255,200,200,.25)"
+                        />
+                    }
                     <ul className="navbar-nav mr-auto mt-2">
                         {
                             getPostNotificationsList()

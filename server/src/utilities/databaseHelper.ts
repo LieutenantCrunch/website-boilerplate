@@ -2984,7 +2984,6 @@ class DatabaseHelper {
                 attributes: [
                     'id',
                     'postedByUniqueId',
-                    'postTitle',
                     'uniqueId'
                 ],
                 where: {
@@ -3037,7 +3036,6 @@ class DatabaseHelper {
                         let commenterDisplayName: DisplayNameInstance = commenterDisplayNames[0];
                         let commenterProfilePictures: ProfilePictureInstance[] = commenter.profilePictures!;
                         let commenterProfilePicture: ProfilePictureInstance | undefined = commenterProfilePictures[0];
-                        let commenterFullName: string = `${commenterDisplayName.displayName}${ commenterDisplayName.displayNameIndex === 0 ? '' : `#${commenterDisplayName.displayNameIndex}`}`;
 
                         let returnComment: WebsiteBoilerplate.PostComment = {
                             commentText,
@@ -3050,9 +3048,6 @@ class DatabaseHelper {
                             },
                             uniqueId
                         };
-
-                        let postId: string = adjustGUIDDashes(postInfo.uniqueId)!;
-                        let commentId: string | undefined = adjustGUIDDashes(uniqueId);
 
                         if (parentComment !== null) {
                             let parentCommenter: UserInstance | null = await this.getUserWithId(parentComment.registeredUserId);
@@ -3070,20 +3065,6 @@ class DatabaseHelper {
                                     uniqueId: parentComment.uniqueId
                                 };
 
-                                let postAuthorDisplayNames: DisplayNameInstance[] = postAuthor.displayNames!;
-                                let postAuthorDisplayName: DisplayNameInstance = postAuthorDisplayNames[0];
-
-                                let replyNotification: WebsiteBoilerplate.PostNotification = {
-                                    commentId, 
-                                    createdOn: postedOn, 
-                                    message: `replied to your comment on ${postAuthorDisplayName.displayName}${postAuthorDisplayName.displayNameIndex === 0 ? '' : `#${commenterDisplayName.displayNameIndex}`}'s post`, 
-                                    postId, 
-                                    status: ClientConstants.NOTIFICATION_STATUS.UNSEEN, 
-                                    triggeredBy: [commenterFullName],
-                                    type: ClientConstants.NOTIFICATION_TYPES.COMMENT_REPLY,
-                                    uniqueId: uuidv4() 
-                                };
-
                                 db.PostNotification.create({
                                     commentId: newPostComment.id!,
                                     createdOn: postedOn,
@@ -3094,24 +3075,12 @@ class DatabaseHelper {
                                     triggeredByUserId: commenter.id!
                                 });
 
-                                SocketHelper.notifyUser(parentCommenter.uniqueId, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT, replyNotification);
+                                SocketHelper.notifyUser(parentCommenter.uniqueId, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT);
                             };
                         }
 
                         let { postedByUniqueId }: { postedByUniqueId: string } = postInfo;
-                        let message: string = `commented on ${postInfo.postTitle || 'your post'}`;
 
-                        let postNotification: WebsiteBoilerplate.PostNotification = {
-                            commentId, 
-                            createdOn: postedOn, 
-                            message, 
-                            postId, 
-                            status: ClientConstants.NOTIFICATION_STATUS.UNSEEN, 
-                            triggeredBy: [commenterFullName],
-                            type: ClientConstants.NOTIFICATION_TYPES.COMMENT,
-                            uniqueId: uuidv4() 
-                        };
-                        
                         // Shouldn't have to wait for the Post Notification to be created
                         // let postNotification: PostNotificationInstance = await db.PostNotification.create({
                         db.PostNotification.create({
@@ -3124,7 +3093,7 @@ class DatabaseHelper {
                             triggeredByUserId: commenter.id!
                         });
 
-                        SocketHelper.notifyUser(postedByUniqueId, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT, postNotification);
+                        SocketHelper.notifyUser(postedByUniqueId, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT);
 
                         return returnComment;
                     }
@@ -3328,6 +3297,31 @@ class DatabaseHelper {
         }
         catch (err) {
             console.error(`Error removing notifications:\n${err.message}`);
+        }
+    }
+
+    async removeAllPostNotifications(uniqueId: string, endDate: Date | undefined) {
+        try {
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+
+            if (registeredUserId) {
+                let whereOptions: { [key: string]: any} = {
+                    registeredUserId
+                };
+
+                if (endDate) {
+                    whereOptions.createdOn = {
+                        [Op.lte]: endDate
+                    };
+                }
+
+                await db.PostNotification.destroy({
+                    where: whereOptions
+                });
+            }
+        }
+        catch (err) {
+            console.error(`Error removing all notifications:\n${err.message}`);
         }
     }
 

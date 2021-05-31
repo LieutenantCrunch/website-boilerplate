@@ -5,7 +5,7 @@ import { isDashedGUID } from '../../utilities/TextUtilities';
 
 const postsAdapter = createEntityAdapter({
     selectId: notification => notification.uniqueId,
-    sortComparer: (a, b) => (b.postedOn - a.postedOn)
+    sortComparer: (a, b) => (b.createdOn - a.createdOn)
 });
 const initialState = postsAdapter.getInitialState({
     valid: false
@@ -111,6 +111,7 @@ const globalizedSelectors = postsAdapter.getSelectors(state => state.notificatio
 const { selectIds, selectById } = globalizedSelectors;
 
 // Selectors
+// This selector will cause re-renders due to it generating a new array every time, might want to use createSelector for it if I ever need it
 const selectPostNotificationsWithStatus = (state, status) => {
     let ids = selectIds(state);
 
@@ -153,6 +154,18 @@ export const postsMiddleware = storeApi => next => action => {
                         PostService.markAllPostNotificationsAsSeen();
                         break;
                     }
+                }
+
+                break;
+            }
+            case removeAllPostNotifications.toString(): {
+                let postNotifications = selectAllPostNotifications(getState());
+                
+                // They should be sorted according to the createdOn date per the sortComparer used in createEntityAdapter 
+                let mostRecentNotification = postNotifications[0];
+                
+                if (mostRecentNotification) {
+                    PostService.removeAllPostNotifications(mostRecentNotification.createdOn);
                 }
 
                 break;

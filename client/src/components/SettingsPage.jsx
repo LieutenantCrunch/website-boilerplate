@@ -6,8 +6,8 @@ import { HtmlTooltip } from './HtmlTooltip';
 import * as Constants from '../constants/constants';
 
 // Redux
-import { useDispatch, useSelector } from 'react-redux';
-import { currentUserDisplayNameUpdated, selectCurrentUserDisplayName, selectCurrentUserDisplayNameIndex } from '../redux/users/currentUserSlice';
+import { useDispatch } from 'react-redux';
+import { currentUserDisplayNameUpdated } from '../redux/users/currentUserSlice';
 
 function SettingsPage(props) {
     const dispatch = useDispatch();

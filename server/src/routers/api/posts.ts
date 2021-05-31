@@ -289,6 +289,37 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
             return res.status(500);
         }
     }
+    case 'removeAllPostNotifications': {
+        try {
+            if (req.userId) {
+                let { endDate: endDateStr }: { endDate: string | undefined } = req.body;
+
+                let endDate: Date | undefined = undefined;
+
+                if (endDateStr) {
+                    try
+                    {
+                        endDate = dateFromInput(endDateStr);
+                    }
+                    catch (err) {
+
+                    }
+                }
+
+                if (endDate) {
+                    databaseHelper.removeAllPostNotifications(req.userId, endDate);
+
+                    return res.status(200).json({success: true});
+                }
+            }
+
+            return res.status(200).json({success: false});
+        }
+        catch (err) {
+            console.error(err.message);
+            return res.status(500);
+        }
+    }
     default:
         res.status(404).send(req.params.methodName + ' is not a valid posts method.');
         break;

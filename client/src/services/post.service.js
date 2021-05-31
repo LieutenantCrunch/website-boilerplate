@@ -333,6 +333,23 @@ export default class PostService {
 
         return undefined;
     }
+
+    static async removeAllPostNotifications(endDate) {
+        try {
+            let payload = { endDate };
+
+            let response = await axiosApi.post(Constants.API_PATH_POSTS + 'removeAllPostNotifications', payload);
+    
+            if (response.data) {
+                return response.data.success;
+            }
+        }
+        catch (err) {
+            console.error(`Error removing all post notifications:\n${err.message}`);
+        }
+
+        return undefined;
+    }
 };
 
 // Ideally these should be static properties, but that requires a babel plugin and so on so just set it this way for now

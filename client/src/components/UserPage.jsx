@@ -1,7 +1,6 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import { Redirect, Route, useParams, useRouteMatch, withRouter } from 'react-router-dom';
-import classNames from 'classnames';
 
 import ProfilePicture from './ProfilePicture';
 import ConnectionButton from './FormControls/ConnectionButton';
@@ -13,7 +12,7 @@ import UserService from '../services/user.service';
 import PostService from '../services/post.service';
 
 // Redux
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { upsertUser } from '../redux/users/usersSlice';
 
 
@@ -29,13 +28,6 @@ function User (props) {
         profileInfo: null,
         total: -1
     });
-
-    const updateConnection = (connection) => {
-        setState(prevState => ({
-            ...prevState,
-            profileInfo: connection
-        }));
-    }
 
     useEffect(() => {
         UserService.getProfileInfo(profileName).then((profileInfo) => {

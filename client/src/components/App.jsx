@@ -1,5 +1,5 @@
 // React
-import React, { useContext, useEffect, useState} from 'react';
+import React, { useEffect, useState} from 'react';
 import {BrowserRouter as Router,
     Switch,
     Route,
@@ -26,7 +26,7 @@ import Welcome from './Welcome';
 import UserService from '../services/user.service';
 
 // Redux
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { connectionTypesFetched } from '../redux/connections/connectionTypesSlice';
 import { currentUserFetched } from '../redux/users/currentUserSlice';
 
@@ -34,7 +34,6 @@ import { currentUserFetched } from '../redux/users/currentUserSlice';
 import { LoggedInContext } from '../contexts/loggedIn';
 
 // Other
-import * as Constants from '../constants/constants';
 import { connectSocket } from '../sockets/socket';
 
 export default function App() {
