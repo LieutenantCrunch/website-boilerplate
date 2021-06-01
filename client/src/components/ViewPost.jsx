@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { withRouter } from 'react-router-dom';
+import { useHistory, withRouter } from 'react-router-dom';
 import queryString from 'query-string';
 
 import PostService from '../services/post.service';
@@ -12,6 +12,8 @@ const ViewPost = ({ setTitle }) => {
         fetchDate: null,
         post: null
     });
+
+    const history = useHistory();
 
     useEffect(() => {
         setTitle('View Post');
@@ -39,10 +41,15 @@ const ViewPost = ({ setTitle }) => {
         }
     }, []);
 
+    const navigateToStartPage = () => {
+        //## Preferences: Base this off their preferred start page
+        history.push('/profile');
+    };
+
     return <div className="container-fluid d-flex align-items-center flex-column mt-2">
         {
             state.post 
-            ? <PostCard post={state.post} fetchDate={state.fetchDate} focusCommentId={state.commentId} />
+            ? <PostCard post={state.post} fetchDate={state.fetchDate} focusCommentId={state.commentId} deletePostCB={navigateToStartPage} />
             : <div>
                 {state.defaultText}
             </div>

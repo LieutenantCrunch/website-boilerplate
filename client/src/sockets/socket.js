@@ -16,6 +16,16 @@ export const connectSocket = () => {
         console.error(`Socket connect error:\n${err.message}`);
     });
     
+    socket.on(Constants.SOCKET_EVENTS.NOTIFY_USER.DELETED_COMMENT, () => {
+        // Invalidate the current post notifications so they are fetched from the server the next time a fetch is called
+        store.dispatch(invalidatePostNotifications());
+    });
+
+    socket.on(Constants.SOCKET_EVENTS.NOTIFY_USER.DELETED_POST, () => {
+        // Invalidate the current post notifications so they are fetched from the server the next time a fetch is called
+        store.dispatch(invalidatePostNotifications());
+    });
+
     socket.on(Constants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT, () => {
         // Mark the current user as having unseen post notifications
         store.dispatch(unseenPostNotificationAdded());
@@ -30,5 +40,7 @@ export const connectSocket = () => {
 export const disconnectSocket = () => {
     socket.disconnect();
     socket.off('connect_error');
+    socket.off(Constants.SOCKET_EVENTS.NOTIFY_USER.DELETED_COMMENT);
+    socket.off(Constants.SOCKET_EVENTS.NOTIFY_USER.DELETED_POST);
     socket.off(Constants.SOCKET_EVENTS.NOTIFY_USER.NEW_COMMENT);
 };

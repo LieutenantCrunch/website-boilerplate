@@ -75,6 +75,22 @@ function User (props) {
         return state.posts.length < state.total;
     };
 
+    const removePost = (uniqueId) => {
+        let { posts } = state;
+        let foundIndex = posts.findIndex(post => post.uniqueId === uniqueId);
+
+        if (foundIndex > -1) {
+            let newPosts = [...posts];
+
+            newPosts.splice(foundIndex, 1);
+
+            setState(prevState => ({
+                ...prevState,
+                posts: newPosts
+            }));
+        }
+    };
+
     const handleMoreResultsClick = async (e) => {
         let pageNumber = state.pageNumber + 1;
 
@@ -116,7 +132,7 @@ function User (props) {
         </div>
         {
             state.posts.map(post => (
-                <PostCard key={post.uniqueId} post={post} />
+                <PostCard key={post.uniqueId} post={post} deletePostCB={removePost} />
             ))
         }
         {

@@ -81,6 +81,22 @@ function Feed(props) {
         return state.posts.length < state.total;
     };
 
+    const removePost = (uniqueId) => {
+        let { posts } = state;
+        let foundIndex = posts.findIndex(post => post.uniqueId === uniqueId);
+
+        if (foundIndex > -1) {
+            let newPosts = [...posts];
+
+            newPosts.splice(foundIndex, 1);
+
+            setState(prevState => ({
+                ...prevState,
+                posts: newPosts
+            }));
+        }
+    };
+
     const handleMoreResultsClick = async (e) => {
         let pageNumber = state.pageNumber + 1;
 
@@ -102,7 +118,7 @@ function Feed(props) {
         <div className="container-fluid d-flex align-items-center flex-column mt-2">
             {
                 state.posts.map(post => (
-                    <PostCard key={post.uniqueId} post={post} />
+                    <PostCard key={post.uniqueId} post={post} deletePostCB={removePost} />
                 ))
             }
             {

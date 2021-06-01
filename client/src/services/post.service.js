@@ -214,6 +214,40 @@ export default class PostService {
         return null;
     }
 
+    static async deletePost(uniqueId) {
+        try {
+            let payload = { uniqueId };
+
+            let response = await axiosApi.post(Constants.API_PATH_POSTS + 'deletePost', payload);
+    
+            if (response.data) {
+                return response.data.success;
+            }
+        }
+        catch (err) {
+            console.error(`Error marking deleting post:\n${err.message}`);
+        }
+
+        return false;
+    }
+
+    static async deletePostComment(uniqueId) {
+        try {
+            let payload = { uniqueId };
+
+            let response = await axiosApi.post(Constants.API_PATH_POSTS + 'deletePostComment', payload);
+    
+            if (response.data) {
+                return response.data.success;
+            }
+        }
+        catch (err) {
+            console.error(`Error marking deleting post comment:\n${err.message}`);
+        }
+
+        return false;
+    }
+
     static async getPostComments(postUniqueId, pageNumber, endDate) {
         try {
             if (this.getPostCommentsCancel !== undefined) {
