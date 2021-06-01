@@ -84,6 +84,8 @@ export const POST_AUDIENCES = Object.freeze({
 
 export const SOCKET_EVENTS = Object.freeze({
     NOTIFY_USER: Object.freeze({
+        DELETED_COMMENT: 'deletedComment',
+        DELETED_POST: 'deletedPost',
         NEW_COMMENT: 'newComment'
     })
 });

@@ -8,6 +8,7 @@ import { adjustGUIDDashes } from '../utilities/TextUtilities';
 
 // Material UI
 import { Avatar, Card, CardActions, CardContent, CardHeader, Divider } from '@material-ui/core';
+import IconButton from '@material-ui/core/IconButton';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import MaterialTextfield from '@material-ui/core/TextField';
 import Typography from '@material-ui/core/Typography';
@@ -15,6 +16,7 @@ import { makeStyles } from '@material-ui/core/styles';
 
 // Material UI Icons
 import CancelTwoToneIcon from '@material-ui/icons/CancelTwoTone';
+import DeleteOutlineRoundedIcon from '@material-ui/icons/DeleteOutlineRounded';
 
 // Multimedia Components
 import { AudioPlayer } from './Multimedia/AudioPlayer';
@@ -89,10 +91,14 @@ const useStyles = makeStyles(() => ({
     }
 }));
 
-export const PostCard = ({ post, fetchDate, focusCommentId }) => {
+const DELETE_POST_CONFIRM_TITLE = 'Delete Post Confirmation';
+const DELETE_POST_MESSAGE = 'Are you sure you want to delete this post?';
+const DELETE_POST_SUBTEXT = 'You will not be able to undo this action.';
+
+export const PostCard = ({ post, fetchDate, focusCommentId, deletePostCB } ) => {
     const MAX_COMMENT_LENGTH = 500;
     const loggedIn = useContext(LoggedInContext);
-    const { commentCount, commentPage, postedBy, postComments, postFiles, postType, uniqueId } = post;
+    const { canDelete, commentCount, commentPage, postedBy, postComments, postFiles, postType, uniqueId } = post;
     const postDate = new Date(post.postedOn);
     const postLinkId = adjustGUIDDashes(uniqueId);
 
@@ -104,6 +110,7 @@ export const PostCard = ({ post, fetchDate, focusCommentId }) => {
         lightboxOpen: false,
         lightboxIndex: 0,
         pageNumber: 0,
+        postedByDisplayName: undefined,
         replyToComment: null,
         total: -1
     });
@@ -259,19 +266,39 @@ export const PostCard = ({ post, fetchDate, focusCommentId }) => {
         }).catch(err => console.error(err));
     };
 
-    let _postedByDisplayName = undefined;
+    const handleDeleteClick = (e) => {
+        if (confirm('Do you want to delete this post?')) {
+            deletePost();
+        }
+    };
+
+    const deletePost = async () => {
+        if (await PostService.deletePost(uniqueId)) {
+            if (deletePostCB) {
+                deletePostCB(uniqueId);
+            }
+        }
+    };
+
     const getPostedByDisplayName = () => {
-        if (_postedByDisplayName) {
-            return _postedByDisplayName;
+        let { postedByDisplayName } = state;
+
+        if (postedByDisplayName) {
+            return postedByDisplayName;
         }
 
-        _postedByDisplayName = postedBy.displayName;
+        postedByDisplayName = postedBy.displayName;
 
         if (postedBy.displayNameIndex !== 0) {
-            _postedByDisplayName += `#${postedBy.displayNameIndex}`;
+            postedByDisplayName += `#${postedBy.displayNameIndex}`;
         }
+
+        setState(prevState => ({
+            ...prevState,
+            postedByDisplayName
+        }));
         
-        return _postedByDisplayName;
+        return postedByDisplayName;
     };
 
     const getPostFilesSection = () => {
@@ -315,144 +342,168 @@ export const PostCard = ({ post, fetchDate, focusCommentId }) => {
         return state.comments.length < state.total;
     };
 
+    const removeComment = (uniqueId) => {
+        let { comments } = state;
+        let foundIndex = comments.findIndex(comment => comment.uniqueId === uniqueId);
+
+        if (foundIndex > -1) {
+            let newComments = [...comments];
+
+            newComments.splice(foundIndex, 1);
+
+            setState(prevState => ({
+                ...prevState,
+                comments: newComments
+            }));
+        }
+    };
+
     return (
-        <Card id={postLinkId} className="col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mb-2">
-            <CardHeader
-                avatar={
-                    <a href={`/u/${postedBy.profileName}`}>
-                        <Avatar alt={getPostedByDisplayName()} title={getPostedByDisplayName()} src={postedBy.pfpSmall} style={{border: '1px solid rgba(0, 0, 0, 0.08)'}} />
-                    </a>
-                }
-                subheader={
-                    <small>
-                        <a href={`/view-post?p=${postLinkId}`} style={{color: 'inherit', textDecoration: 'none'}}>
-                            {postDate.toLocaleString()}
-                        </a>
-                    </small>
-                }
-                title={
-                    <>
-                        <Typography variant="h6">{post.postTitle}</Typography>
-                        <a href={`/u/${postedBy.profileName}`} style={{color: 'inherit', textDecoration: 'none'}}>
-                            {postedBy.displayName}<small className="text-muted">{postedBy.displayNameIndex === 0 ? '' : `#${postedBy.displayNameIndex}`}</small>
-                        </a>
-                    </>
-                }
-            />
-            <CardContent>
-                <div className={classes.previewImages}
-                    style={{
-                        display: postType === Constants.POST_TYPES.TEXT ? 'none' : 'flex'
-                    }}
-                >
-                    {
-                        getPostFilesSection()
+        <>
+            <Card id={postLinkId} className="col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mb-2">
+                <CardHeader
+                    action={
+                        canDelete &&
+                        <IconButton aria-label="Delete Post" onClick={handleDeleteClick}>
+                            <DeleteOutlineRoundedIcon />
+                        </IconButton>
                     }
-                </div>
-                {
-                    post.postText && <p>
-                        {post.postText}
-                    </p>
-                }
-            </CardContent>
-            <Divider light={true} variant='middle' />
-            <CardActions style={{flexWrap: 'wrap', padding: '16px'}}>
-                {
-                    loggedIn &&
-                    <div className="d-flex mb-2 w-100">
-                        <div style={{flexGrow: 1}}>
+                    avatar={
+                        <a href={`/u/${postedBy.profileName}`}>
+                            <Avatar alt={getPostedByDisplayName()} title={getPostedByDisplayName()} src={postedBy.pfpSmall} style={{border: '1px solid rgba(0, 0, 0, 0.08)'}} />
+                        </a>
+                    }
+                    subheader={
+                        <small>
+                            <a href={`/view-post?p=${postLinkId}`} style={{color: 'inherit', textDecoration: 'none'}}>
+                                {postDate.toLocaleString()}
+                            </a>
+                        </small>
+                    }
+                    title={
+                        <>
+                            <Typography variant="h6">{post.postTitle}</Typography>
+                            <a href={`/u/${postedBy.profileName}`} style={{color: 'inherit', textDecoration: 'none'}}>
+                                {postedBy.displayName}<small className="text-muted">{postedBy.displayNameIndex === 0 ? '' : `#${postedBy.displayNameIndex}`}</small>
+                            </a>
+                        </>
+                    }
+                />
+                <CardContent>
+                    <div className={classes.previewImages}
+                        style={{
+                            display: postType === Constants.POST_TYPES.TEXT ? 'none' : 'flex'
+                        }}
+                    >
+                        {
+                            getPostFilesSection()
+                        }
+                    </div>
+                    {
+                        post.postText && <p>
+                            {post.postText}
+                        </p>
+                    }
+                </CardContent>
+                <Divider light={true} variant='middle' />
+                <CardActions style={{flexWrap: 'wrap', padding: '16px'}}>
+                    {
+                        loggedIn &&
+                        <div className="d-flex mb-2 w-100">
+                            <div style={{flexGrow: 1}}>
+                                {
+                                    state.replyToComment &&
+                                    <div className={classes.parentCommentHeader}>
+                                        <div style={{flexGrow: 1}}>
+                                            <span className={classes.parentCommenter}>
+                                                {state.replyToComment.postedBy.displayName}
+                                                {
+                                                    state.replyToComment.postedBy.displayNameIndex !== 0 &&
+                                                    `#${state.replyToComment.postedBy.displayNameIndex}`
+                                                }
+                                            </span>
+                                            {`: ${state.replyToComment.commentText}`}
+                                        </div>
+                                        <div style={{alignContent: 'center', display: 'flex'}}>
+                                            <CancelTwoToneIcon style={{
+                                                    cursor: 'pointer',
+                                                    fontSize: 'small',
+                                                    height: '100%'
+                                                }}
+                                                onClick={handleCancelReply}
+                                                titleAccess="Cancel reply" 
+                                            />
+                                        </div>
+                                    </div>
+                                }
+                                <MaterialTextfield inputRef={commentTextfield} style={{width: '100%'}} label={`Add a ${state.replyToComment ? 'reply' : 'comment'}`} multiline variant="filled" size="small" inputProps={{'maxLength': MAX_COMMENT_LENGTH}} onChange={handleCommentChange} value={state.commentText}></MaterialTextfield>
+                                <LinearProgress className={classes.commentProgress} variant="determinate" value={state.commentLimit} color={getCommentProgressColor()} aria-valuetext={`${state.commentLimit} Percent of Comment Characters Used`} />
+                            </div>
+                            <button className="btn btn-primary ms-2" type="button" onClick={handlePostClick}>Post</button>
+                        </div>
+                    }
+                    {
+                        commentCount > 0 && state.total === -1 && 
+                        <div className="d-flex justify-content-end w-100">
+                            <button className="btn btn-link border-0 dropdown-toggle text-decoration-none" type="button" onClick={handleViewCommentsClick}>View Comments ({commentCount})</button>
+                        </div>
+                    }
+                    {
+                        state.comments.length > 0 && 
+                        <>
+                            <ul className={classes.commentList}>
                             {
-                                state.replyToComment &&
-                                <div className={classes.parentCommentHeader}>
-                                    <div style={{flexGrow: 1}}>
-                                        <span className={classes.parentCommenter}>
-                                            {state.replyToComment.postedBy.displayName}
-                                            {
-                                                state.replyToComment.postedBy.displayNameIndex !== 0 &&
-                                                `#${state.replyToComment.postedBy.displayNameIndex}`
-                                            }
-                                        </span>
-                                        {`: ${state.replyToComment.commentText}`}
-                                    </div>
-                                    <div style={{alignContent: 'center', display: 'flex'}}>
-                                        <CancelTwoToneIcon style={{
-                                                cursor: 'pointer',
-                                                fontSize: 'small',
-                                                height: '100%'
-                                            }}
-                                            onClick={handleCancelReply}
-                                            titleAccess="Cancel reply" 
-                                        />
-                                    </div>
+                                state.comments.map(comment => {
+                                    let commentId = adjustGUIDDashes(comment.uniqueId);
+
+                                    return <PostComment key={comment.uniqueId} comment={comment} takeFocus={commentId === focusCommentId} handleReplyClick={handleReplyClick} deleteCommentCB={removeComment} />;
+                                })
+                            }
+                            </ul>
+                            {
+                                moreCommentsAvailable() &&
+                                <div className={classes.moreCommentsDiv}>
+                                    <button className="btn btn-link btn-sm text-nowrap text-truncate shadow-none" 
+                                        type="button"
+                                        onClick={handleMoreResultsClick}
+                                    >
+                                        {isMobile ? 'Tap' : 'Click'} here for more comments
+                                    </button>
                                 </div>
                             }
-                            <MaterialTextfield inputRef={commentTextfield} style={{width: '100%'}} label={`Add a ${state.replyToComment ? 'reply' : 'comment'}`} multiline variant="filled" size="small" inputProps={{'maxLength': MAX_COMMENT_LENGTH}} onChange={handleCommentChange} value={state.commentText}></MaterialTextfield>
-                            <LinearProgress className={classes.commentProgress} variant="determinate" value={state.commentLimit} color={getCommentProgressColor()} aria-valuetext={`${state.commentLimit} Percent of Comment Characters Used`} />
+                        </>
+                    }
+                    {
+                        state.comments.length === 0 && state.total === 0 &&
+                        <div>
+                            <span>Either there are no comments or you are <a href="/register">not authorized</a> to view comments.</span>
                         </div>
-                        <button className="btn btn-primary ms-2" type="button" onClick={handlePostClick}>Post</button>
-                    </div>
-                }
+                    }
+                </CardActions>
                 {
-                    commentCount > 0 && state.total === -1 && 
-                    <div className="d-flex justify-content-end w-100">
-                        <button className="btn btn-link border-0 dropdown-toggle text-decoration-none" type="button" onClick={handleViewCommentsClick}>View Comments ({commentCount})</button>
-                    </div>
-                }
-                {
-                    state.comments.length > 0 && 
-                    <>
-                        <ul className={classes.commentList}>
-                        {
-                            state.comments.map(comment => {
-                                let commentId = adjustGUIDDashes(comment.uniqueId);
-
-                                return <PostComment key={comment.uniqueId} comment={comment} takeFocus={commentId === focusCommentId} handleReplyClick={handleReplyClick} />;
-                            })
-                        }
-                        </ul>
-                        {
-                            moreCommentsAvailable() &&
-                            <div className={classes.moreCommentsDiv}>
-                                <button className="btn btn-link btn-sm text-nowrap text-truncate shadow-none" 
-                                    type="button"
-                                    onClick={handleMoreResultsClick}
-                                >
-                                    {isMobile ? 'Tap' : 'Click'} here for more comments
-                                </button>
-                            </div>
-                        }
-                    </>
-                }
-                {
-                    state.comments.length === 0 && state.total === 0 &&
-                    <div>
-                        <span>Either there are no comments or you are <a href="/register">not authorized</a> to view comments.</span>
-                    </div>
-                }
-            </CardActions>
-            {
-                state.lightboxOpen && (
-                    <Lightbox 
-                        mainSrc={postFiles ? postFiles[state.lightboxIndex].fileName : ''}
-                        nextSrc={postFiles ? postFiles[(state.lightboxIndex + 1) % postFiles.length].fileName : ''}
-                        prevSrc={postFiles ? postFiles[(state.lightboxIndex + postFiles.length - 1) % postFiles.length].fileName : ''}
-                        onCloseRequest={() =>
-                            setState(prevState => ({...prevState, lightboxOpen: false}))
-                        }
-                        onMovePrevRequest={() => 
-                            setState(prevState => ({...prevState, lightboxIndex: (prevState.lightboxIndex + postFiles.length - 1) % postFiles.length}))
-                        }
-                        onMoveNextRequest={() => 
-                            setState(prevState => ({...prevState, lightboxIndex: (prevState.lightboxIndex + 1) % postFiles.length}))
-                        }
-                        reactModalStyle={{
-                            overlay: {
-                                zIndex: 2000 /* Fight with Bootstrap's fixed-top class, which sets the z-index to 1030 */
+                    state.lightboxOpen && (
+                        <Lightbox 
+                            mainSrc={postFiles ? postFiles[state.lightboxIndex].fileName : ''}
+                            nextSrc={postFiles ? postFiles[(state.lightboxIndex + 1) % postFiles.length].fileName : ''}
+                            prevSrc={postFiles ? postFiles[(state.lightboxIndex + postFiles.length - 1) % postFiles.length].fileName : ''}
+                            onCloseRequest={() =>
+                                setState(prevState => ({...prevState, lightboxOpen: false}))
                             }
-                        }}
-                    />
-                )
-            }
-        </Card>
+                            onMovePrevRequest={() => 
+                                setState(prevState => ({...prevState, lightboxIndex: (prevState.lightboxIndex + postFiles.length - 1) % postFiles.length}))
+                            }
+                            onMoveNextRequest={() => 
+                                setState(prevState => ({...prevState, lightboxIndex: (prevState.lightboxIndex + 1) % postFiles.length}))
+                            }
+                            reactModalStyle={{
+                                overlay: {
+                                    zIndex: 2000 /* Fight with Bootstrap's fixed-top class, which sets the z-index to 1030 */
+                                }
+                            }}
+                        />
+                    )
+                }
+            </Card>
+        </>
     );
 }

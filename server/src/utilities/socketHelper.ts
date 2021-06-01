@@ -16,4 +16,10 @@ export class SocketHelper {
             }
         }
     }
+
+    static notifyUsers(uniqueIds: string[], messageType: string, notification? : WebsiteBoilerplate.PostNotification) {
+        for (let uniqueId of uniqueIds) {
+            this.notifyUser(uniqueId, messageType, notification);
+        }
+    }
 }

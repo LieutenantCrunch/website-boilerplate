@@ -198,6 +198,44 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
             return res.status(500);
         }
     }
+    case 'deletePost': {
+        try {
+            if (req.userId) {
+                let { uniqueId }: { uniqueId: string | undefined } = req.body;
+
+                if (uniqueId) {
+                    let success: Boolean = await databaseHelper.deletePost(req.userId, uniqueId);
+
+                    return res.status(200).json({success});
+                }
+            }
+
+            return res.status(200).json({success: false});
+        }
+        catch (err) {
+            console.error(err.message);
+            return res.status(500);
+        }
+    }
+    case 'deletePostComment': {
+        try {
+            if (req.userId) {
+                let { uniqueId }: { uniqueId: string | undefined } = req.body;
+
+                if (uniqueId) {
+                    let success: Boolean = await databaseHelper.deletePostComment(req.userId, uniqueId);
+
+                    return res.status(200).json({success});
+                }
+            }
+
+            return res.status(200).json({success: false});
+        }
+        catch (err) {
+            console.error(err.message);
+            return res.status(500);
+        }
+    }
     case 'markPostNotificationsAsRead': {
         try {
             if (req.userId) {

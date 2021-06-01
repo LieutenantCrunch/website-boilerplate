@@ -42,6 +42,7 @@ declare namespace WebsiteBoilerplate {
     }
 
     export interface Post {
+        canDelete: Boolean;
         lastEditedOn: Date | null;
         commentCount: number;
         postedOn: Date;
@@ -70,6 +71,7 @@ declare namespace WebsiteBoilerplate {
     }
 
     export interface PostComment {
+        canDelete: Boolean;
         commentText: string;
         parentComment?: {
             commentText: string;

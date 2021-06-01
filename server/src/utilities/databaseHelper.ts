@@ -2185,16 +2185,21 @@ class DatabaseHelper {
 
                 // Make sure the user can view the posts
                 let canView: Boolean = false;
+                let canDelete: Boolean = false;
                 let isPublicUser: Boolean = isNullOrWhiteSpaceOnly(requestingUserUniqueId);
 
                 if (requestingUserUniqueId === postedByUniqueId) {
                     // You can always view your own posts
                     canView = true;
+                    // You can delete your own posts
+                    canDelete = true;
                 }
                 /*## Disabled for testing
                 else if (await this.checkUserForRole(registeredUser.id!, 'Administrator')) {
                     // Administrators can view all posts
                     canView = true;
+                    // Administrators can delete all posts
+                    canDelete = true;
                 }*/
                 else if (isPublicUser && registeredUser.allowPublicAccess) {
                     // Public users can view posts of registered users that allow it
@@ -2272,6 +2277,7 @@ class DatabaseHelper {
                         }
         
                         return {
+                            canDelete,
                             lastEditedOn: row.lastEditedOn,
                             commentCount: row.commentCount,
                             postedOn: row.postedOn,
@@ -2321,7 +2327,7 @@ class DatabaseHelper {
                 }
             };
 
-            if (true) { //## User Preference: Show my posts in my feed
+            if (false) { //## User Preference: Show my posts in my feed
                 whereOptions.postedByUniqueId = { [Op.ne]: uniqueId };
             }
 
@@ -2379,6 +2385,7 @@ class DatabaseHelper {
                 }
 
                 return {
+                    canDelete: row.postedByUniqueId === uniqueId,
                     lastEditedOn: row.lastEditedOn,
                     commentCount: row.commentCount,
                     postedOn: row.postedOn,
@@ -2593,6 +2600,7 @@ class DatabaseHelper {
 
                     return { 
                         newPost: {
+                            canDelete: true, /* This is returning the new post back to the creator, they can delete it */
                             lastEditedOn: null,
                             commentCount: 0,
                             postedOn,
@@ -2696,6 +2704,7 @@ class DatabaseHelper {
             }
 
             return {
+                canDelete: userUniqueId === postInfo.postedByUniqueId,
                 lastEditedOn: postInfo.lastEditedOn,
                 commentCount: postInfo.commentCount,
                 postedOn: postInfo.postedOn,
@@ -2951,6 +2960,7 @@ class DatabaseHelper {
                     }
 
                     return {
+                        canDelete: userUniqueId === commenter.uniqueId,
                         commentText: posterBlocked ? '{This Comment Not Available}' : row.commentText,
                         parentComment,
                         postedBy: {
@@ -3038,6 +3048,7 @@ class DatabaseHelper {
                         let commenterProfilePicture: ProfilePictureInstance | undefined = commenterProfilePictures[0];
 
                         let returnComment: WebsiteBoilerplate.PostComment = {
+                            canDelete: true, /* This is returning the new comment back to the creator, they can delete it */
                             commentText,
                             postedBy: {
                                 displayName: commenterDisplayName.displayName,
@@ -3105,6 +3116,165 @@ class DatabaseHelper {
         }
 
         return undefined;
+    }
+
+    async deletePost(userUniqueId: string, uniqueId: string): Promise<Boolean> {
+        try {
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(userUniqueId);
+
+            if (registeredUserId) {
+                let isAdministrator: Boolean = await this.checkUserForRole(registeredUserId, 'Administrator');
+
+                let whereOptions: { [key: string]: any } = { uniqueId };
+
+                // Administrators can delete any post, regardless of whether they created it or not
+                if (!isAdministrator) {
+                    whereOptions.registeredUserId = registeredUserId;
+                }
+
+                let post: PostInstance | null = await db.Post.findOne({
+                    where: whereOptions,
+                    include: [
+                        {
+                            model: db.PostComment,
+                            as: 'postComments',
+                            attributes: [
+                                'id',
+                                'registeredUserId'
+                            ],
+                            include: [
+                                {
+                                    model: db.User,
+                                    as: 'registeredUser',
+                                    attributes: [
+                                        'uniqueId'
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                });
+
+                if (post) {
+                    await post.destroy();
+
+                    let notificationIds: string[] = [userUniqueId];
+
+                    if (post.postComments && post.postComments.length > 0) {
+                        for (let postComment of post.postComments) {
+                            let commenter: UserInstance = postComment.registeredUser!;
+                            let commenterUniqueId: string = commenter.uniqueId;
+
+                            if (!notificationIds.find(notificationId => notificationId === commenterUniqueId)) {
+                                notificationIds.push(commenterUniqueId);
+                            }
+                        }
+                    }
+
+                    SocketHelper.notifyUsers(notificationIds, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.DELETED_POST);
+
+                    return true;
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error deleting post (${uniqueId}) for user ${userUniqueId}:\n${err.message}`);
+        }
+
+        return false;
+    }
+
+    async deletePostComment(userUniqueId: string, uniqueId: string): Promise<Boolean> {
+        try {
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(userUniqueId);
+
+            if (registeredUserId) {
+                let isAdministrator: Boolean = await this.checkUserForRole(registeredUserId, 'Administrator');
+
+                let whereOptions: { [key: string]: any } = { uniqueId };
+
+                // Administrators can delete any post, regardless of whether they created it or not
+                if (!isAdministrator) {
+                    whereOptions.registeredUserId = registeredUserId;
+                }
+
+                let postComment: PostCommentInstance | null = await db.PostComment.findOne({
+                    where: whereOptions,
+                    include: [
+                        {
+                            model: db.Post,
+                            as: 'post',
+                            attributes: [
+                                'id',
+                                'registeredUserId'
+                            ],
+                            include: [
+                                {
+                                    model: db.User,
+                                    as: 'registeredUser',
+                                    attributes: [
+                                        'uniqueId'
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            model: db.PostComment,
+                            as: 'parentComment',
+                            attributes: [
+                                'id',
+                                'registeredUserId',
+                            ],
+                            include: [
+                                {
+                                    model: db.User,
+                                    as: 'registeredUser',
+                                    attributes: [
+                                        'uniqueId'
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                });
+
+                if (postComment) {
+                    await postComment.destroy();
+
+                    let notificationIds: string[] = [];
+                    let post: PostInstance | undefined = postComment.post;
+
+                    if (post) {
+                        let user: UserInstance | undefined = post.registeredUser;
+
+                        if (user) {
+                            notificationIds.push(user.uniqueId);
+                        }
+                    }
+
+                    let parentComment: PostCommentInstance | undefined = postComment.parentComment;
+
+                    if (parentComment) {
+                        let user: UserInstance | undefined = parentComment.registeredUser;
+                        
+                        if (user) {
+                            if (!notificationIds[0] || notificationIds[0] !== user.uniqueId) {
+                                notificationIds.push(user.uniqueId);
+                            }
+                        }
+                    }
+
+                    SocketHelper.notifyUsers(notificationIds, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.DELETED_COMMENT);
+
+                    return true;
+                }
+            }
+        }
+        catch (err) {
+            console.error(`Error deleting post comment (${uniqueId}) for user ${userUniqueId}:\n${err.message}`);
+        }
+
+        return false;
     }
     
     async getPostNotifications(uniqueId: string): Promise<WebsiteBoilerplate.PostNotification[]> {
