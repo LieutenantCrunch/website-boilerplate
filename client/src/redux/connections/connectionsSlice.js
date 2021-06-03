@@ -71,7 +71,7 @@ export const connectionsMiddleware = storeApi => next => action => {
                 break;
             }
             case 'connections/postConnectionRemove': {
-                let { uniqueId } = action.payload;
+                let uniqueId = action.payload;
                 let connection = selectUserById(state, uniqueId);
 
                 if (connection) {

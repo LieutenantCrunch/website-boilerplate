@@ -1,10 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useContext, useEffect } from 'react';
 import classNames from 'classnames';
 import scrollIntoView from 'scroll-into-view-if-needed';
-
-import PostService from '../services/post.service';
-
 import { adjustGUIDDashes } from '../utilities/TextUtilities';
+import { MESSAGE_BOX_TYPES } from './Dialogs/MessageBox';
+
+// Contexts
+import { MessageBoxUpdaterContext } from './../contexts/withMessageBox';
+
+// Services
+import PostService from '../services/post.service';
 
 // Material UI
 import { Avatar } from '@material-ui/core';
@@ -78,6 +82,7 @@ export const PostComment = ({ comment, takeFocus, handleReplyClick, deleteCommen
     const posterNA = postedBy.displayName === '';
     const parentPosterNA = parentComment && parentComment.postedBy.displayName === '';
     const commentId = adjustGUIDDashes(uniqueId);
+    const setMessageBoxOptions = useContext(MessageBoxUpdaterContext);
 
     useEffect(() => {
         if (takeFocus) {
@@ -90,13 +95,22 @@ export const PostComment = ({ comment, takeFocus, handleReplyClick, deleteCommen
     }, []);
 
     const handleDeleteClick = (e) => {
-        if (confirm('Do you want to delete this comment?')) {
-            deleteComment();
-        }
+        setMessageBoxOptions({
+            isOpen: true,
+            messageBoxProps: {
+                actions: MESSAGE_BOX_TYPES.YES_NO,
+                caption: 'Delete Comment Confirmation',
+                message: 'Are you sure you want to delete this comment?',
+                onConfirm: () => { deleteComment(uniqueId) },
+                onDeny: () => {},
+                onCancel: undefined,
+                subtext: 'You will not be able to undo this action.'
+            }
+        });
     };
 
-    const deleteComment = async () => {
-        if (await PostService.deletePostComment(uniqueId)) {
+    const deleteComment = async (commentUniqueId) => {
+        if (await PostService.deletePostComment(commentUniqueId)) {
             if (deleteCommentCB) {
                 deleteCommentCB(uniqueId);
             }

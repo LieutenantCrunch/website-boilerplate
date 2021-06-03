@@ -6,8 +6,8 @@ import { useSelector } from 'react-redux';
 import { selectUserById } from '../../redux/users/usersSlice';
 import { selectCurrentUserAllowPublicAccess } from '../../redux/users/currentUserSlice';
 
-export default function ConnectionPreviewDialog (props) {
-    const connection = useSelector(state => selectUserById(state, props.connectionId));
+export default function ConnectionPreviewDialog ({ id, connectionId }) {
+    const connection = useSelector(state => selectUserById(state, connectionId));
     const currentUserAllowPublicAccess = useSelector(selectCurrentUserAllowPublicAccess);
     const mainDiv = useRef();
 
@@ -28,7 +28,7 @@ export default function ConnectionPreviewDialog (props) {
     };
 
     return (
-        <div id={props.id} ref={mainDiv} className="modal fade" data-backdrop="static" tabIndex="-1" aria-labelledby="connectionDetailsLabel" aria-hidden="true">
+        <div id={id} ref={mainDiv} className="modal fade" data-backdrop="static" tabIndex="-1" aria-labelledby="connectionDetailsLabel" aria-hidden="true">
             <div>
                 <div className="modal-dialog">
                     <div className="modal-content">
