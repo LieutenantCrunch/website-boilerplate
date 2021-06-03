@@ -32,6 +32,7 @@ import { currentUserFetched } from '../redux/users/currentUserSlice';
 
 // Contexts
 import { LoggedInContext } from '../contexts/loggedIn';
+import { WithMessageBox } from '../contexts/withMessageBox';
 
 // Other
 import { connectSocket } from '../sockets/socket';
@@ -90,76 +91,78 @@ export default function App() {
     return(
         <div className="App">
             <LoggedInContext.Provider value={checkForValidSession()}>
-                <Router>
-                    <Header title={title} loginDetails={loginDetails} setLoginDetails={setLoginDetails} headerMiddleEl={headerMiddleEl} />
-                    <div className="container-fluid d-flex align-items-center flex-column">
-                        <Switch>
-                            <Route path="/register" exact={true}>
-                                <RegistrationForm 
-                                    statusMessage={statusMessage}
-                                    setTitle={setTitle} 
-                                    setStatusMessage={setStatusMessage} 
-                                />
-                            </Route>
-                            <Route path="/login" exact={true}>
-                                <LoginForm 
-                                    statusMessage={statusMessage} 
-                                    setTitle={setTitle} 
-                                    setStatusMessage={setStatusMessage}
-                                    loginDetails={loginDetails}
-                                    setLoginDetails={setLoginDetails}
-                                />
-                            </Route>
-                            <Route path="/reset-password" exact={true}>
-                                <ResetPassword 
-                                    statusMessage={statusMessage} 
-                                    setStatusMessage={setStatusMessage}
-                                    setTitle={setTitle}
-                                    setLoginDetails={setLoginDetails} />
-                            </Route>
-                            <Route path="/feed" exact={true}>
-                                <Feed 
-                                    setTitle={setTitle}
-                                    setHeaderMiddleEl={setHeaderMiddleEl}
-                                />
-                            </Route>
-                            <Route path="/view-post" exact={true}>
-                                <ViewPost 
-                                    setTitle={setTitle}
-                                />
-                            </Route>
-                            <Route path="/profile" exact={true} render={() => {
-                                return (checkForValidSession() ? 
-                                <Profile 
-                                    setTitle={setTitle}
-                                /> : 
-                                <Redirect to="/login" />)
-                            }} />
-                            <Route path="/settings" exact={true} render={() => {
-                                return (checkForValidSession() ? 
-                                <SettingsPage 
-                                    setStatusMessage={setStatusMessage}
-                                    setTitle={setTitle}
-                                    setLoginDetails={setLoginDetails}
-                                /> : 
-                                <Redirect to="/login" />)
-                            }} />
-                            <Route path="/u">
-                                <UserPage 
-                                    setTitle={setTitle}
-                                />
-                            </Route>
-                            <Route path="/" exact={true}>
-                                <Welcome setTitle={setTitle} />
-                            </Route>
-                        </Switch>
-                    </div>
-                </Router>
-                {
-                    checkForValidSession()
-                    ? <SideMenu />
-                    : <></>
-                }
+                <WithMessageBox>
+                    <Router>
+                        <Header title={title} loginDetails={loginDetails} setLoginDetails={setLoginDetails} headerMiddleEl={headerMiddleEl} />
+                        <div className="container-fluid d-flex align-items-center flex-column">
+                            <Switch>
+                                <Route path="/register" exact={true}>
+                                    <RegistrationForm 
+                                        statusMessage={statusMessage}
+                                        setTitle={setTitle} 
+                                        setStatusMessage={setStatusMessage} 
+                                    />
+                                </Route>
+                                <Route path="/login" exact={true}>
+                                    <LoginForm 
+                                        statusMessage={statusMessage} 
+                                        setTitle={setTitle} 
+                                        setStatusMessage={setStatusMessage}
+                                        loginDetails={loginDetails}
+                                        setLoginDetails={setLoginDetails}
+                                    />
+                                </Route>
+                                <Route path="/reset-password" exact={true}>
+                                    <ResetPassword 
+                                        statusMessage={statusMessage} 
+                                        setStatusMessage={setStatusMessage}
+                                        setTitle={setTitle}
+                                        setLoginDetails={setLoginDetails} />
+                                </Route>
+                                <Route path="/feed" exact={true}>
+                                    <Feed 
+                                        setTitle={setTitle}
+                                        setHeaderMiddleEl={setHeaderMiddleEl}
+                                    />
+                                </Route>
+                                <Route path="/view-post" exact={true}>
+                                    <ViewPost 
+                                        setTitle={setTitle}
+                                    />
+                                </Route>
+                                <Route path="/profile" exact={true} render={() => {
+                                    return (checkForValidSession() ? 
+                                    <Profile 
+                                        setTitle={setTitle}
+                                    /> : 
+                                    <Redirect to="/login" />)
+                                }} />
+                                <Route path="/settings" exact={true} render={() => {
+                                    return (checkForValidSession() ? 
+                                    <SettingsPage 
+                                        setStatusMessage={setStatusMessage}
+                                        setTitle={setTitle}
+                                        setLoginDetails={setLoginDetails}
+                                    /> : 
+                                    <Redirect to="/login" />)
+                                }} />
+                                <Route path="/u">
+                                    <UserPage 
+                                        setTitle={setTitle}
+                                    />
+                                </Route>
+                                <Route path="/" exact={true}>
+                                    <Welcome setTitle={setTitle} />
+                                </Route>
+                            </Switch>
+                        </div>
+                    </Router>
+                    {
+                        checkForValidSession()
+                        ? <SideMenu />
+                        : <></>
+                    }
+                </WithMessageBox>
             </LoggedInContext.Provider>
         </div>
     );

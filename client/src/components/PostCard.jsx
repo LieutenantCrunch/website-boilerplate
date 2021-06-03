@@ -2,9 +2,13 @@ import React, { useContext, useEffect, useRef, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import Lightbox from 'react-image-lightbox';
 import * as Constants from '../constants/constants';
-import { LoggedInContext } from '../contexts/loggedIn';
 import PostService from '../services/post.service';
 import { adjustGUIDDashes } from '../utilities/TextUtilities';
+import { MESSAGE_BOX_TYPES } from './Dialogs/MessageBox';
+
+// Contexts
+import { LoggedInContext } from '../contexts/loggedIn';
+import { MessageBoxUpdaterContext } from './../contexts/withMessageBox';
 
 // Material UI
 import { Avatar, Card, CardActions, CardContent, CardHeader, Divider } from '@material-ui/core';
@@ -91,16 +95,13 @@ const useStyles = makeStyles(() => ({
     }
 }));
 
-const DELETE_POST_CONFIRM_TITLE = 'Delete Post Confirmation';
-const DELETE_POST_MESSAGE = 'Are you sure you want to delete this post?';
-const DELETE_POST_SUBTEXT = 'You will not be able to undo this action.';
-
 export const PostCard = ({ post, fetchDate, focusCommentId, deletePostCB } ) => {
     const MAX_COMMENT_LENGTH = 500;
     const loggedIn = useContext(LoggedInContext);
     const { canDelete, commentCount, commentPage, postedBy, postComments, postFiles, postType, uniqueId } = post;
     const postDate = new Date(post.postedOn);
     const postLinkId = adjustGUIDDashes(uniqueId);
+    const setMessageBoxOptions = useContext(MessageBoxUpdaterContext);
 
     const [state, setState] = useState({
         comments: [],
@@ -267,15 +268,24 @@ export const PostCard = ({ post, fetchDate, focusCommentId, deletePostCB } ) => 
     };
 
     const handleDeleteClick = (e) => {
-        if (confirm('Do you want to delete this post?')) {
-            deletePost();
-        }
+        setMessageBoxOptions({
+            isOpen: true,
+            messageBoxProps: {
+                actions: MESSAGE_BOX_TYPES.YES_NO,
+                caption: 'Delete Post Confirmation',
+                message: 'Are you sure you want to delete this post?',
+                onConfirm: () => { deletePost(uniqueId) },
+                onDeny: () => {},
+                onCancel: undefined,
+                subtext: 'You will not be able to undo this action.'
+            }
+        });
     };
 
-    const deletePost = async () => {
-        if (await PostService.deletePost(uniqueId)) {
+    const deletePost = async (postUniqueId) => {
+        if (await PostService.deletePost(postUniqueId)) {
             if (deletePostCB) {
-                deletePostCB(uniqueId);
+                deletePostCB(postUniqueId);
             }
         }
     };

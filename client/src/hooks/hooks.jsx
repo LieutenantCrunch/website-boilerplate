@@ -63,3 +63,15 @@ export const useHistoryState = (key, initialValue) => {
 
     return [rawState, setState];
 };
+
+export const useMessageBoxState = initialState => {
+    const [isOpen, setIsOpen] = useState(initialState.isOpen);
+    const [messageBoxProps, setMessageBoxProps] = useState(initialState.messageBoxProps);
+
+    const setMessageBoxState = ({ isOpen, messageBoxProps = {} }) => {
+        setIsOpen(isOpen);
+        setMessageBoxProps(messageBoxProps);
+    };
+
+    return [{ isOpen, messageBoxProps}, setMessageBoxState];
+};

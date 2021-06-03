@@ -10,9 +10,10 @@ import { HtmlTooltip } from '../HtmlTooltip';
 
 export const ConnectionListItem = ({ connectionId, handleConnectionClick, handleRemoveConnectionClick }) => {
     const connection = useSelector(state => selectUserById(state, connectionId));
+
     const handleRemoveClick = (event) => {
         if (handleRemoveConnectionClick) {
-            handleRemoveConnectionClick(event);
+            handleRemoveConnectionClick(event, connection);
         }
     };
 

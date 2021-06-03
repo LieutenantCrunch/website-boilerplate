@@ -1,35 +1,30 @@
 // https://medium.com/technoetics/create-basic-login-forms-using-react-js-hooks-and-bootstrap-2ae36c15e551
-import React, {useState, useEffect} from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { withRouter } from 'react-router-dom';
 import classNames from 'classnames';
 import {isMobile} from 'react-device-detect';
 
 import * as Hooks from '../../hooks/hooks';
 import AuthService from '../../services/auth.service';
-import YesNoMessageBox from '../MessageBoxes/YesNoMessageBox';
+import { MESSAGE_BOX_TYPES } from '../Dialogs/MessageBox';
+
+// Contexts
+import { MessageBoxUpdaterContext } from '../../contexts/withMessageBox';
 
 function LoginForm (props) {
     const [state, setState] = useState({password: ''});
-    const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {email: '', requestedPasswordReset: false});
-    const [yesNoMessageBoxProps, setYesNoMessageBoxProps] = useState({caption: null, message: null, subtext: null, yesCallback: () => {}, noCallback: () => {}});
-    const [requestedPasswordReset, setRequestedPasswordReset] = useState(false);
+    const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {
+        email: '', 
+        requestedPasswordReset: false
+    });
     const setStatusMessage = props.setStatusMessage;
     const hasStatusMessage = (props.statusMessage && props.statusMessage.message) || false;
     const statusMessageType = (hasStatusMessage ? props.statusMessage.type : 'transparent');
-    const yesNoMessageBoxId = 'LoginFormYesNoMessageBox';
-    let yesNoMessageBox = null;
+    const setMessageBoxOptions = useContext(MessageBoxUpdaterContext);
 
     useEffect(() => {
         props.setTitle('Login');
     }, []);
-
-    const getYesNoMessageBox = () => {
-        if (!yesNoMessageBox) {
-            yesNoMessageBox = new bootstrap.Modal(document.getElementById(yesNoMessageBoxId), {show: false});
-        }
-
-        return yesNoMessageBox;
-    };
 
     const handleSessionStateChange = (e) => {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
@@ -97,13 +92,18 @@ function LoginForm (props) {
 
     const requestPasswordResetStep1 = () => {
         if (sessionState.requestedPasswordReset) {
-            setYesNoMessageBoxProps({caption: 'Confirm Reset', 
-                message: 'You have already requested a password reset, are you sure you want to request another?', 
-                subtext: 'If you aren\'t receiving an email, please contact support.', 
-                yesCallback: requestPasswordResetStep2, 
-                noCallback: () => {}}
-            );
-            getYesNoMessageBox().show();
+            setMessageBoxOptions({
+                isOpen: true,
+                messageBoxProps: {
+                    actions: MESSAGE_BOX_TYPES.YES_NO,
+                    caption: 'Confirm Password Reset',
+                    message: 'You have already requested a password reset, are you sure you want to request another?',
+                    onConfirm: requestPasswordResetStep2,
+                    onDeny: () => {},
+                    onCancel: undefined,
+                    subtext: 'If you aren\'t receiving an email, please contact support.'
+                }
+            });
         }
         else {
             requestPasswordResetStep2();
@@ -177,13 +177,6 @@ function LoginForm (props) {
                     <span className="btn btn-link" onClick={redirectToRegistration}>Register</span>
                 </div>
             </div>
-            <YesNoMessageBox id={yesNoMessageBoxId} 
-                caption={yesNoMessageBoxProps.caption} 
-                message={yesNoMessageBoxProps.message} 
-                subtext={yesNoMessageBoxProps.subtext} 
-                yesCallback={yesNoMessageBoxProps.yesCallback}
-                noCallback={yesNoMessageBoxProps.noCallback}
-            />
         </>
     );
 };
