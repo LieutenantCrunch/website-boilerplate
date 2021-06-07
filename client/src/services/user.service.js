@@ -264,6 +264,22 @@ export default class UserService {
         return null;
     }
 
+    static async updateUserPreference(name, value) {
+        try {
+            let payload = { name, value };
+            let response = await axiosApi.post(Constants.API_PATH_USERS + 'updateUserPreference', payload);
+
+            if (response.data) {
+                return response.data.success || false;
+            }
+        }
+        catch (err) {
+            console.error(`Error updating preference ${name} to ${value}:\n${err.message}`);
+        }
+
+        return false;
+    }
+    
     static async verifyDisplayName(userUniqueID, displayName) {
         try {
             let payload = {userUniqueID, displayName};

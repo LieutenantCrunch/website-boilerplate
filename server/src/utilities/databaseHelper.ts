@@ -2200,6 +2200,140 @@ class DatabaseHelper {
         return false;
     }
 
+    async updateUserPreference(uniqueId: string, name: string, value: string | Boolean | number): Promise<Boolean> {
+        try {
+            let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
+
+            if (registeredUserId) {
+                switch (name) {
+                    case 'allowPublicAccess':
+                        if (typeof value === 'boolean') {
+                            await db.User.update({
+                                allowPublicAccess: value
+                            },
+                            {
+                                where: {
+                                    id: registeredUserId,
+                                }
+                            });
+                        }
+
+                        break;
+                    case 'feedFilter':
+                        let feedFilter: number = NaN;
+
+                        if (typeof value === 'string') {
+                            feedFilter = Number(value);
+                        }
+                        else if (typeof value === 'number') {
+                            feedFilter = value;
+                        }
+
+                        if (!isNaN(feedFilter) 
+                            && Object.values(ClientConstants.POST_TYPES).findIndex(key => key === feedFilter) !== -1
+                        ) {
+                            await db.UserPreferences.update({
+                                feedFilter
+                            },
+                            {
+                                where: {
+                                    registeredUserId,
+                                }
+                            });
+                        }
+
+                        break;
+                    case 'postAudience':
+                        let postAudience: number = NaN;
+
+                        if (typeof value === 'string') {
+                            postAudience = Number(value);
+                        }
+                        else if (typeof value === 'number') {
+                            postAudience = value;
+                        }
+
+                        if (!isNaN(postAudience) 
+                            && Object.values(ClientConstants.POST_AUDIENCES).findIndex(key => key === postAudience) !== -1
+                        ) {
+                            await db.UserPreferences.update({
+                                postAudience
+                            },
+                            {
+                                where: {
+                                    registeredUserId,
+                                }
+                            });
+                        }
+
+                        break;
+                    case 'postType':
+                        let postType: number = NaN;
+
+                        if (typeof value === 'string') {
+                            postType = Number(value);
+                        }
+                        else if (typeof value === 'number') {
+                            postType = value;
+                        }
+
+                        if (!isNaN(postType) 
+                            && postType !== ClientConstants.POST_TYPES.ALL 
+                            && Object.values(ClientConstants.POST_TYPES).findIndex(key => key === postType) !== -1
+                        ) {
+                            await db.UserPreferences.update({
+                                postType
+                            },
+                            {
+                                where: {
+                                    registeredUserId,
+                                }
+                            });
+                        }
+
+                        break;
+                    case 'showMyPostsInFeed':
+                        if (typeof value === 'boolean') {
+                            await db.UserPreferences.update({
+                                showMyPostsInFeed: value
+                            },
+                            {
+                                where: {
+                                    registeredUserId,
+                                }
+                            });
+                        }
+
+                        break;
+                    case 'startPage':
+                        if (typeof value === 'string') {
+                            // Future: May want to drive these choices from a table
+                            if (value === 'profile' || value === 'feed') {
+                                await db.UserPreferences.update({
+                                    startPage: value
+                                },
+                                {
+                                    where: {
+                                        registeredUserId,
+                                    }
+                                });
+                            }
+                        }
+
+                        break;
+                    default:
+                        return false;
+                }
+
+                return true;
+            }
+        }
+        catch (err) {
+            console.error(`Error updating preference ${name} to ${value} for ${uniqueId}`);
+        }
+        return false;
+    }
+
     // *********************
     // Post Methods
     // *********************
