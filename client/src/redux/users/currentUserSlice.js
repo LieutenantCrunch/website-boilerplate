@@ -25,6 +25,9 @@ const currentUserSlice = createSlice({
     name: 'currentUser',
     initialState,
     reducers: {
+        currentUserAllowPublicAccessUpdated: (state, action) => {
+            state.allowPublicAccess = action.payload;
+        },
         currentUserFetched: (state, action) => {
             let {
                 allowPublicAccess,
@@ -33,6 +36,7 @@ const currentUserSlice = createSlice({
                 email, 
                 pfp,
                 pfpSmall, 
+                preferences,
                 roles, 
                 uniqueId,
                 hasUnseenPostNotifications
@@ -46,6 +50,7 @@ const currentUserSlice = createSlice({
                 email, 
                 pfp,
                 pfpSmall, 
+                preferences,
                 roles, 
                 uniqueId,
                 hasUnseenPostNotifications
@@ -58,6 +63,11 @@ const currentUserSlice = createSlice({
         currentUserPfpUpdated: (state, action) => {
             state.pfp = action.payload.pfp || Constants.STATIC_IMAGES.PFP_DEFAULT;
             state.pfpSmall = action.payload.pfpSmall || Constants.STATIC_IMAGES.PFP_DEFAULT;
+        },
+        currentUserPreferenceUpdated: (state, action) => {
+            let { name, value } = action.payload;
+
+            state.preferences[name] = value;
         },
         currentUserRoleAdded: (state, action) => {
             state.roles.push(action.payload);
@@ -81,9 +91,11 @@ const currentUserSlice = createSlice({
 
 export default currentUserSlice.reducer;
 export const { 
+    currentUserAllowPublicAccessUpdated,
     currentUserFetched, 
     currentUserDisplayNameUpdated, 
     currentUserPfpUpdated, 
+    currentUserPreferenceUpdated,
     currentUserRoleAdded, 
     currentUserRoleRemoved,
     seenPostNotifications,
@@ -98,6 +110,7 @@ export const selectCurrentUserDisplayNameIndex = state => state.currentUser.disp
 export const selectCurrentUserEmail = state => state.currentUser.email;
 export const selectCurrentUserPfp = state => state.currentUser.pfp;
 export const selectCurrentUserPfpSmall = state => state.currentUser.pfpSmall;
+export const selectCurrentUserPreferences = state => state.currentUser.preferences;
 export const selectCurrentUserRoles = state => state.currentUser.roles;
 export const selectCurrentUserUniqueId = state => state.currentUser.uniqueId;
 export const selectHasUnseenPostNotifications = state => state.currentUser.hasUnseenPostNotifications;

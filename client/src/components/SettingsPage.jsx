@@ -5,12 +5,62 @@ import UserService from '../services/user.service';
 import { HtmlTooltip } from './HtmlTooltip';
 import * as Constants from '../constants/constants';
 
+// Material UI
+import { makeStyles, withStyles } from '@material-ui/core/styles';
+import Divider from '@material-ui/core/Divider';
+import MuiList from '@material-ui/core/List';
+import MuiListItem from '@material-ui/core/ListItem';
+import MuiListItemText from '@material-ui/core/ListItemText';
+import MuiSwitch from '@material-ui/core/Switch';
+import NativeSelect from '@material-ui/core/NativeSelect';
+import Paper from '@material-ui/core/Paper';
+import Typography from '@material-ui/core/Typography';
+
+const PrimarySwitch = withStyles({
+    switchBase: {
+        '&$checked': {
+            color: 'rgb(11,94,215) !important'
+        },
+        '&$checked + $track': {
+            backgroundColor: 'rgb(11,94,215) !important'
+        }
+    },
+    checked: {},
+    track: {}
+})(MuiSwitch);
+
+const DangerSwitch = withStyles({
+    switchBase: {
+        '&$checked': {
+            color: 'rgb(220,53,69) !important'
+        },
+        '&$checked + $track': {
+            backgroundColor: 'rgb(220,53,69) !important'
+        }
+    },
+    checked: {},
+    track: {}
+})(MuiSwitch);
+
 // Redux
-import { useDispatch } from 'react-redux';
-import { currentUserDisplayNameUpdated } from '../redux/users/currentUserSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { currentUserAllowPublicAccessUpdated, currentUserDisplayNameUpdated, currentUserPreferenceUpdated, selectCurrentUserAllowPublicAccess, selectCurrentUserPreferences } from '../redux/users/currentUserSlice';
+
+const useStyles = makeStyles(() => ({
+    preferenceHeader: {
+        padding: '.5em 0',
+    },
+    preferenceInput: {
+        marginLeft: '.25em'
+    }
+}));
 
 function SettingsPage(props) {
     const dispatch = useDispatch();
+    const currentUserAllowPublicAccess = useSelector(selectCurrentUserAllowPublicAccess);
+    const currentUserPreferences = useSelector(selectCurrentUserPreferences);
+
+    const classes = useStyles();
 
     const [settingsPageAlert, setSettingsPageAlert] = useState({type: 'info', message: null});
     const settingsPageAlertEl = useRef(null);
@@ -97,25 +147,142 @@ function SettingsPage(props) {
         }, () => {});
     };
 
+    const handlePreferenceSelectChange = (e) => {
+        const { name, value } = e.target;
+
+        dispatch(currentUserPreferenceUpdated({ name, value }));
+    };
+
     const clearSettingsPageAlert = () => {
         setSettingsPageAlert({type: 'info', message: null});
     };
 
-    //## Add Allow Public Access
-
     return (
         <>
-            <div className="container-fluid">
-                <div id="settingsPageAlertEl" ref={settingsPageAlertEl} className={`alert alert-${settingsPageAlert.type.toLocaleLowerCase()} alert-dismissible collapse w-100`} role="alert">
-                    <strong>{settingsPageAlert.message}</strong>
-                    <button type="button" className="btn-close" aria-label="Close" data-bs-target="#settingsPageAlertEl" data-bs-toggle="collapse" aria-expanded="false" aria-controls="settingsPageAlert"></button>
-                </div>
-                <div className="text-center">
-                    <h5 className="font-weight-bold">General</h5>
+            <div id="settingsPageAlertEl" ref={settingsPageAlertEl} className={`alert alert-${settingsPageAlert.type.toLocaleLowerCase()} alert-dismissible collapse w-100`} role="alert">
+                <strong>{settingsPageAlert.message}</strong>
+                <button type="button" className="btn-close" aria-label="Close" data-bs-target="#settingsPageAlertEl" data-bs-toggle="collapse" aria-expanded="false" aria-controls="settingsPageAlert"></button>
+            </div>
+            <div className="col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mt-2 align-middle text-center">
+                <Paper className="mb-2">
+                    <Typography variant="h5" className={classes.preferenceHeader}>General</Typography>
                     <button type="button" className="btn btn-link" data-bs-toggle="modal" data-bs-target="#displayNameForm">Change Display Name</button>
-                    <h5 className="font-weight-bold">Security</h5>
+                </Paper>
+                <Paper className="mb-2">
+                    <Typography variant="h5" className={classes.preferenceHeader}>Security</Typography>
                     <button type="button" className="btn btn-link" data-bs-toggle="modal" data-bs-target="#logoutConfirm">Log out other sessions</button>
-                </div>
+                </Paper>
+                <Paper className="mb-2">
+                    <Typography variant="h5" className={classes.preferenceHeader}>Preferences</Typography>
+                    <Divider variant="middle" />
+                    <MuiList component="div">
+                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                            <MuiListItemText primary="Start Page"
+                                secondary="The page you will see when you first log in or need to be redirected to a new page for some reason."
+                                style={{width: '100%'}}
+                            />
+                            <NativeSelect
+                                value={currentUserPreferences?.startPage || 'profile'}
+                                inputProps={{name: 'startPage'}}
+                                className={classes.preferenceInput}
+                                onChange={handlePreferenceSelectChange}
+                            >
+                                <option value="profile">Profile</option>
+                                <option value="feed">Feed</option>
+                            </NativeSelect>
+                        </MuiListItem>
+                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                            <MuiListItemText 
+                                id="preferences-show-my-posts-in-feed"
+                                primary="Show My Posts in My Feed"
+                                secondary="When turned on, your own posts will show up in your feed. This is off by default so you only see posts from people you are following. You can see all of your posts on your profile."
+                                style={{width: '100%'}}
+                            />
+                            <PrimarySwitch
+                                edge="start"
+                                name="showMyPostsInFeed"
+                                className={classes.preferenceInput}
+                                onChange={(e) => {
+                                    dispatch(currentUserPreferenceUpdated({
+                                        name: e.target.name, 
+                                        value: e.target.checked 
+                                    }))
+                                }}
+                                checked={currentUserPreferences?.showMyPostsInFeed || false}
+                                inputProps={{ 'aria-labelledby': 'preferences-show-my-posts-in-feed' }}
+                            />
+                        </MuiListItem>
+                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                            <MuiListItemText primary="Default Post Type"
+                                secondary="The default type (Text, Image, etc.) for new posts."
+                                style={{width: '100%'}}
+                            />
+                            <NativeSelect
+                                value={currentUserPreferences?.postType || 0}
+                                inputProps={{name: 'postType'}}
+                                className={classes.preferenceInput}
+                                onChange={handlePreferenceSelectChange}
+                            >
+                                <option value="0">Text</option>
+                                <option value="1">Image</option>
+                                <option value="2">Audio</option>
+                                <option value="3">Video</option>
+                            </NativeSelect>
+                        </MuiListItem>
+                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                            <MuiListItemText primary="Default Post Audience"
+                                secondary="The default audience (Connections, Everyone, etc.) for new posts."
+                                style={{width: '100%'}}
+                            />
+                            <NativeSelect
+                                value={currentUserPreferences?.postAudience || 0}
+                                inputProps={{name: 'postAudience'}}
+                                className={classes.preferenceInput}
+                                onChange={handlePreferenceSelectChange}
+                            >
+                                <option value="0">Connections</option>
+                                <option value="1">Everyone</option>
+                                <option value="2" disabled>Custom</option>
+                            </NativeSelect>
+                        </MuiListItem>
+                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                            <MuiListItemText primary="Default Feed Filter"
+                                secondary="When you visit your feed, the page will come up with this filter applied."
+                                style={{width: '100%'}}
+                            />
+                            <NativeSelect
+                                value={currentUserPreferences?.feedFilter || 1000}
+                                inputProps={{name: 'feedFilter'}}
+                                className={classes.preferenceInput}
+                                onChange={handlePreferenceSelectChange}
+                            >
+                                <option value="0">Text</option>
+                                <option value="1">Image</option>
+                                <option value="2">Audio</option>
+                                <option value="3">Video</option>
+                                <option value="1000">All</option>
+                            </NativeSelect>
+                        </MuiListItem>
+                        <MuiListItem component="div" style={{flexWrap: 'wrap'}}>
+                            <MuiListItemText 
+                                id="preferences-allow-public-access"
+                                primary="Allow Public Access"
+                                secondary={<span>When turned on, your profile and all posts with an audience of 'Everyone' will be visible to anybody, <em>even if they are not logged in</em>.</span>}
+                                style={{width: '100%'}}
+                            />
+                            <DangerSwitch
+                                edge="start"
+                                name="showMyPostsInFeed"
+                                className={classes.preferenceInput}
+                                onChange={(e) => {
+                                    dispatch(currentUserAllowPublicAccessUpdated(e.target.checked))
+                                }}
+                                checked={currentUserAllowPublicAccess}
+                                inputProps={{ 'aria-labelledby': 'preferences-allow-public-access' }}
+                            />
+                        </MuiListItem>
+                    </MuiList>
+                </Paper>
             </div>
             <div id="logoutConfirm" className="modal fade" tabIndex="-1" data-backdrop="static" data-bs-keyboard="false" aria-labelledby="logoutConfirmLabel" aria-hidden="true">
                 <div className="modal-dialog">

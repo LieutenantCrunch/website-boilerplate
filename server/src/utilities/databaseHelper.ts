@@ -28,6 +28,7 @@ import { PostFileInstance } from '../models/PostFile';
 import { PostCommentInstance } from '../models/PostComment';
 import { notificationHelper } from './notificationHelper';
 import { PostNotificationInstance } from '../models/PostNotification';
+import { UserPreferencesInstance } from '../models/UserPreferences';
 
 class DatabaseHelper {
     private static instance: DatabaseHelper;
@@ -92,7 +93,7 @@ class DatabaseHelper {
                     exists = !(await this.checkIfFirstUserIsBlockingSecond(registeredUser.id!, currentUserUniqueId));
                 }
 
-                return {exists, allowPublicAccess: registeredUser.allowPublicAccess!};
+                return {exists, allowPublicAccess: Boolean(registeredUser.allowPublicAccess)};
             }
         }
         catch (err)
@@ -279,7 +280,7 @@ class DatabaseHelper {
                     }
 
                     return {
-                        allowPublicAccess: registeredUser.allowPublicAccess,
+                        allowPublicAccess: Boolean(registeredUser.allowPublicAccess),
                         connectedToCurrentUser: (registeredUser.incomingConnections !== undefined && registeredUser.incomingConnections.length > 0),
                         connectionTypes: {
                             ...connectionTypes,
@@ -537,6 +538,10 @@ class DatabaseHelper {
             });
 
             if (registeredUser) {
+                db.UserPreferences.create({
+                    registeredUserId: registeredUser.id!
+                });
+
                 let results: {success: Boolean, displayNameIndex?: number, message?: string} = await this.setUserDisplayName(uniqueId, displayName);
 
                 return {id: uniqueId, success: results.success};
@@ -1188,7 +1193,7 @@ class DatabaseHelper {
                 }
 
                 let userDetails: WebsiteBoilerplate.UserDetails = {
-                    allowPublicAccess: registeredUser.allowPublicAccess,
+                    allowPublicAccess: Boolean(registeredUser.allowPublicAccess),
                     displayName: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayName : ''),
                     displayNameIndex: (registeredUser.displayNames && registeredUser.displayNames[0] ? registeredUser.displayNames[0].displayNameIndex : -1),
                     isBlocked: false, /* Handled below */
@@ -1217,6 +1222,43 @@ class DatabaseHelper {
                     });
 
                     userDetails.hasUnseenPostNotifications = unseenPostNotifications.length > 0;
+
+                    let userPreferences: UserPreferencesInstance = await registeredUser.getUserPreferences();
+
+                    if (userPreferences) {
+                        userDetails.preferences = {
+                            startPage: userPreferences.startPage || undefined,
+                            showMyPostsInFeed: userPreferences.showMyPostsInFeed!,
+                            postType: userPreferences.postType!,
+                            mediaVolume: userPreferences.mediaVolume!,
+                            feedFilter: userPreferences.feedFilter!,
+                            postAudience: userPreferences.postAudience!
+                        };
+                    }
+                    else {
+                        // ## Temporary during dev. All new users should have them
+                        console.warn(`User ${uniqueId} does not have a preferences record, creating one`);
+
+                        try {
+                            let testPrefs: UserPreferencesInstance = await db.UserPreferences.create({
+                                registeredUserId: registeredUser.id!
+                            });
+
+                            if (testPrefs) {
+                                userDetails.preferences = {
+                                    startPage: testPrefs.startPage || undefined,
+                                    showMyPostsInFeed: testPrefs.showMyPostsInFeed!,
+                                    postType: testPrefs.postType!,
+                                    mediaVolume: testPrefs.mediaVolume!,
+                                    feedFilter: testPrefs.feedFilter!,
+                                    postAudience: testPrefs.postAudience!
+                                };
+                            }
+                        }
+                        catch (e) {
+                            console.error(e.message);
+                        }
+                    }
                 }
 
                 if (includeEmail) {
@@ -1688,16 +1730,16 @@ class DatabaseHelper {
                         let connectedUserUniqueId: string = connectedUser.uniqueId;
 
                         return {
-                            allowPublicAccess: connectedUser!.allowPublicAccess,
+                            allowPublicAccess: Boolean(connectedUser.allowPublicAccess),
                             connectedToCurrentUser: true, /* Outgoing connections are always connected to the user */
                             connectionTypes: {...connectionTypes, ...userConnectionTypes},
-                            displayName: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayName : ''),
-                            displayNameIndex: (connectedUser!.displayNames && connectedUser!.displayNames[0] ? connectedUser!.displayNames[0].displayNameIndex : -1),
+                            displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
+                            displayNameIndex: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayNameIndex : -1),
                             isBlocked: false, /* Outgoing connections shouldn't be blocked */
                             isMutual: connectionView.isMutual,
-                            pfp: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser!.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
-                            pfpSmall: (connectedUser!.profilePictures && connectedUser!.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser!.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
-                            profileName: connectedUser!.profileName,
+                            pfp: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser.profilePictures[0].fileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                            pfpSmall: (connectedUser.profilePictures && connectedUser.profilePictures[0] ? `${ClientConstants.PUBLIC_USER_PATH}${connectedUserUniqueId}/${connectedUser.profilePictures[0].smallFileName}` : `${ClientConstants.STATIC_IMAGE_PATH}pfpDefault.svgz`),
+                            profileName: connectedUser.profileName,
                             uniqueId: connectedUserUniqueId
                         };
                     });
@@ -1825,7 +1867,7 @@ class DatabaseHelper {
                             let requestedUserUniqueId: string = requestedUser.uniqueId;
 
                             results.push({
-                                allowPublicAccess: requestedUser.allowPublicAccess,
+                                allowPublicAccess: Boolean(requestedUser.allowPublicAccess),
                                 connectedToCurrentUser: false, /* This list will only contain users who are not connected */
                                 connectionTypes: {...connectionTypes},    
                                 displayName: (requestedUser.displayNames && requestedUser.displayNames[0] ? requestedUser.displayNames[0].displayName : ''),
@@ -2047,7 +2089,7 @@ class DatabaseHelper {
                             actionTaken: ClientConstants.UPDATE_USER_CONNECTION_ACTIONS.UPDATED,
                             success: true,
                             userConnection: {
-                                allowPublicAccess: connectedUser.allowPublicAccess,
+                                allowPublicAccess: Boolean(connectedUser.allowPublicAccess),
                                 connectedToCurrentUser: true, /* If we updated the connection, it means that they're connected to the user */
                                 connectionTypes,
                                 displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),
@@ -2082,7 +2124,7 @@ class DatabaseHelper {
                             actionTaken: ClientConstants.UPDATE_USER_CONNECTION_ACTIONS.ADDED,
                             success: true,
                             userConnection: {
-                                allowPublicAccess: connectedUser.allowPublicAccess,
+                                allowPublicAccess: Boolean(connectedUser.allowPublicAccess),
                                 connectedToCurrentUser: true, /* They are now connected to the current user */
                                 connectionTypes,
                                 displayName: (connectedUser.displayNames && connectedUser.displayNames[0] ? connectedUser.displayNames[0].displayName : ''),

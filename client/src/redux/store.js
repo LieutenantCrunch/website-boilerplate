@@ -63,6 +63,30 @@ import { usersMiddleware } from './users/usersSlice';
         // A small version of the user's current profile picture for faster load times
         pfpSmall: string, 
 
+        // The user's preferences for functionality around the site
+        preferences: {
+
+            // When a person first logs into the site 
+            //  or when they do something that has to return them to a page (ex: delete a post from the view post page)
+            //  this is the page they will go to. If undefined, assume /profile
+            startPage: string | undefined,
+
+            // Whether the user's own posts should show up in their feed or not.
+            showMyPostsInFeed: Boolean,
+
+            // When the user is creating a new post, it will default to this type
+            postType: number,
+
+            // All media (video / audio) will have its volume initially set to this value / 100 by default.
+            mediaVolume: number,
+
+            // The type of posts to display in the user's feed by default
+            feedFilter: number,
+
+            // The default audience of new posts
+            postAudience: number
+        },
+
         // The list of roles the current user has
         roles: Array<string>, 
 

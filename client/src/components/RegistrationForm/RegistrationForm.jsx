@@ -144,7 +144,7 @@ function RegistrationForm(props) {
             text-muted: https://www.w3schools.com/Bootstrap/bootstrap_ref_css_helpers.asp
             card-body adds the padding
          */
-        <div className="card col-8 col-md-4 mt-2 align-middle text-center">
+        <div className="card col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mt-2 align-middle text-center">
             <div className={classNames('card-header', {
                 'd-none': !props.statusMessage.message,
                 [`bg-${statusMessageType}`]: true,

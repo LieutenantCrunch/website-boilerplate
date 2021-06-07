@@ -14,6 +14,7 @@ import { UserBlockInstance } from '../../models/UserBlock';
 import { UserConnectionInstance } from '../../models/UserConnection';
 import { UserConnectionTypeInstance } from '../../models/UserConnectionType';
 import { UserJWTInstance } from '../../models/UserJWT';
+import { UserPreferencesInstance } from '../../models/UserPreferences';
 
 // Junction Tables
 import { PostCustomAudienceInstance } from '../../models/PostCustomAudience';
@@ -41,6 +42,7 @@ export interface DbInterface {
   UserConnectionType: ModelCtor<UserConnectionTypeInstance>;
   UserConnectionTypeJunction: ModelCtor<UserConnectionTypeJunctionInstance>;
   UserJWT: ModelCtor<UserJWTInstance>;
+  UserPreferences: ModelCtor<UserPreferencesInstance>;
   UserRoleJunction: ModelCtor<UserRoleJunctionInstance>;
   Views: {
     FeedView: ModelCtor<FeedViewInstance>;
