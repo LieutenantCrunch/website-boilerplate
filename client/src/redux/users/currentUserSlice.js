@@ -64,10 +64,12 @@ const currentUserSlice = createSlice({
             state.pfp = action.payload.pfp || Constants.STATIC_IMAGES.PFP_DEFAULT;
             state.pfpSmall = action.payload.pfpSmall || Constants.STATIC_IMAGES.PFP_DEFAULT;
         },
-        currentUserPreferenceUpdated: (state, action) => {
-            let { name, value } = action.payload;
+        currentUserPreferencesUpdated: (state, action) => {
+            for (let preference of action.payload) {
+                let { name, value } = preference;
 
-            state.preferences[name] = value;
+                state.preferences[name] = value;
+            }
         },
         currentUserRoleAdded: (state, action) => {
             state.roles.push(action.payload);
@@ -95,7 +97,7 @@ export const {
     currentUserFetched, 
     currentUserDisplayNameUpdated, 
     currentUserPfpUpdated, 
-    currentUserPreferenceUpdated,
+    currentUserPreferencesUpdated,
     currentUserRoleAdded, 
     currentUserRoleRemoved,
     seenPostNotifications,

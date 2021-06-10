@@ -32,9 +32,9 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
 
                 }
 
-                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getFeed(req.userId, postType, endDate, pageNumber);
+                let {posts, total, returnPostType} : {posts: WebsiteBoilerplate.Post[], total: number, returnPostType: number} = await databaseHelper.getFeed(req.userId, postType, endDate, pageNumber);
 
-                return res.status(200).json({success: true, posts, total});
+                return res.status(200).json({success: true, posts, total, returnPostType});
             }
         }
         catch (err) {

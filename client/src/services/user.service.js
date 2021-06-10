@@ -264,10 +264,10 @@ export default class UserService {
         return null;
     }
 
-    static async updateUserPreference(name, value) {
+    static async updateUserPreferences(preferences) {
         try {
-            let payload = { name, value };
-            let response = await axiosApi.post(Constants.API_PATH_USERS + 'updateUserPreference', payload);
+            let payload = { preferences };
+            let response = await axiosApi.post(Constants.API_PATH_USERS + 'updateUserPreferences', payload);
 
             if (response.data) {
                 return response.data.success || false;

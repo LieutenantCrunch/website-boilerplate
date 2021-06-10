@@ -305,6 +305,39 @@ class DatabaseHelper {
         return null;
     }
 
+    async _getStartPageForUser(uniqueId: string | number | undefined): Promise<string | undefined> {
+        let registeredUserId: number | undefined = undefined;
+
+        if (typeof uniqueId === 'string') {
+            registeredUserId = await this.getUserIdForUniqueId(uniqueId);
+        }
+        else if (typeof uniqueId === 'number') {
+            registeredUserId = uniqueId;
+        }
+
+        if (registeredUserId !== undefined) {
+            let userPreferences: UserPreferencesInstance | null = await db.UserPreferences.findOne({
+                attributes: [
+                    'startPage'
+                ],
+                where: {
+                    registeredUserId
+                }
+            });
+
+            if (userPreferences) {
+                return userPreferences.startPage || undefined;
+            }
+        }
+
+        return undefined;
+    }
+
+    getStartPageForUser = memoize(this._getStartPageForUser, {
+        maxAge: ServerConstants.CACHE_DURATIONS.USER_BY_UNIQUE_ID,
+        promise: true
+    });
+
     async _getUserIdForUniqueId(uniqueId: string): Promise<number | undefined> {
         try
         {
@@ -581,10 +614,14 @@ class DatabaseHelper {
         return false;
     }
 
-    async validateCredentials(email: string, password: string): Promise<{id: string | null, success: Boolean}> {
+    async validateCredentials(email: string, password: string): Promise<string | null> {
         try
         {
             let registeredUser: UserInstance | null = await db.User.findOne({
+                attributes: [
+                    'passwordHash',
+                    'uniqueId'
+                ],
                 where: {
                     email
                 }
@@ -594,16 +631,17 @@ class DatabaseHelper {
                 let passwordHash: string = registeredUser.passwordHash;
                 let isValid = await bcrypt.compare(password, passwordHash);
 
-                return {id: registeredUser.uniqueId, success: isValid};
+                if (isValid) {
+                    return registeredUser.uniqueId;
+                }
             }
-
-            return {id: null, success: false};;
         }
         catch (err)
         {
-            console.error(err.message);
-            return {id: null, success: false};
+            console.error(`Failed to validate credentials for ${email}:\n${err.message}`);
         }
+
+        return null;
     }
 
     async generatePasswordResetToken(email: string): Promise<{token: string | null, errorCode: number}> {
@@ -1227,12 +1265,13 @@ class DatabaseHelper {
 
                     if (userPreferences) {
                         userDetails.preferences = {
-                            startPage: userPreferences.startPage || undefined,
-                            showMyPostsInFeed: userPreferences.showMyPostsInFeed!,
-                            postType: userPreferences.postType!,
-                            mediaVolume: userPreferences.mediaVolume!,
+                            customAudience: userPreferences.customAudience || undefined,
                             feedFilter: userPreferences.feedFilter!,
-                            postAudience: userPreferences.postAudience!
+                            mediaVolume: userPreferences.mediaVolume!,
+                            postAudience: userPreferences.postAudience!,
+                            postType: userPreferences.postType!,
+                            showMyPostsInFeed: Boolean(userPreferences.showMyPostsInFeed!),
+                            startPage: userPreferences.startPage || undefined
                         };
                     }
                     else {
@@ -1246,12 +1285,13 @@ class DatabaseHelper {
 
                             if (testPrefs) {
                                 userDetails.preferences = {
-                                    startPage: testPrefs.startPage || undefined,
-                                    showMyPostsInFeed: testPrefs.showMyPostsInFeed!,
-                                    postType: testPrefs.postType!,
-                                    mediaVolume: testPrefs.mediaVolume!,
+                                    customAudience: testPrefs.customAudience || undefined,
                                     feedFilter: testPrefs.feedFilter!,
-                                    postAudience: testPrefs.postAudience!
+                                    mediaVolume: testPrefs.mediaVolume!,
+                                    postAudience: testPrefs.postAudience!,
+                                    postType: testPrefs.postType!,
+                                    showMyPostsInFeed: Boolean(testPrefs.showMyPostsInFeed!),
+                                    startPage: testPrefs.startPage || undefined
                                 };
                             }
                         }
@@ -2200,136 +2240,146 @@ class DatabaseHelper {
         return false;
     }
 
-    async updateUserPreference(uniqueId: string, name: string, value: string | Boolean | number): Promise<Boolean> {
+    async updateUserPreferences(uniqueId: string, preferences: Array<{ name: string, value: string | Boolean | number }>): Promise<Boolean> {
         try {
             let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
 
             if (registeredUserId) {
-                switch (name) {
-                    case 'allowPublicAccess':
-                        if (typeof value === 'boolean') {
-                            await db.User.update({
-                                allowPublicAccess: value
-                            },
-                            {
-                                where: {
-                                    id: registeredUserId,
-                                }
-                            });
-                        }
+                let updatedPreferences: Boolean = false;
 
-                        break;
-                    case 'feedFilter':
-                        let feedFilter: number = NaN;
+                // Use these to accumulate the updates to be made to the two tables so we can do everything in one update
+                let userUpdateAttributes: { [key: string]: string | Boolean | number } = {};
+                let preferenceUpdateAttributes: { [key: string]: string | Boolean | number | null } = {};
 
-                        if (typeof value === 'string') {
-                            feedFilter = Number(value);
-                        }
-                        else if (typeof value === 'number') {
-                            feedFilter = value;
-                        }
+                // Loop through all preferences that changed and populate the attributes dictionaries
+                for (let preference of preferences) {
+                    let { name, value }: { name: string, value: string | Boolean | number } = preference;
 
-                        if (!isNaN(feedFilter) 
-                            && Object.values(ClientConstants.POST_TYPES).findIndex(key => key === feedFilter) !== -1
-                        ) {
-                            await db.UserPreferences.update({
-                                feedFilter
-                            },
-                            {
-                                where: {
-                                    registeredUserId,
-                                }
-                            });
-                        }
-
-                        break;
-                    case 'postAudience':
-                        let postAudience: number = NaN;
-
-                        if (typeof value === 'string') {
-                            postAudience = Number(value);
-                        }
-                        else if (typeof value === 'number') {
-                            postAudience = value;
-                        }
-
-                        if (!isNaN(postAudience) 
-                            && Object.values(ClientConstants.POST_AUDIENCES).findIndex(key => key === postAudience) !== -1
-                        ) {
-                            await db.UserPreferences.update({
-                                postAudience
-                            },
-                            {
-                                where: {
-                                    registeredUserId,
-                                }
-                            });
-                        }
-
-                        break;
-                    case 'postType':
-                        let postType: number = NaN;
-
-                        if (typeof value === 'string') {
-                            postType = Number(value);
-                        }
-                        else if (typeof value === 'number') {
-                            postType = value;
-                        }
-
-                        if (!isNaN(postType) 
-                            && postType !== ClientConstants.POST_TYPES.ALL 
-                            && Object.values(ClientConstants.POST_TYPES).findIndex(key => key === postType) !== -1
-                        ) {
-                            await db.UserPreferences.update({
-                                postType
-                            },
-                            {
-                                where: {
-                                    registeredUserId,
-                                }
-                            });
-                        }
-
-                        break;
-                    case 'showMyPostsInFeed':
-                        if (typeof value === 'boolean') {
-                            await db.UserPreferences.update({
-                                showMyPostsInFeed: value
-                            },
-                            {
-                                where: {
-                                    registeredUserId,
-                                }
-                            });
-                        }
-
-                        break;
-                    case 'startPage':
-                        if (typeof value === 'string') {
-                            // Future: May want to drive these choices from a table
-                            if (value === 'profile' || value === 'feed') {
-                                await db.UserPreferences.update({
-                                    startPage: value
-                                },
-                                {
-                                    where: {
-                                        registeredUserId,
-                                    }
-                                });
+                    switch (name) {
+                        case 'allowPublicAccess':
+                            if (typeof value === 'boolean') {
+                                userUpdateAttributes.allowPublicAccess = value;
                             }
-                        }
 
-                        break;
-                    default:
-                        return false;
+                            break;
+                        case 'customAudience':
+                            if (typeof value === 'string') {
+                                if (isNullOrWhiteSpaceOnly(value)) {
+                                    preferenceUpdateAttributes.customAudience = null;
+                                }
+                                else {
+                                    preferenceUpdateAttributes.customAudience = value;
+                                }
+                            }
+
+                            break;
+                        case 'feedFilter':
+                            let feedFilter: number = NaN;
+
+                            if (typeof value === 'string') {
+                                feedFilter = Number(value);
+                            }
+                            else if (typeof value === 'number') {
+                                feedFilter = value;
+                            }
+
+                            if (!isNaN(feedFilter) 
+                                && Object.values(ClientConstants.POST_TYPES).findIndex(key => key === feedFilter) !== -1
+                            ) {
+                                preferenceUpdateAttributes.feedFilter = feedFilter;
+                            }
+
+                            break;
+                        case 'postAudience':
+                            let postAudience: number = NaN;
+
+                            if (typeof value === 'string') {
+                                postAudience = Number(value);
+                            }
+                            else if (typeof value === 'number') {
+                                postAudience = value;
+                            }
+
+                            if (!isNaN(postAudience) 
+                                && Object.values(ClientConstants.POST_AUDIENCES).findIndex(key => key === postAudience) !== -1
+                            ) {
+                                preferenceUpdateAttributes.postAudience = postAudience;
+                            }
+
+                            break;
+                        case 'postType':
+                            let postType: number = NaN;
+
+                            if (typeof value === 'string') {
+                                postType = Number(value);
+                            }
+                            else if (typeof value === 'number') {
+                                postType = value;
+                            }
+
+                            if (!isNaN(postType) 
+                                && postType !== ClientConstants.POST_TYPES.ALL 
+                                && Object.values(ClientConstants.POST_TYPES).findIndex(key => key === postType) !== -1
+                            ) {
+                                preferenceUpdateAttributes.postType = postType;
+                            }
+
+                            break;
+                        case 'showMyPostsInFeed':
+                            if (typeof value === 'boolean') {
+                                preferenceUpdateAttributes.showMyPostsInFeed = value;
+                            }
+
+                            break;
+                        case 'startPage':
+                            if (typeof value === 'string') {
+                                // Future: May want to drive these choices from a table
+                                if (value === 'profile' || value === 'feed') {
+                                    preferenceUpdateAttributes.startPage = value;
+
+                                    this.getStartPageForUser.delete(uniqueId);
+                                    this.getStartPageForUser.delete(registeredUserId);
+                                }
+                            }
+
+                            break;
+                        default:
+                            break;
+                    }
                 }
 
-                return true;
+                // If the dictionaries have keys, update the tables
+                if (Object.keys(userUpdateAttributes).length > 0) {
+                    await db.User.update(
+                        userUpdateAttributes,
+                        {
+                            where: {
+                                id: registeredUserId
+                            }
+                        }
+                    );
+
+                    updatedPreferences = true;
+                }
+
+                if (Object.keys(preferenceUpdateAttributes).length > 0) {
+                    await db.UserPreferences.update(
+                        preferenceUpdateAttributes,
+                        {
+                            where: {
+                                registeredUserId
+                            }
+                        }
+                    );
+
+                    updatedPreferences = true;
+                }
+
+                return updatedPreferences;
             }
         }
         catch (err) {
-            console.error(`Error updating preference ${name} to ${value} for ${uniqueId}`);
+            console.error(`Error updating preferences for ${uniqueId}`);
         }
         return false;
     }
@@ -2484,15 +2534,41 @@ class DatabaseHelper {
     }
 
     // The end date is used to prevent new posts from coming back and winding up inserted in a strange place in the list. If they want the latest posts, they'll have to refresh the page
-    async getFeed(uniqueId: string | number | undefined, postType: number | undefined, endDate: Date | undefined, pageNumber: number | undefined): Promise<{posts: WebsiteBoilerplate.Post[], total: number}> {
+    async getFeed(uniqueId: string | number | undefined, postType: number | undefined, endDate: Date | undefined, pageNumber: number | undefined): Promise<{posts: WebsiteBoilerplate.Post[], total: number, returnPostType: number}> {
+        let registeredUserId: number | undefined = undefined;
         let posts: WebsiteBoilerplate.Post[] = [];
         let total: number = 0;
+        let returnPostType: number = ClientConstants.POST_TYPES.ALL;
 
         if (typeof uniqueId === 'number') {
-            uniqueId = await this.getUniqueIdForUserId(uniqueId);
+            registeredUserId = uniqueId;
+            uniqueId = await this.getUniqueIdForUserId(registeredUserId);
+        }
+        else if (typeof uniqueId === 'string') {
+            registeredUserId = await this.getUserIdForUniqueId(uniqueId);
         }
 
         if (uniqueId !== undefined) {
+            let feedFilter: number | undefined = undefined;
+            let showMyPostsInFeed: Boolean = false;
+
+            if (registeredUserId !== undefined) { // It shouldn't be undefined, but we have to check it to keep TypeScript happy
+                let userPreferences: UserPreferencesInstance | null = await db.UserPreferences.findOne({
+                    attributes: [
+                        'feedFilter',
+                        'showMyPostsInFeed'
+                    ],
+                    where: {
+                        registeredUserId
+                    }
+                });
+
+                if (userPreferences) {
+                    feedFilter = userPreferences.feedFilter!;
+                    showMyPostsInFeed = Boolean(userPreferences.showMyPostsInFeed);
+                }
+            }
+
             // This has to be done separate due to the fact that the files are being joined in, 
             // thus causing single posts to be counted multiple times when there are multiple 
             // images for a particular post
@@ -2503,12 +2579,27 @@ class DatabaseHelper {
                 }
             };
 
-            if (false) { //## User Preference: Show my posts in my feed
+            if (!showMyPostsInFeed) {
                 whereOptions.postedByUniqueId = { [Op.ne]: uniqueId };
             }
 
-            if (postType !== undefined && postType !== ClientConstants.POST_TYPES.ALL) {
-                whereOptions.postType = postType;
+            // If they're requesting a specific type of posts
+            if (postType !== undefined) {
+                // postType -1 indicates that the default preference should be used
+                // If the feedFilter defined and isn't ALL
+                if (postType === -1) {
+                    if (feedFilter !== undefined && feedFilter !== ClientConstants.POST_TYPES.ALL) {
+                        // Set the postType filter to the user preference value
+                        whereOptions.postType = feedFilter;
+                        returnPostType = feedFilter;
+                    }
+                }
+                // Else, if the postType isn't ALL
+                else if (postType !== ClientConstants.POST_TYPES.ALL) {
+                    // Set the postType filter to the requested postType value
+                    whereOptions.postType = postType;
+                    returnPostType = postType;
+                }
             }
             
             const count: number = await db.Views.FeedView.count({
@@ -2583,7 +2674,7 @@ class DatabaseHelper {
             total = count;
         }
 
-        return {posts, total};
+        return {posts, total, returnPostType};
     }
 
     async addNewPost(uniqueId: string, postType: number, postTitle: string | undefined, postText: string | undefined, audience: number, customAudience: string | undefined, postFiles: WebsiteBoilerplate.PostFileInfo[] | undefined): Promise<{newPost: WebsiteBoilerplate.Post | undefined, postId: number | undefined}> {

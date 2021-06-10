@@ -261,22 +261,22 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
         res.status(200).json({success: false, results: null, message: 'An error occurred while updating the connection'});
 
         break;
-    case 'updateUserPreference':
+    case 'updateUserPreferences':
         try {
             let uniqueId = req.userId;
 
             if (uniqueId) {
-                let { name, value }: { name: string | undefined, value: string | Boolean | number | undefined } = req.body;
+                let { preferences }: { preferences: Array<{ name: string, value: string | Boolean | number }> | undefined } = req.body;
 
-                if (name !== undefined && value !== undefined) {
-                    if (await databaseHelper.updateUserPreference(uniqueId, name, value)) {
+                if (preferences !== undefined) {
+                    if (await databaseHelper.updateUserPreferences(uniqueId, preferences)) {
                         return res.status(200).json({ success: true });
                     }
                 }
             }
         }
         catch (err) {
-            console.error(`Error updating user preference\n${err.message}`);
+            console.error(`Error updating user preferences\n${err.message}`);
         }
 
         res.status(200).json({ success: false });

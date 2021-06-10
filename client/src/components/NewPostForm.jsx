@@ -3,6 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { usePopper } from 'react-popper';
 
+// Utilities
+import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
+
 // Material UI Components
 import { Avatar, Divider, Paper } from '@material-ui/core';
 import MaterialTextfield from '@material-ui/core/TextField';
@@ -27,7 +30,7 @@ import PostService from '../services/post.service';
 // Redux
 import { useSelector } from 'react-redux';
 import { selectConnectionTypes } from '../redux/connections/connectionTypesSlice';
-import { selectCurrentUserPfpSmall } from '../redux/users/currentUserSlice';
+import { selectCurrentUserPfpSmall, selectCurrentUserPreferences } from '../redux/users/currentUserSlice';
 
 // WB Components
 import SwitchCheckbox from './FormControls/SwitchCheckbox';
@@ -195,6 +198,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
     // Redux
     const currentUserPfpSmall = useSelector(selectCurrentUserPfpSmall);
     const defaultConnectionTypes = useSelector(selectConnectionTypes);
+    const currentUserPreferences = useSelector(selectCurrentUserPreferences);
 
     const getConnectionTypeDict = () => {
         if (defaultConnectionTypes) {
@@ -208,6 +212,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
     const [currentDate, setCurrentDate] = useState((new Date()).toLocaleString());
 
     const [state, setState] = useState({
+        connectionTypes: {},
         contentError: false,
         contentHelper: '',
         customAudience: [],
@@ -226,27 +231,104 @@ export const NewPostForm = ({ onNewPostCreated }) => {
         textError: false,
         textLimit: 0,
         titleError: false,
-        titleLimit: 0,
-        connectionTypes: {}
+        titleLimit: 0
     });
 
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
 
+    // References
+    const dropArea = useRef(null);
+    const dropOverlay = useRef(null);
+
+    // defaultConnectionTypes
     useEffect(() => {
-        if (state.connectionTypes && Object.keys(state.connectionTypes).length === 0) {
+        // If the defaultConnectionTypes are now available and we haven't populated the connection types yet
+        if (defaultConnectionTypes && Object.keys(state.connectionTypes).length === 0) {
+            // Set the state connectionTypes to the defaultConnectionTypes dictionary
+            let connectionTypes = getConnectionTypeDict();
+
+            // If there's a customAudience available (possibly from the user preferences)
+            if (state.customAudience.length > 0) {
+                // Break down the custom audience and create a dictionary with all the values set to true
+                let selectedTypes = state.customAudience.reduce((finalDict, currentType) => {
+                    finalDict[currentType] = true;
+
+                    return finalDict;
+                }, {});
+
+                // Use this new dictionary to update the connectionTypes
+                connectionTypes = {
+                    ...connectionTypes,
+                    ...selectedTypes
+                };
+            }
+
             setState(prevState => ({
                 ...prevState,
-                connectionTypes: getConnectionTypeDict()
+                connectionTypes
             }));
         }
     }, [defaultConnectionTypes]);
 
+    // postAudience
     useEffect(() => {
         if (popperUpdate) {
             popperUpdate();
         }
     }, [state.postAudience]);
+
+    // currentUserPreferences
+    useEffect(() => {
+        if (currentUserPreferences !== undefined) {
+            let customAudience = [];
+
+            let { customAudience: customAudienceStr, postAudience, postType } = currentUserPreferences;
+            
+            let connectionTypes = undefined;
+
+            // If there's a customAudience on the user preferences
+            if (customAudienceStr) {
+                // Split it into an array
+                customAudience = customAudienceStr.split(',');
+
+                // If there are values in the array
+                if (customAudience.length > 0) {
+                    // Get the defaultConnectionTypes 
+                    connectionTypes = getConnectionTypeDict();
+
+                    // Break down the custom audience and create a dictionary with all the values set to true
+                    let selectedTypes = customAudience.reduce((finalDict, currentType) => {
+                        finalDict[currentType] = true;
+
+                        return finalDict;
+                    }, {});
+    
+                    // Use this new dictionary to update the connectionTypes
+                    connectionTypes = {
+                        ...connectionTypes,
+                        ...selectedTypes
+                    };
+                }
+            }
+
+            let stateUpdates = {
+                postAudience,
+                postType,
+                customAudience
+            };
+
+            // If there are connectionTypes to update, update the state
+            if (connectionTypes) {
+                stateUpdates.connectionTypes = connectionTypes;
+            }
+
+            setState(prevState => ({
+                ...prevState,
+                ...stateUpdates
+            }));
+        }
+    }, [currentUserPreferences]);
 
     const classes = useStyles(state);
 
@@ -281,10 +363,6 @@ export const NewPostForm = ({ onNewPostCreated }) => {
             }));
         }       
     };
-
-    // References
-    const dropArea = useRef(null);
-    const dropOverlay = useRef(null);
 
     const selectAudioType = () => {
         if (state.postType !== Constants.POST_TYPES.AUDIO) {
@@ -329,6 +407,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
     const selectEveryoneAudience = () => {
         setState(prevState => ({
             ...prevState,
+            isAudienceOpen: false,
             postAudience: Constants.POST_AUDIENCES.EVERYONE,
             customAudience: [],
             connectionTypes: getConnectionTypeDict() /* This will reset everything to false */
@@ -338,6 +417,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
     const selectConnectionsAudience = () => {
         setState(prevState => ({
             ...prevState,
+            isAudienceOpen: false,
             postAudience: Constants.POST_AUDIENCES.CONNECTIONS,
             customAudience: [],
             connectionTypes: getConnectionTypeDict() /* This will reset everything to false */
@@ -756,21 +836,8 @@ export const NewPostForm = ({ onNewPostCreated }) => {
 
     const handleRemoveImage = (e, i) => {
         let { images, files } = state;
-        let updatedImages = images.reduce((finalArray, currentItem, index) => {
-            if (index !== i) {
-                finalArray.push(currentItem);
-            }
-
-            return finalArray;
-        }, []);
-
-        let updatedFiles = files.reduce((finalArray, currentItem, index) => {
-            if (index !== i) {
-                finalArray.push(currentItem);
-            }
-
-            return finalArray;
-        }, []);
+        let updatedImages = newArrayWithItemRemoved(images, i);
+        let updatedFiles = newArrayWithItemRemoved(files, i);
 
         setState(prevState => ({
             ...prevState,
@@ -783,39 +850,44 @@ export const NewPostForm = ({ onNewPostCreated }) => {
         let { name, checked } = event.target;
 
         let stateUpdates = {
-            postAudience: state.postAudience,
+            postAudience: state.postAudience, // Default to previous value
             connectionTypes: {
-                [name]: checked
+                [name]: checked // Update the connection type that was checked or unchecked
             },
-            customAudience: state.customAudience
+            customAudience: state.customAudience // Default to previous value
         };
 
+        // If the connection type was checked
         if (checked) {
+            // If this type wasn't already checked
             if (!state.customAudience.find(connectionType => connectionType === name)) {
+                // Set the postAudience to custom
                 stateUpdates.postAudience = Constants.POST_AUDIENCES.CUSTOM;
+
+                // Add the type to the custom audience array
                 stateUpdates.customAudience = [
                     ...state.customAudience,
                     name
                 ];
             }
         }
+        // Otherwise, if it was unchecked
         else {
+            // Find its index in the custom audience array
             let foundIndex = state.customAudience.findIndex(connectionType => connectionType === name);
 
+            // If found
             if (foundIndex >= 0) {
-                let customAudience = state.customAudience.reduce((finalArray, currentItem, index,) => {
-                    if (index !== foundIndex) {
-                        finalArray.push(currentItem);
-                    }
+                // Remove the connection type from the custom audience array 
+                let customAudience = newArrayWithItemRemoved(state.customAudience, foundIndex);
 
-                    return finalArray;
-                }, []);
-
+                // If there are no more connection types selected, change the post audience back to connections
                 stateUpdates.postAudience = customAudience.length === 0 ? Constants.POST_AUDIENCES.CONNECTIONS : Constants.POST_AUDIENCES.CUSTOM;
                 stateUpdates.customAudience = customAudience;
             }
         }
 
+        // Update the state with all updates
         setState(prevState => ({
             ...prevState,
             postAudience: stateUpdates.postAudience,
@@ -830,15 +902,48 @@ export const NewPostForm = ({ onNewPostCreated }) => {
     };
 
     const resetForm = () => {
+        let connectionTypes = getConnectionTypeDict(); // This will reset everything to false
+        let customAudience = [];
+        let postAudience = Constants.POST_AUDIENCES.CONNECTIONS;
+        let postType = Constants.POST_TYPES.TEXT;
+
+        if (currentUserPreferences) {
+            let { customAudience: customAudienceStr } = currentUserPreferences;
+            ({ postAudience, postType } = currentUserPreferences);
+
+            // If there's a customAudience on the user preferences
+            if (customAudienceStr) {
+                // Split it into an array
+                customAudience = customAudienceStr.split(',');
+
+                // If there are values in the array
+                if (customAudience.length > 0) {
+                    // Break down the custom audience and create a dictionary with all the values set to true
+                    let selectedTypes = customAudience.reduce((finalDict, currentType) => {
+                        finalDict[currentType] = true;
+
+                        return finalDict;
+                    }, {});
+    
+                    // Use this new dictionary to update the connectionTypes
+                    connectionTypes = {
+                        ...connectionTypes,
+                        ...selectedTypes
+                    };
+                }
+            }
+        }
+
         setState(prevState => ({
             ...prevState,
-            customAudience: [],
+            connectionTypes,
+            customAudience,
             files: [],
             images: [],
-            postAudience: Constants.POST_AUDIENCES.CONNECTIONS, /*## This should be based off a preference */
+            postAudience,
             postText: '',
             postTitle: '',
-            postType: Constants.POST_TYPES.TEXT,
+            postType,
             tempThumbnailFileName: '',
             textError: false,
             textLimit: 0,

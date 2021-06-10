@@ -7,6 +7,9 @@ import { PostCard } from './PostCard';
 import ProfilePictureUpload from './ProfilePictureUpload';
 import { NewPostForm } from './NewPostForm';
 
+// Utilities
+import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
+
 // Redux
 import { useSelector } from 'react-redux';
 import { selectCurrentUserDisplayName, selectCurrentUserDisplayNameIndex, selectCurrentUserEmail } from '../redux/users/currentUserSlice';
@@ -65,9 +68,7 @@ function Profile(props) {
         let foundIndex = posts.findIndex(post => post.uniqueId === uniqueId);
 
         if (foundIndex > -1) {
-            let newPosts = [...posts];
-
-            newPosts.splice(foundIndex, 1);
+            let newPosts = newArrayWithItemRemoved(posts, foundIndex);
 
             setState(prevState => ({
                 ...prevState,

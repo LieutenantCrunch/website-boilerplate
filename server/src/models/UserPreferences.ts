@@ -11,6 +11,7 @@ export interface UserPreferencesAttributes {
     mediaVolume?: number;
     feedFilter?: number;
     postAudience?: number;
+    customAudience?: string;
     user?: UserInstance;
 };
 
@@ -20,7 +21,8 @@ export interface UserPreferencesCreationAttributes extends Optional<UserPreferen
     Optional<UserPreferencesAttributes, 'postType'>,
     Optional<UserPreferencesAttributes, 'mediaVolume'>,
     Optional<UserPreferencesAttributes, 'feedFilter'>,
-    Optional<UserPreferencesAttributes, 'postAudience'> {};
+    Optional<UserPreferencesAttributes, 'postAudience'>,
+    Optional<UserPreferencesAttributes, 'customAudience'> {};
 
 export interface UserPreferencesInstance extends Model<UserPreferencesAttributes, UserPreferencesCreationAttributes>, UserPreferencesAttributes {
     getUser: BelongsToGetAssociationMixin<UserInstance>;
@@ -71,6 +73,10 @@ export const UserPreferencesFactory = (sequelize: Sequelize): ModelCtor<UserPref
             type: DataTypes.INTEGER,
             allowNull: false,
             defaultValue: 0
+        },
+        customAudience: {
+            field: 'custom_audience',
+            type: DataTypes.STRING(500)
         }
     };
 

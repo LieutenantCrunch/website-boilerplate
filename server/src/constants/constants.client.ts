@@ -68,11 +68,11 @@ export const POST_TYPES = Object.freeze({
 });
 
 export const POST_TYPES_NAMES = Object.freeze({
-    [POST_TYPES.TEXT]: 'Text Posts',
-    [POST_TYPES.IMAGE]: 'Image Posts',
-    [POST_TYPES.VIDEO]: 'Video Posts',
-    [POST_TYPES.AUDIO]: 'Audio Posts',
-    [POST_TYPES.ALL]: 'All Posts'
+    [POST_TYPES.TEXT]: 'Text',
+    [POST_TYPES.IMAGE]: 'Image',
+    [POST_TYPES.VIDEO]: 'Video',
+    [POST_TYPES.AUDIO]: 'Audio',
+    [POST_TYPES.ALL]: 'All'
 });
 
 export const POST_AUDIENCES = Object.freeze({

@@ -18,12 +18,13 @@ declare namespace WebsiteBoilerplate {
     }
 
     export interface UserPreferences {
-        startPage: string | undefined;
-        showMyPostsInFeed: Boolean;
-        postType: number;
-        mediaVolume: number;
+        customAudience: string | undefined;
         feedFilter: number;
+        mediaVolume: number;
         postAudience: number;
+        postType: number;
+        showMyPostsInFeed: Boolean;
+        startPage: string | undefined;
     }
 
     export interface UserSearchResults {

@@ -13,36 +13,42 @@ export default class AuthService {
         try {
             let response = await axiosApi.post(Constants.API_PATH_AUTH + 'login', payload);
         
-            let loginSuccess = response.data && response.data.success ? response.data.success : false;
+            let success = response.data && response.data.success ? response.data.success : false;
+
             if (response.status === 200) {
+                let { loginDetails, message, startPage } = response.data;
+
                 return {
-                    success: loginSuccess, 
+                    loginDetails,
+                    startPage,
                     statusMessage: {
-                        type: (loginSuccess ? 'success' : 'danger'), 
-                        message: (response.data.message ? response.data.message : 'Login successful, redirecting to application')
+                        type: (success ? 'success' : 'danger'), 
+                        message: message || 'Login successful, redirecting to application'
                     },
-                    loginDetails: response.data.loginDetails
+                    success
                 };
             }
             else {
                 return {
-                    success: false, 
+                    loginDetails: null,
+                    startPage: undefined,
                     statusMessage: {
                         type: 'danger', 
                         message: `Failed to log in: ${response.data.message ? response.data.message : response.status}`
                     },
-                    loginDetails: null
+                    success: false
                 };
             }
         }
         catch(error) {
             return {
-                success: false,
+                loginDetails: null,
+                startPage: undefined,
                 statusMessage: {
                     type: 'danger', 
                     message: `Error: ${error.message}`
                 },
-                loginDetails: null
+                success: false
             };
         };
     }

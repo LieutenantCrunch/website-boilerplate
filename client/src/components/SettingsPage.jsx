@@ -1,9 +1,19 @@
 import React, {useEffect, useState, useRef} from 'react';
+import classNames from 'classnames';
+import { usePopper } from 'react-popper';
 import {withRouter} from 'react-router-dom';
+import * as Constants from '../constants/constants';
+
+// Components
+import { HtmlTooltip } from './HtmlTooltip';
+import SwitchCheckbox from './FormControls/SwitchCheckbox';
+
+// Services
 import AuthService from '../services/auth.service';
 import UserService from '../services/user.service';
-import { HtmlTooltip } from './HtmlTooltip';
-import * as Constants from '../constants/constants';
+
+// Utilities
+import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
 
 // Material UI
 import { makeStyles, withStyles } from '@material-ui/core/styles';
@@ -12,7 +22,6 @@ import MuiList from '@material-ui/core/List';
 import MuiListItem from '@material-ui/core/ListItem';
 import MuiListItemText from '@material-ui/core/ListItemText';
 import MuiSwitch from '@material-ui/core/Switch';
-import NativeSelect from '@material-ui/core/NativeSelect';
 import Paper from '@material-ui/core/Paper';
 import Typography from '@material-ui/core/Typography';
 
@@ -44,7 +53,8 @@ const DangerSwitch = withStyles({
 
 // Redux
 import { useDispatch, useSelector } from 'react-redux';
-import { currentUserAllowPublicAccessUpdated, currentUserDisplayNameUpdated, currentUserPreferenceUpdated, selectCurrentUserAllowPublicAccess, selectCurrentUserPreferences } from '../redux/users/currentUserSlice';
+import { selectConnectionTypes } from '../redux/connections/connectionTypesSlice';
+import { currentUserAllowPublicAccessUpdated, currentUserDisplayNameUpdated, currentUserPreferencesUpdated, selectCurrentUserAllowPublicAccess, selectCurrentUserPreferences } from '../redux/users/currentUserSlice';
 
 const useStyles = makeStyles(() => ({
     preferenceHeader: {
@@ -57,19 +67,77 @@ const useStyles = makeStyles(() => ({
 
 function SettingsPage(props) {
     const dispatch = useDispatch();
+    const defaultConnectionTypes = useSelector(selectConnectionTypes);
     const currentUserAllowPublicAccess = useSelector(selectCurrentUserAllowPublicAccess);
     const currentUserPreferences = useSelector(selectCurrentUserPreferences);
 
     const classes = useStyles();
 
+    const [state, setState] = useState({
+        audienceChanged: false,
+        connectionTypes: {},
+        customAudience: [],
+        displayName: '', 
+        displayNameError: false,
+        isAudienceOpen: false,
+        postAudience: Constants.POST_AUDIENCES.CONNECTIONS
+    });
+
     const [settingsPageAlert, setSettingsPageAlert] = useState({type: 'info', message: null});
     const settingsPageAlertEl = useRef(null);
-    const [state, setState] = useState({displayName: '', displayNameError: false});
+
+    // Popper
+    const [referenceElement, setReferenceElement] = useState(null);
+    const [popperElement, setPopperElement] = useState(null);
+    const { styles: popperStyles, update: popperUpdate } = usePopper(referenceElement, popperElement, {
+        modifiers: [
+        ],
+        placement: 'bottom'
+    });
+    const dropdownMenuContainer = useRef();
     
+    // Page
     useEffect(() => {
         props.setTitle('Settings');
     }, []);
 
+    // state.postAudience
+    useEffect(() => {
+        if (popperUpdate) {
+            popperUpdate();
+        }
+    }, [state.postAudience]);
+
+    // state.isAudienceOpen
+    useEffect(() => {
+        if (state.isAudienceOpen) {
+            document.addEventListener('click', hideAudienceDropdown);
+
+            return function cleanup() {
+                document.removeEventListener('click', hideAudienceDropdown);
+            }
+        }
+        else {
+            document.removeEventListener('click', hideAudienceDropdown);
+        }
+    }, [state.isAudienceOpen]);
+
+    // state.audienceChanged
+    useEffect(() => {
+        if (state.audienceChanged) {
+            dispatch(currentUserPreferencesUpdated([
+                { name: 'postAudience', value: state.postAudience },
+                { name: 'customAudience', value: state.customAudience.join(',') }
+            ]));
+
+            setState(prevState => ({
+                ...prevState,
+                audienceChanged: false
+            }));
+        }
+    }, [state.audienceChanged])
+
+    // state.displayNameError
     useEffect(() => {
         if (state.displayNameError) {
             const timer = setTimeout(() => {
@@ -79,6 +147,132 @@ function SettingsPage(props) {
             return () => clearTimeout(timer);
         }
     }, [state.displayNameError]);
+
+    // defaultConnectionTypes
+    useEffect(() => {
+        if (state.connectionTypes && Object.keys(state.connectionTypes).length === 0) {
+            setState(prevState => ({
+                ...prevState,
+                connectionTypes: getConnectionTypeDict()
+            }));
+        }
+    }, [defaultConnectionTypes]);
+
+    // currentUserPreferences
+    useEffect(() => {
+        if (currentUserPreferences) {
+            // Only update the postAudience if we have to
+            if (state.postAudience !== currentUserPreferences.postAudience) {
+                setState(prevState => ({
+                    ...prevState,
+                    postAudience: currentUserPreferences.postAudience
+                }));
+            }
+        }
+    }, [currentUserPreferences]);
+
+    const clearSettingsPageAlert = () => {
+        setSettingsPageAlert({type: 'info', message: null});
+    };
+
+    const getConnectionTypeDict = () => {
+        if (defaultConnectionTypes) {
+            return {...defaultConnectionTypes};
+        }
+        
+        return {};
+    };
+
+    const getPostAudienceTitle = () => {
+        switch (state.postAudience) {
+            case 2: return 'Custom';
+            case 1: return 'Everyone';
+            case 0: 
+            default: return 'Outgoing Connections';
+        }
+    };
+
+    const hideAudienceDropdown = (event) => {
+        if (!dropdownMenuContainer.current.contains(event.target)) {
+            setState(prevState => ({
+                ...prevState,
+                isAudienceOpen: false
+            }));
+        }       
+    };
+
+    const handleAudienceClick = (e) => {
+        if (!state.isAudienceOpen) {
+            popperUpdate(); // This fixes the position of the dropdown menu
+        }
+
+        setState(prevState => ({
+            ...prevState,
+            isAudienceOpen: !prevState.isAudienceOpen /* Toggle whether it's open */
+        }));
+
+        e.stopPropagation();
+    };
+
+    const handleCustomChange = (event) => {
+        let { name, checked } = event.target;
+
+        let stateUpdates = {
+            audienceChanged: false,
+            postAudience: state.postAudience, // Default to previous value
+            connectionTypes: {
+                [name]: checked // Update the connection type that was checked or unchecked
+            },
+            customAudience: state.customAudience // Default to previous value
+        };
+
+        // If the connection type was checked
+        if (checked) {
+            // If this type wasn't already checked
+            if (!state.customAudience.find(connectionType => connectionType === name)) {
+                // Set the postAudience to custom
+                stateUpdates.postAudience = Constants.POST_AUDIENCES.CUSTOM;
+
+                // Add the type to the custom audience array
+                stateUpdates.customAudience = [
+                    ...state.customAudience,
+                    name
+                ];
+
+                stateUpdates.audienceChanged = true;
+            }
+        }
+        // Otherwise, if it was unchecked
+        else {
+            // Find its index in the custom audience array
+            let foundIndex = state.customAudience.findIndex(connectionType => connectionType === name);
+
+            // If found
+            if (foundIndex >= 0) {
+                // Remove the connection type from the custom audience array 
+                let customAudience = newArrayWithItemRemoved(state.customAudience, foundIndex);
+
+                stateUpdates.audienceChanged = true;
+                // If there are no more connection types selected, change the post audience back to connections
+                stateUpdates.postAudience = customAudience.length === 0 ? Constants.POST_AUDIENCES.CONNECTIONS : Constants.POST_AUDIENCES.CUSTOM;
+                stateUpdates.customAudience = customAudience;
+            }
+        }
+
+        // Update the state with all updates
+        setState(prevState => ({
+            ...prevState,
+            audienceChanged: stateUpdates.audienceChanged,
+            connectionTypes: {
+                ...prevState.connectionTypes,
+                ...stateUpdates.connectionTypes
+            },
+            customAudience: stateUpdates.customAudience,
+            postAudience: stateUpdates.postAudience
+        }));
+
+        event.stopPropagation();
+    };
 
     const handleLogoutFromEverywhereClick = async () => {
         await AuthService.logout(true, true);
@@ -147,14 +341,48 @@ function SettingsPage(props) {
         }, () => {});
     };
 
-    const handlePreferenceSelectChange = (e) => {
-        const { name, value } = e.target;
+    const handleStringPreferenceSelectChange = (e) => {
+        const { name, value } = e.target.dataset;
 
-        dispatch(currentUserPreferenceUpdated({ name, value }));
+        dispatch(currentUserPreferencesUpdated([{ name, value }]));
     };
 
-    const clearSettingsPageAlert = () => {
-        setSettingsPageAlert({type: 'info', message: null});
+    const handleNumberPreferenceSelectChange = (e) => {
+        const { name, value: stringValue } = e.target.dataset;
+
+        let value = Number(stringValue);
+
+        if (isNaN(value)) {
+            value = 0;
+        }
+        
+        dispatch(currentUserPreferencesUpdated([{ name, value }]));
+    };
+
+    const handleSelectEveryoneAudience = () => {
+        if (state.postAudience !== Constants.POST_AUDIENCES.EVERYONE) {
+            setState(prevState => ({
+                ...prevState,
+                audienceChanged: true,
+                customAudience: [],
+                connectionTypes: getConnectionTypeDict(), /* This will reset everything to false */
+                isAudienceOpen: false,
+                postAudience: Constants.POST_AUDIENCES.EVERYONE
+            }));
+        }
+    };
+
+    const handleSelectConnectionsAudience = () => {
+        if (state.postAudience !== Constants.POST_AUDIENCES.CONNECTIONS) {
+            setState(prevState => ({
+                ...prevState,
+                audienceChanged: true,
+                customAudience: [],
+                connectionTypes: getConnectionTypeDict(), /* This will reset everything to false */
+                isAudienceOpen: false,
+                postAudience: Constants.POST_AUDIENCES.CONNECTIONS
+            }));
+        }
     };
 
     return (
@@ -181,15 +409,15 @@ function SettingsPage(props) {
                                 secondary="The page you will see when you first log in or need to be redirected to a new page for some reason."
                                 style={{width: '100%'}}
                             />
-                            <NativeSelect
-                                value={currentUserPreferences?.startPage || 'profile'}
-                                inputProps={{name: 'startPage'}}
-                                className={classes.preferenceInput}
-                                onChange={handlePreferenceSelectChange}
-                            >
-                                <option value="profile">Profile</option>
-                                <option value="feed">Feed</option>
-                            </NativeSelect>
+                            <div className="dropdown">
+                                <button className="btn btn-outline-primary dropdown-toggle" type="button" id="startPageDropdown" data-bs-toggle="dropdown" aria-expanded="false" style={{textTransform: 'capitalize'}}>
+                                    {currentUserPreferences?.startPage || 'feed'}
+                                </button>
+                                <ul className="dropdown-menu" aria-labelledby="startPageDropdown">
+                                    <li><button className="dropdown-item" data-name="startPage" data-value="profile" type="button" onClick={handleStringPreferenceSelectChange}>Profile</button></li>
+                                    <li><button className="dropdown-item" data-name="startPage" data-value="feed" type="button" onClick={handleStringPreferenceSelectChange}>Feed</button></li>
+                                </ul>
+                            </div>
                         </MuiListItem>
                         <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
                             <MuiListItemText 
@@ -203,12 +431,12 @@ function SettingsPage(props) {
                                 name="showMyPostsInFeed"
                                 className={classes.preferenceInput}
                                 onChange={(e) => {
-                                    dispatch(currentUserPreferenceUpdated({
+                                    dispatch(currentUserPreferencesUpdated([{
                                         name: e.target.name, 
                                         value: e.target.checked 
-                                    }))
+                                    }]))
                                 }}
-                                checked={currentUserPreferences?.showMyPostsInFeed || false}
+                                checked={currentUserPreferences?.showMyPostsInFeed === undefined ? false : currentUserPreferences?.showMyPostsInFeed}
                                 inputProps={{ 'aria-labelledby': 'preferences-show-my-posts-in-feed' }}
                             />
                         </MuiListItem>
@@ -217,51 +445,68 @@ function SettingsPage(props) {
                                 secondary="The default type (Text, Image, etc.) for new posts."
                                 style={{width: '100%'}}
                             />
-                            <NativeSelect
-                                value={currentUserPreferences?.postType || 0}
-                                inputProps={{name: 'postType'}}
-                                className={classes.preferenceInput}
-                                onChange={handlePreferenceSelectChange}
-                            >
-                                <option value="0">Text</option>
-                                <option value="1">Image</option>
-                                <option value="2">Audio</option>
-                                <option value="3">Video</option>
-                            </NativeSelect>
+                            <div className="dropdown">
+                                <button className="btn btn-outline-primary dropdown-toggle" type="button" id="postTypeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    {currentUserPreferences?.postType === undefined ? Constants.POST_TYPES_NAMES[0] : Constants.POST_TYPES_NAMES[currentUserPreferences.postType]}
+                                </button>
+                                <ul className="dropdown-menu" aria-labelledby="postTypeDropdown">
+                                    <li><button className="dropdown-item" data-name="postType" data-value="3" type="button" onClick={handleNumberPreferenceSelectChange}>Audio</button></li>
+                                    <li><button className="dropdown-item" data-name="postType" data-value="1" type="button" onClick={handleNumberPreferenceSelectChange}>Image</button></li>
+                                    <li><button className="dropdown-item" data-name="postType" data-value="0" type="button" onClick={handleNumberPreferenceSelectChange}>Text</button></li>
+                                    <li><button className="dropdown-item" data-name="postType" data-value="2" type="button" onClick={handleNumberPreferenceSelectChange}>Video</button></li>
+                                </ul>
+                            </div>
                         </MuiListItem>
                         <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
                             <MuiListItemText primary="Default Post Audience"
                                 secondary="The default audience (Connections, Everyone, etc.) for new posts."
                                 style={{width: '100%'}}
                             />
-                            <NativeSelect
-                                value={currentUserPreferences?.postAudience || 0}
-                                inputProps={{name: 'postAudience'}}
-                                className={classes.preferenceInput}
-                                onChange={handlePreferenceSelectChange}
-                            >
-                                <option value="0">Connections</option>
-                                <option value="1">Everyone</option>
-                                <option value="2" disabled>Custom</option>
-                            </NativeSelect>
+                            <div ref={dropdownMenuContainer} className="dropdown">
+                                <button ref={setReferenceElement} 
+                                    className={classNames("btn btn-outline-primary dropdown-toggle", {'show': state.isAudienceOpen})}
+                                    type="button" 
+                                    onClick={handleAudienceClick}
+                                >
+                                    {getPostAudienceTitle()}
+                                </button>
+                                <ul ref={setPopperElement} 
+                                    className={classNames('dropdown-menu', 'px-2', {'show': state.isAudienceOpen})}
+                                    style={popperStyles.popper}
+                                    {...popperStyles.popper}
+                                >
+                                    <li className="dropdown-header">Generic</li>
+                                    <li><button className="dropdown-item" type="button" onClick={handleSelectEveryoneAudience}>Everyone</button></li>
+                                    <li><button className="dropdown-item" type="button" onClick={handleSelectConnectionsAudience}>Outgoing Connections</button></li>
+                                    <li><hr className="dropdown-divider" /></li>
+                                    <li className="dropdown-header">Custom</li>
+                                    {
+                                        state.connectionTypes && 
+                                        Object.entries(state.connectionTypes).map(([connectionType, details]) => (
+                                            <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleCustomChange} useListItem />
+                                        ))
+                                    }
+                                </ul>
+                            </div>
                         </MuiListItem>
                         <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
                             <MuiListItemText primary="Default Feed Filter"
                                 secondary="When you visit your feed, the page will come up with this filter applied."
                                 style={{width: '100%'}}
                             />
-                            <NativeSelect
-                                value={currentUserPreferences?.feedFilter || 1000}
-                                inputProps={{name: 'feedFilter'}}
-                                className={classes.preferenceInput}
-                                onChange={handlePreferenceSelectChange}
-                            >
-                                <option value="0">Text</option>
-                                <option value="1">Image</option>
-                                <option value="2">Audio</option>
-                                <option value="3">Video</option>
-                                <option value="1000">All</option>
-                            </NativeSelect>
+                            <div className="dropdown">
+                                <button className="btn btn-outline-primary dropdown-toggle" type="button" id="feedFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    {currentUserPreferences?.feedFilter === undefined ? `${Constants.POST_TYPES_NAMES[0]} Posts` : `${Constants.POST_TYPES_NAMES[currentUserPreferences.feedFilter]} Posts`}
+                                </button>
+                                <ul className="dropdown-menu" aria-labelledby="feedFilterDropdown">
+                                    <li><button className="dropdown-item" data-name="feedFilter" data-value="1000" type="button" onClick={handleNumberPreferenceSelectChange}>All Posts</button></li>
+                                    <li><hr className="dropdown-divider" /></li>
+                                    <li><button className="dropdown-item" data-name="feedFilter" data-value="3" type="button" onClick={handleNumberPreferenceSelectChange}>Audio Posts</button></li>
+                                    <li><button className="dropdown-item" data-name="feedFilter" data-value="1" type="button" onClick={handleNumberPreferenceSelectChange}>Image Posts</button></li>
+                                    <li><button className="dropdown-item" data-name="feedFilter" data-value="0" type="button" onClick={handleNumberPreferenceSelectChange}>Text Posts</button></li>
+                                    <li><button className="dropdown-item" data-name="feedFilter" data-value="2" type="button" onClick={handleNumberPreferenceSelectChange}>Video Posts</button></li>
+                                </ul>
+                            </div>
                         </MuiListItem>
                         <MuiListItem component="div" style={{flexWrap: 'wrap'}}>
                             <MuiListItemText 
@@ -277,7 +522,7 @@ function SettingsPage(props) {
                                 onChange={(e) => {
                                     dispatch(currentUserAllowPublicAccessUpdated(e.target.checked))
                                 }}
-                                checked={currentUserAllowPublicAccess}
+                                checked={currentUserAllowPublicAccess === undefined ? false : currentUserAllowPublicAccess}
                                 inputProps={{ 'aria-labelledby': 'preferences-allow-public-access' }}
                             />
                         </MuiListItem>

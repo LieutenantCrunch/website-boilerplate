@@ -71,10 +71,9 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
         }
         else {
             if (req.body.email && req.body.password) {
-                let loginResults: {id: string | null, success: Boolean} = await databaseHelper.validateCredentials(req.body.email, req.body.password);
+                let uniqueId: string | null = await databaseHelper.validateCredentials(req.body.email, req.body.password);
 
-                if (loginResults.success) {
-                    let userID: string | null = loginResults.id;
+                if (uniqueId) {
                     let expirationDate: Date = new Date(Date.now()).addDays(ServerConstants.JWT_EXPIRATION_DAYS);
                     let jwtResults: {success: Boolean} = {success: false};
 
@@ -82,34 +81,40 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
 
                     if (req.authToken) { // Scenario: Maybe they lost their client token but not their cookie, so they're trying to log in again, just extend the life of their current cookie
                         authToken = req.authToken;
-                        jwtResults = await databaseHelper.extendJWTForUser(req.userId!, {jti: req.jti!, expirationDate})
+                        jwtResults = await databaseHelper.extendJWTForUser(uniqueId, {jti: req.jti!, expirationDate})
                     }
                     else {
                         let secret: string = await AuthHelper.getJWTSecret();
                         let jti: string = uuidv4();
-                        authToken = jwt.sign({id: userID}, secret, {expiresIn: (60 * 60 * 24 * ServerConstants.JWT_EXPIRATION_DAYS), jwtid: jti}); /* Could pass in options on the third parameter */
+                        authToken = jwt.sign({id: uniqueId}, secret, {expiresIn: (60 * 60 * 24 * ServerConstants.JWT_EXPIRATION_DAYS), jwtid: jti}); /* Could pass in options on the third parameter */
 
-                        jwtResults = await databaseHelper.addJWTToUser(userID!, {jti, expirationDate})
+                        jwtResults = await databaseHelper.addJWTToUser(uniqueId, {jti, expirationDate})
                     }
 
                     if (jwtResults.success) {
+                        let startPage: string | undefined = await databaseHelper.getStartPageForUser(uniqueId);
+
                         res.status(200)
                             .cookie('authToken', authToken, {
+                                expires: expirationDate,
                                 httpOnly: true,
-                                sameSite: true,
-                                expires: expirationDate
+                                sameSite: true
                             })
-                            .json({success: true, message: 'Login successful', loginDetails: {
-                                loginDate: Date.now(), 
-                                expirationDate: expirationDate.valueOf()
-                            }});
+                            .json({
+                                loginDetails: {
+                                    loginDate: Date.now(), 
+                                    expirationDate: expirationDate.valueOf()
+                                },
+                                message: 'Login successful',
+                                startPage,
+                                success: true
+                            });
                     }
                     else {
                         res.status(200).json({success: false, message: 'Failed to secure a session with the server, please try again or contact support.'});
                     }
                 }
                 else {
-                    let userID: string | null = loginResults.id;
                     res.status(200).json({success: false, message: 'The credentials provided are not valid.'});
                 }
             }

@@ -5,7 +5,13 @@ import queryString from 'query-string';
 import PostService from '../services/post.service';
 import { PostCard } from './PostCard';
 
+// Redux
+import { useSelector } from 'react-redux';
+import { selectCurrentUserPreferences } from '../redux/users/currentUserSlice';
+
 const ViewPost = ({ setTitle }) => {
+    const currentUserPreferences = useSelector(selectCurrentUserPreferences);
+
     const [state, setState] = useState({
         commentId: undefined,
         defaultText: 'Loading...',
@@ -42,8 +48,7 @@ const ViewPost = ({ setTitle }) => {
     }, []);
 
     const navigateToStartPage = () => {
-        //## Preferences: Base this off their preferred start page
-        history.push('/profile');
+        history.push(`/${currentUserPreferences?.startPage || 'profile'}`);
     };
 
     return <div className="container-fluid d-flex align-items-center flex-column mt-2">

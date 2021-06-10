@@ -106,9 +106,9 @@ export default class PostService {
             });
 
             if (response.data && response.data.success) {
-                const {posts, total} = response.data;
+                const {posts, total, returnPostType} = response.data;
 
-                return {posts, total};
+                return {posts, total, returnPostType};
             }
         }
         catch (err) {
@@ -120,7 +120,7 @@ export default class PostService {
             }
         }
 
-        return {posts: [], total: 0};
+        return {posts: [], total: 0, postType: Constants.POST_TYPES.ALL};
     }
 
     static async createNewPost(postData, onUploadProgress) {
