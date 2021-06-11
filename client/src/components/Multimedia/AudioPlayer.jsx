@@ -1,6 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
+import debounce from 'lodash/debounce';
 import { isMobile } from 'react-device-detect';
+
+// Redux
+import { useDispatch, useSelector } from 'react-redux';
+import { currentUserPreferencesUpdated, selectCurrentUserPreferences } from '../../redux/users/currentUserSlice';
 
 // Material UI
 import { makeStyles } from '@material-ui/core/styles';
@@ -80,6 +85,7 @@ const useStyles = makeStyles(() => ({
         WebkitAppearance: 'none',
         MozAppearance: 'none',
         appearance: 'none',
+        cursor: 'pointer',
         width: '25%',
         height: '1em',
         background: 'rgb(255,255,255)',
@@ -90,7 +96,6 @@ const useStyles = makeStyles(() => ({
             WebkitAppearance: 'none',
             MozAppearance: 'none',
             appearance: 'none',
-            cursor: 'pointer',
             backgroundColor: 'rgb(0,0,0)',
             borderRadius: '5px',
             borderStyle: 'none',
@@ -104,6 +109,9 @@ export const AudioPlayer = ({sourceFile, thumbnail}) => {
     // State
     const FPS = 30;
     const PROGRESS_DELAY = parseInt(1000 / FPS);
+
+    const dispatch = useDispatch();
+    const currentUserPreferences = useSelector(selectCurrentUserPreferences);
 
     const [state, setState] = useState({
         audio: null,
@@ -120,6 +128,29 @@ export const AudioPlayer = ({sourceFile, thumbnail}) => {
 
     const [touchX, setTouchX] = useState(0);
 
+    // render
+    useEffect(() => {
+        return () => {
+            debouncedUpdateVolumePreference.cancel();
+        }
+    }, []);
+
+    // currentUserPreferences
+    useEffect(() => {
+        if (currentUserPreferences && !state.playedOnce) {
+            let { mediaVolume } = currentUserPreferences;
+
+            let percentVolume = mediaVolume / 100;
+
+            setState(prevState => ({
+                ...prevState,
+                previousVolume: percentVolume,
+                volume: percentVolume
+            }));
+        }
+    }, [currentUserPreferences]);
+    
+    // sourceFile
     useEffect(() => {
         if (sourceFile !== null) {
             const handleAudioEnded = (e) => {
@@ -420,7 +451,20 @@ export const AudioPlayer = ({sourceFile, thumbnail}) => {
 
         state.audio.volume = volume;
         state.audio.muted = muted;
+
+        debouncedUpdateVolumePreference(e);
     };
+
+    const updateVolumePreference = (e) => {
+        let {value} = e.target;
+        let volume = parseFloat(value);
+
+        dispatch(currentUserPreferencesUpdated([{ name: 'mediaVolume', value: Math.round(volume * 100) }]));
+    };
+
+    const debouncedUpdateVolumePreference = useMemo(
+        () => debounce(updateVolumePreference, 500)
+    , []);
 
     return <div className={classes.borderDiv}>
         <div className={classNames(classes.audioThumbnail, { 'disabled': !state.playedOnce })} 

@@ -2290,6 +2290,21 @@ class DatabaseHelper {
                             }
 
                             break;
+                        case 'mediaVolume':
+                            let mediaVolume: number = NaN;
+
+                            if (typeof value === 'string') {
+                                mediaVolume = Number(value);
+                            }
+                            else if (typeof value === 'number') {
+                                mediaVolume = value;
+                            }
+
+                            if (!isNaN(mediaVolume) && mediaVolume >= 0 && mediaVolume <= 100) {
+                                preferenceUpdateAttributes.mediaVolume = mediaVolume;
+                            }
+
+                            break;
                         case 'postAudience':
                             let postAudience: number = NaN;
 

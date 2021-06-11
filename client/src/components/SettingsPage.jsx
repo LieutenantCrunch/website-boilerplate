@@ -1,5 +1,6 @@
-import React, {useEffect, useState, useRef} from 'react';
+import React, {useEffect, useMemo, useState, useRef} from 'react';
 import classNames from 'classnames';
+import debounce from 'lodash/debounce';
 import { usePopper } from 'react-popper';
 import {withRouter} from 'react-router-dom';
 import * as Constants from '../constants/constants';
@@ -18,12 +19,17 @@ import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
 // Material UI
 import { makeStyles, withStyles } from '@material-ui/core/styles';
 import Divider from '@material-ui/core/Divider';
+import MuiGrid from '@material-ui/core/Grid';
 import MuiList from '@material-ui/core/List';
 import MuiListItem from '@material-ui/core/ListItem';
 import MuiListItemText from '@material-ui/core/ListItemText';
+import MuiSlider from '@material-ui/core/Slider';
 import MuiSwitch from '@material-ui/core/Switch';
 import Paper from '@material-ui/core/Paper';
 import Typography from '@material-ui/core/Typography';
+import VolumeOffRoundedIcon from '@material-ui/icons/VolumeOffRounded';
+import VolumeUpRoundedIcon from '@material-ui/icons/VolumeUpRounded';
+import VolumeDownRoundedIcon from '@material-ui/icons/VolumeDownRounded';
 
 const PrimarySwitch = withStyles({
     switchBase: {
@@ -50,6 +56,15 @@ const DangerSwitch = withStyles({
     checked: {},
     track: {}
 })(MuiSwitch);
+
+const PrimarySlider = withStyles({
+    root: {
+        color: 'rgb(11,94,215) !important'
+    },
+    thumb: {
+        backgroundColor: 'currentColor !important'
+    }
+})(MuiSlider);
 
 // Redux
 import { useDispatch, useSelector } from 'react-redux';
@@ -80,7 +95,8 @@ function SettingsPage(props) {
         displayName: '', 
         displayNameError: false,
         isAudienceOpen: false,
-        postAudience: Constants.POST_AUDIENCES.CONNECTIONS
+        postAudience: Constants.POST_AUDIENCES.CONNECTIONS,
+        mediaVolume: 50
     });
 
     const [settingsPageAlert, setSettingsPageAlert] = useState({type: 'info', message: null});
@@ -96,9 +112,13 @@ function SettingsPage(props) {
     });
     const dropdownMenuContainer = useRef();
     
-    // Page
+    // render
     useEffect(() => {
         props.setTitle('Settings');
+
+        return () => {
+            debouncedUpdateVolumePreference.cancel();
+        }
     }, []);
 
     // state.postAudience
@@ -161,11 +181,23 @@ function SettingsPage(props) {
     // currentUserPreferences
     useEffect(() => {
         if (currentUserPreferences) {
-            // Only update the postAudience if we have to
+            let stateUpdates = {};
+
             if (state.postAudience !== currentUserPreferences.postAudience) {
+                stateUpdates.postAudience = currentUserPreferences.postAudience;
+            }
+
+            if (state.mediaVolume !== currentUserPreferences.mediaVolume) {
+                stateUpdates.mediaVolume = currentUserPreferences.mediaVolume;
+            }
+
+            // Only update the state if we have to
+            // This prevents double updates when we first set the state due to interaction
+            // and then an update comes through due to redux updating to the new value
+            if (Object.keys(stateUpdates).length > 0) {
                 setState(prevState => ({
                     ...prevState,
-                    postAudience: currentUserPreferences.postAudience
+                    ...stateUpdates
                 }));
             }
         }
@@ -341,6 +373,23 @@ function SettingsPage(props) {
         }, () => {});
     };
 
+    const updateVolumePreference = (value) => {
+        dispatch(currentUserPreferencesUpdated([{ name: 'mediaVolume', value }]));
+    };
+
+    const debouncedUpdateVolumePreference = useMemo(
+        () => debounce(updateVolumePreference, 500)
+    , []);
+
+    const handleMediaVolumeChange = (e, newValue) => {
+        setState(prevState => ({
+            ...prevState,
+            mediaVolume: newValue
+        }));
+
+        debouncedUpdateVolumePreference(newValue);
+    }
+
     const handleStringPreferenceSelectChange = (e) => {
         const { name, value } = e.target.dataset;
 
@@ -383,6 +432,24 @@ function SettingsPage(props) {
                 postAudience: Constants.POST_AUDIENCES.CONNECTIONS
             }));
         }
+    };
+
+    const handleZeroVolumeClick = (e) => {
+        setState(prevState => ({
+            ...prevState,
+            mediaVolume: 0
+        }));
+
+        updateVolumePreference(0);
+    };
+
+    const handleMaxVolumeClick = (e) => {
+        setState(prevState => ({
+            ...prevState,
+            mediaVolume: 100
+        }));
+
+        updateVolumePreference(100);
     };
 
     return (
@@ -507,6 +574,25 @@ function SettingsPage(props) {
                                     <li><button className="dropdown-item" data-name="feedFilter" data-value="2" type="button" onClick={handleNumberPreferenceSelectChange}>Video Posts</button></li>
                                 </ul>
                             </div>
+                        </MuiListItem>
+                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                            <MuiListItemText 
+                                id="preferences-media-volume"
+                                primary="Default Media Volume"
+                                secondary="When viewing an audio/video post, this is what the volume will default to before played. May not be work on mobile."
+                                style={{width: '100%'}}
+                            />
+                            <MuiGrid container spacing={2} style={{width: '33%'}}>
+                                <MuiGrid item>
+                                    <VolumeDownRoundedIcon style={{cursor: 'pointer' }} onClick={handleZeroVolumeClick} />
+                                </MuiGrid>
+                                <MuiGrid item xs>
+                                    <PrimarySlider value={state.mediaVolume} onChange={handleMediaVolumeChange} aria-labelledby="preferences-media-volume" />
+                                </MuiGrid>
+                                <MuiGrid item>
+                                    <VolumeUpRoundedIcon style={{cursor: 'pointer' }} onClick={handleMaxVolumeClick} />
+                                </MuiGrid>
+                            </MuiGrid>
                         </MuiListItem>
                         <MuiListItem component="div" style={{flexWrap: 'wrap'}}>
                             <MuiListItemText 
