@@ -5,12 +5,11 @@ import * as SocketIO from 'socket.io';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 
+import AuthHelper from './utilities/authHelper';
 import FileHandler from './utilities/fileHandler';
+import { socketCache } from './utilities/socketCache';
 
 import * as ClientConstants from './constants/constants.client';
-import AuthHelper from './utilities/authHelper';
-
-import { socketCache } from './utilities/socketCache';
 
 const LISTEN_PORT: number = 3000;
 

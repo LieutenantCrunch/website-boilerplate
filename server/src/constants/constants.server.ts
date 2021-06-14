@@ -8,7 +8,8 @@ export const CACHE_DURATIONS = Object.freeze({
     USER_BY_ID: 12 * 60 * 60 * 1000, // This will only change if a user is deleted
     USER_BY_PROFILE_NAME: 12 * 60 * 60 * 1000, // This will only change if a user is deleted
     USER_BY_UNIQUE_ID: 12 * 60 * 60 * 1000, // This will only change if a user is deleted
-    USER_BLOCKS: 12 * 60 * 60 * 1000 // This will only change if a user is unblocked
+    USER_BLOCKS: 12 * 60 * 60 * 1000, // This will only change if a user is unblocked
+    USER_PREFERENCE_START_PAGE: 24 * 60 * 60 * 1000 // This will get invalidated if they change it, so it can be long
 });
 
 export const CACHE_KEY_CONNECTION_TYPES_DICT: string = 'db.connectionTypesDict'; // The connection types dictionary used by databaseHelper

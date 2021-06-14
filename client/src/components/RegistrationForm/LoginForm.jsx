@@ -1,6 +1,6 @@
 // https://medium.com/technoetics/create-basic-login-forms-using-react-js-hooks-and-bootstrap-2ae36c15e551
 import React, { useContext, useState, useEffect } from 'react';
-import { withRouter } from 'react-router-dom';
+import { useHistory, withRouter } from 'react-router-dom';
 import classNames from 'classnames';
 import {isMobile} from 'react-device-detect';
 
@@ -12,6 +12,8 @@ import { MESSAGE_BOX_TYPES } from '../Dialogs/MessageBox';
 import { MessageBoxUpdaterContext } from '../../contexts/withMessageBox';
 
 function LoginForm (props) {
+    const history = useHistory();
+
     const [state, setState] = useState({password: ''});
     const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {
         email: '', 
@@ -65,29 +67,27 @@ function LoginForm (props) {
     };
 
     const sendCredentialsToServer = async () => {
-        let results = await AuthService.login(sessionState.email, state.password);
+        let { loginDetails, startPage, statusMessage, success } = await AuthService.login(sessionState.email, state.password);
 
-        if (results.success) {
+        if (success) {
             setStatusMessage(null);
             setSessionState(prevSessionState => ({
                 ...prevSessionState,
                 requestedPasswordReset : false
             }));
 
-            props.setLoginDetails(results.loginDetails);
-            redirectToProfile();
+            props.setLoginDetails(loginDetails);
+
+            // Redirect to their startPage if they have one set, otherwise redirect to their profile
+            history.push(`/${startPage || 'profile'}`);
         }
         else {
-            setStatusMessage(results.statusMessage);
+            setStatusMessage(statusMessage);
         }
-    };
-
-    const redirectToProfile = () => {
-        props.history.push('/profile');
     };
 
     const redirectToRegistration = () => {
-        props.history.push('/register')
+        history.push('/register')
     };
 
     const requestPasswordResetStep1 = () => {
@@ -128,7 +128,7 @@ function LoginForm (props) {
 
     return (
         <>
-            <div className="card col-8 col-md-4 mt-2 align-middle text-center">
+            <div className="card col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mt-2 align-middle text-center">
                 <div className={classNames('card-header', {
                     'd-none': !hasStatusMessage,
                     [`bg-${statusMessageType}`]: true,

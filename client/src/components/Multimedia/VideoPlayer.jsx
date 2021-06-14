@@ -1,6 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
+import debounce from 'lodash/debounce';
 import { isIOS } from 'react-device-detect';
+
+// Redux
+import { useDispatch, useSelector } from 'react-redux';
+import { currentUserPreferencesUpdated, selectCurrentUserPreferences } from '../../redux/users/currentUserSlice';
 
 // Material UI
 import { makeStyles } from '@material-ui/core/styles';
@@ -172,6 +177,9 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
     const borderDiv = useRef(null);
     const videoEl = useRef(null);
 
+    const dispatch = useDispatch();
+    const currentUserPreferences = useSelector(selectCurrentUserPreferences);
+
     const [state, setState] = useState({
         fullScreen: false,
         muted: false,
@@ -187,6 +195,29 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
 
     const [touchX, setTouchX] = useState(0);
 
+    // render
+    useEffect(() => {
+        return () => {
+            debouncedUpdateVolumePreference.cancel();
+        }
+    }, []);
+
+    // currentUserPreferences
+    useEffect(() => {
+        if (currentUserPreferences && !state.playedOnce) {
+            let { mediaVolume } = currentUserPreferences;
+
+            let percentVolume = mediaVolume / 100;
+
+            setState(prevState => ({
+                ...prevState,
+                previousVolume: percentVolume,
+                volume: percentVolume
+            }));
+        }
+    }, [currentUserPreferences]);
+
+    // sourceFile
     useEffect(() => {
         if (sourceFile !== null && videoEl.current) {
             const handleVideoEnded = (e) => {
@@ -237,6 +268,7 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
     const progressDiv = useRef(null);
     const progressScrubberDiv = useRef(null);
 
+    // state.paused
     useEffect(() => {
         if (state.paused) {
             if (state.progressTimer) {
@@ -261,6 +293,7 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
         }
     }, [state.paused]);
 
+    // state.fullScreen
     useEffect(() => {
         const unsetFullscreen = () => {
             setState(prevState => ({
@@ -514,7 +547,20 @@ export const VideoPlayer = ({sourceFile, thumbnail}) => {
 
         videoEl.current.volume = volume;
         videoEl.current.muted = muted;
+
+        debouncedUpdateVolumePreference(e);
     };
+
+    const updateVolumePreference = (e) => {
+        let {value} = e.target;
+        let volume = parseFloat(value);
+
+        dispatch(currentUserPreferencesUpdated([{ name: 'mediaVolume', value: Math.round(volume * 100) }]));
+    };
+
+    const debouncedUpdateVolumePreference = useMemo(
+        () => debounce(updateVolumePreference, 500)
+    , []);
 
     const handleFullScreenClick = async (e) => {
         let el = borderDiv.current;

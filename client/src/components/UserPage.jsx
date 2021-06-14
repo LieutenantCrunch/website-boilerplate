@@ -6,10 +6,15 @@ import ProfilePicture from './ProfilePicture';
 import ConnectionButton from './FormControls/ConnectionButton';
 import { PostCard } from './PostCard';
 
+// Contexts
 import { LoggedInContext } from '../contexts/loggedIn';
 
+// Services
 import UserService from '../services/user.service';
 import PostService from '../services/post.service';
+
+// Utilities
+import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
 
 // Redux
 import { useDispatch } from 'react-redux';
@@ -80,9 +85,7 @@ function User (props) {
         let foundIndex = posts.findIndex(post => post.uniqueId === uniqueId);
 
         if (foundIndex > -1) {
-            let newPosts = [...posts];
-
-            newPosts.splice(foundIndex, 1);
+            let newPosts = newArrayWithItemRemoved(posts, foundIndex);
 
             setState(prevState => ({
                 ...prevState,

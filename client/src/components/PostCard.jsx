@@ -3,8 +3,11 @@ import { isMobile } from 'react-device-detect';
 import Lightbox from 'react-image-lightbox';
 import * as Constants from '../constants/constants';
 import PostService from '../services/post.service';
-import { adjustGUIDDashes } from '../utilities/TextUtilities';
 import { MESSAGE_BOX_TYPES } from './Dialogs/MessageBox';
+
+// Utilities
+import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
+import { adjustGUIDDashes } from '../utilities/TextUtilities';
 
 // Contexts
 import { LoggedInContext } from '../contexts/loggedIn';
@@ -357,9 +360,7 @@ export const PostCard = ({ post, fetchDate, focusCommentId, deletePostCB } ) => 
         let foundIndex = comments.findIndex(comment => comment.uniqueId === uniqueId);
 
         if (foundIndex > -1) {
-            let newComments = [...comments];
-
-            newComments.splice(foundIndex, 1);
+            let newComments = newArrayWithItemRemoved(comments, foundIndex);
 
             setState(prevState => ({
                 ...prevState,

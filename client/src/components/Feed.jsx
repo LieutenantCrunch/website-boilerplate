@@ -6,7 +6,16 @@ import * as Constants from '../constants/constants';
 import { useHistoryState } from '../hooks/hooks';
 import { PostCard } from './PostCard';
 
+// Redux
+import { useSelector } from 'react-redux';
+import { selectCurrentUserPreferences } from '../redux/users/currentUserSlice';
+
+// Utilities
+import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
+
 function Feed(props) {
+    const currentUserPreferences = useSelector(selectCurrentUserPreferences);
+
     const [state, setState] = useState({
         fetchDate: null,
         pageNumber: 0,
@@ -14,21 +23,32 @@ function Feed(props) {
         total: 0
     });
 
-    const [postType, setPostType] = useHistoryState('postType', Constants.POST_TYPES.ALL);
+    const [postType, setPostType] = useHistoryState('postType', -1);
 
     useEffect(() => {
+        // Set the page title
+        props.setTitle('My Feed');
+
+        // Set the initial fetch date for when the more posts button is clicked
         let fetchDate = Date.now();
 
-        props.setTitle('My Feed');
-        props.setHeaderMiddleEl(getFeedFilter());
-
-        PostService.getFeed(state.pageNumber, fetchDate, postType).then(({ posts, total }) => {
+        // Fetch the posts, use postType, which will be set to -1 if it has not been initialized
+        // If it has been initialized, it should return a proper value
+        // A value of -1 will get whatever the user's preference is
+        PostService.getFeed(state.pageNumber, fetchDate, postType).then(({ posts, total, returnPostType }) => {
             setState(prevState => ({
                 ...prevState,
                 posts,
                 total,
                 fetchDate
             }));
+
+            // If the postType was -1, we can now set it to what was returned
+            if (postType === -1) {
+                setPostType(returnPostType);
+            }
+
+            props.setHeaderMiddleEl(getFeedFilter(returnPostType));
         }).catch(err => console.error(err));
 
         return () => {
@@ -41,30 +61,27 @@ function Feed(props) {
         }
     }, []);
 
-    useEffect(() => {
-        props.setHeaderMiddleEl(getFeedFilter());
-    }, [postType])
-
     const updatePostType = (newPostType) => {
         let fetchDate = Date.now();
 
-        PostService.getFeed(0, fetchDate, newPostType).then(response => {
+        setPostType(newPostType);
+        props.setHeaderMiddleEl(getFeedFilter(newPostType));
+
+        PostService.getFeed(0, fetchDate, newPostType).then(({posts, total}) => {
             setState(prevState => ({
                 ...prevState,
                 fetchDate,
                 pageNumber: 0,
-                posts: response.posts,
-                total: response.total
+                posts: posts,
+                total: total
             }));
-
-            setPostType(newPostType);
         }).catch(err => console.error(err));
     }
 
-    const getFeedFilter = () => {
+    const getFeedFilter = (selectedPostType) => {
         return <div className="dropdown">
             <button className="btn btn-link border-0 dropdown-toggle text-decoration-none" style={{color: 'rgb(255,255,255)'}} type="button" id="dropdownMenuButton1" data-bs-toggle="dropdown" aria-expanded="false">
-                {Constants.POST_TYPES_NAMES[postType]}
+                {`${Constants.POST_TYPES_NAMES[selectedPostType]} Posts`}
             </button>
             <ul className="dropdown-menu" aria-labelledby="dropdownMenuButton1">
                 <li><button className="dropdown-item" type="button" onClick={e => updatePostType(Constants.POST_TYPES.ALL)}>All Posts</button></li>
@@ -86,9 +103,7 @@ function Feed(props) {
         let foundIndex = posts.findIndex(post => post.uniqueId === uniqueId);
 
         if (foundIndex > -1) {
-            let newPosts = [...posts];
-
-            newPosts.splice(foundIndex, 1);
+            let newPosts = newArrayWithItemRemoved(posts, foundIndex);
 
             setState(prevState => ({
                 ...prevState,

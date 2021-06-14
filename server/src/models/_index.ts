@@ -18,6 +18,7 @@ import { UserBlockFactory } from '../models/UserBlock';
 import { UserConnectionFactory } from '../models/UserConnection';
 import { UserConnectionTypeFactory } from '../models/UserConnectionType';
 import { UserJWTFactory } from '../models/UserJWT';
+import { UserPreferencesFactory } from './UserPreferences';
 
 // Junction Tables
 import { PostCustomAudienceFactory } from '../models/PostCustomAudience';
@@ -68,6 +69,7 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         UserConnectionType: cache.init(UserConnectionTypeFactory(sequelize)),
         UserConnectionTypeJunction: UserConnectionTypeJunctionFactory(sequelize),
         UserJWT: UserJWTFactory(sequelize),
+        UserPreferences: UserPreferencesFactory(sequelize),
         UserRoleJunction: UserRoleJunctionFactory(sequelize),
         Views: {
             FeedView: FeedViewFactory(sequelize),

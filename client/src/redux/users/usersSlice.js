@@ -1,7 +1,11 @@
 import { createSlice, createEntityAdapter } from '@reduxjs/toolkit';
+import { currentUserAllowPublicAccessUpdated, currentUserPreferencesUpdated } from './currentUserSlice';
 import { fetchOutgoingConnections } from '../connections/outgoingConnectionsSlice';
 import { fetchIncomingConnections } from '../connections/incomingConnectionsSlice';
+import UserService from '../../services/user.service';
 
+const currentUserAllowPublicAccessUpdatedType = currentUserAllowPublicAccessUpdated.toString();
+const currentUserPreferencesUpdatedType = currentUserPreferencesUpdated.toString();
 const fetchOutgoingConnectionsType = fetchOutgoingConnections.fulfilled.toString();
 const fetchIncomingConnectionsType = fetchIncomingConnections.fulfilled.toString();
 
@@ -39,6 +43,21 @@ export const usersMiddleware = storeApi => next => action => {
     }
     else {
         switch (action.type) {
+            case currentUserAllowPublicAccessUpdatedType: {
+                let name = 'allowPublicAccess';
+                let value = action.payload;
+
+                UserService.updateUserPreferences([{name, value}]);
+
+                break;
+            }
+            case currentUserPreferencesUpdatedType: {
+                let preferences = action.payload;
+
+                UserService.updateUserPreferences(preferences);
+
+                break;
+            }
             case fetchOutgoingConnectionsType:
             case fetchIncomingConnectionsType: {
                 let users = action.payload;

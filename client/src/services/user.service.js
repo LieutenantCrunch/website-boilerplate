@@ -18,17 +18,28 @@ export default class UserService {
         }
     }
 
-    static async setDisplayName(displayName) {
-        try
-        {
-            let payload = {displayName};
+    static async getConnectionTypeDict() {
+        try {
+            if (this.getConnectionTypeDictCancel !== undefined) {
+                this.getConnectionTypeDictCancel();
+            }
 
-            return await axiosApi.post(Constants.API_PATH_USERS + 'setDisplayName', payload);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + 'getConnectionTypeDict', {
+                cancelToken: new CancelToken(c => this.getConnectionTypeDictCancel = c)
+            });
+
+            if (response.data && response.data.success) {
+                return response.data.connectionTypeDict;
+            }
+            else {
+                console.error(`Failed to get connection type dictionary`);
+            }
         }
-        catch(err)
-        {
-            return null;
+        catch (err) {
+            console.error(`Error getting connection type dictionary:\n${err.message}`);
         }
+
+        return {};
     }
 
     static async getCurrentDetails() {
@@ -52,17 +63,47 @@ export default class UserService {
         return null;
     }
 
-    static async getUserDetails(uniqueId) {
+    static async getIncomingConnections(uniqueId) {
         try {
-            let queryString = encodeURI(`uniqueId=${uniqueId}`);
-            let response = await axiosApi.get(Constants.API_PATH_USERS + `getUserDetails?${queryString}`);
+            let response = null;
+
+            if (uniqueId) {
+                let queryString = encodeURI(`uniqueId=${uniqueId}`);
+                response = await axiosApi.get(Constants.API_PATH_USERS + `getIncomingConnections?${queryString}`);
+            }
+            else {
+                response = await axiosApi.get(Constants.API_PATH_USERS + `getIncomingConnections`);
+            }
 
             if (response.data && response.data.success) {
-                return response.data.userDetails;
+                return response.data.connections;
             }
         }
         catch (err) {
-            console.error(`Error getting user details for ${uniqueId}:\n${err.message}`);
+            console.error(`Error getting connections for user ${uniqueId}:\n${err.message}`);
+        }
+
+        return null;
+    }
+
+    static async getOutgoingConnections(uniqueId) {
+        try {
+            let response = null;
+
+            if (uniqueId) {
+                let queryString = encodeURI(`uniqueId=${uniqueId}`);
+                response = await axiosApi.get(Constants.API_PATH_USERS + `getOutgoingConnections?${queryString}`);
+            }
+            else {
+                response = await axiosApi.get(Constants.API_PATH_USERS + `getOutgoingConnections`);
+            }
+
+            if (response.data && response.data.success) {
+                return response.data.connections;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting connections for user ${uniqueId}:\n${err.message}`);
         }
 
         return null;
@@ -90,6 +131,39 @@ export default class UserService {
         {
             throw new Error(`Error looking up profile for ${profileName}:\n${err.message}`);
         }
+    }
+
+    static async getUserDetails(uniqueId) {
+        try {
+            let queryString = encodeURI(`uniqueId=${uniqueId}`);
+            let response = await axiosApi.get(Constants.API_PATH_USERS + `getUserDetails?${queryString}`);
+
+            if (response.data && response.data.success) {
+                return response.data.userDetails;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting user details for ${uniqueId}:\n${err.message}`);
+        }
+
+        return null;
+    }
+
+    static async removeOutgoingConnection(connectedUserUniqueId) {
+        try {
+            let payload = {connectedUserUniqueId};
+            
+            let response = await axiosApi.post(Constants.API_PATH_USERS + 'removeConnection', payload);
+
+            if (response.data?.success && response.data?.results) {
+                return response.data.results;
+            }
+        }
+        catch (err) {
+            console.error(`Error removing connection:\n${err.message}`);
+        }
+
+        return {};
     }
 
     static async searchDisplayNameAndIndex(value, pageNumber, excludeConnections) {
@@ -147,88 +221,29 @@ export default class UserService {
         return results;
     }
 
-    static async verifyDisplayName(userUniqueID, displayName) {
-        try {
-            let payload = {userUniqueID, displayName};
-            let results = await axiosApi.post(Constants.API_PATH_USERS + 'verifyDisplayName', payload);
+    static async setDisplayName(displayName) {
+        try
+        {
+            let payload = {displayName};
 
-            return results.data;
+            return await axiosApi.post(Constants.API_PATH_USERS + 'setDisplayName', payload);
         }
-        catch (err) {
-            console.error(err.message);
-
-            return {success: false, message: `An exception occurred while making the api request for verifying the display name ${displayName} for the user with unique id: ${userUniqueID}\n${err.message}`};
+        catch(err)
+        {
+            return null;
         }
     }
 
-    static async getIncomingConnections(uniqueId) {
-        try {
-            let response = null;
+    static async unblockUser(unblockUserUniqueId) {
+        try
+        {
+            let payload = { unblockUserUniqueId };
 
-            if (uniqueId) {
-                let queryString = encodeURI(`uniqueId=${uniqueId}`);
-                response = await axiosApi.get(Constants.API_PATH_USERS + `getIncomingConnections?${queryString}`);
-            }
-            else {
-                response = await axiosApi.get(Constants.API_PATH_USERS + `getIncomingConnections`);
-            }
-
-            if (response.data && response.data.success) {
-                return response.data.connections;
-            }
+            return await axiosApi.post(Constants.API_PATH_USERS + 'unblockUser', payload);
         }
         catch (err) {
-            console.error(`Error getting connections for user ${uniqueId}:\n${err.message}`);
+            return { success: false };
         }
-
-        return null;
-    }
-
-    static async getOutgoingConnections(uniqueId) {
-        try {
-            let response = null;
-
-            if (uniqueId) {
-                let queryString = encodeURI(`uniqueId=${uniqueId}`);
-                response = await axiosApi.get(Constants.API_PATH_USERS + `getOutgoingConnections?${queryString}`);
-            }
-            else {
-                response = await axiosApi.get(Constants.API_PATH_USERS + `getOutgoingConnections`);
-            }
-
-            if (response.data && response.data.success) {
-                return response.data.connections;
-            }
-        }
-        catch (err) {
-            console.error(`Error getting connections for user ${uniqueId}:\n${err.message}`);
-        }
-
-        return null;
-    }
-
-    static async getConnectionTypeDict() {
-        try {
-            if (this.getConnectionTypeDictCancel !== undefined) {
-                this.getConnectionTypeDictCancel();
-            }
-
-            let response = await axiosApi.get(Constants.API_PATH_USERS + 'getConnectionTypeDict', {
-                cancelToken: new CancelToken(c => this.getConnectionTypeDictCancel = c)
-            });
-
-            if (response.data && response.data.success) {
-                return response.data.connectionTypeDict;
-            }
-            else {
-                console.error(`Failed to get connection type dictionary`);
-            }
-        }
-        catch (err) {
-            console.error(`Error getting connection type dictionary:\n${err.message}`);
-        }
-
-        return {};
     }
 
     static async updateConnection(connection) {
@@ -249,32 +264,33 @@ export default class UserService {
         return null;
     }
 
-    static async removeOutgoingConnection(connectedUserUniqueId) {
+    static async updateUserPreferences(preferences) {
         try {
-            let payload = {connectedUserUniqueId};
-            
-            let response = await axiosApi.post(Constants.API_PATH_USERS + 'removeConnection', payload);
+            let payload = { preferences };
+            let response = await axiosApi.post(Constants.API_PATH_USERS + 'updateUserPreferences', payload);
 
-            if (response.data?.success && response.data?.results) {
-                return response.data.results;
+            if (response.data) {
+                return response.data.success || false;
             }
         }
         catch (err) {
-            console.error(`Error removing connection:\n${err.message}`);
+            console.error(`Error updating preference ${name} to ${value}:\n${err.message}`);
         }
 
-        return {};
+        return false;
     }
+    
+    static async verifyDisplayName(userUniqueID, displayName) {
+        try {
+            let payload = {userUniqueID, displayName};
+            let results = await axiosApi.post(Constants.API_PATH_USERS + 'verifyDisplayName', payload);
 
-    static async unblockUser(unblockUserUniqueId) {
-        try
-        {
-            let payload = { unblockUserUniqueId };
-
-            return await axiosApi.post(Constants.API_PATH_USERS + 'unblockUser', payload);
+            return results.data;
         }
         catch (err) {
-            return { success: false };
+            console.error(err.message);
+
+            return {success: false, message: `An exception occurred while making the api request for verifying the display name ${displayName} for the user with unique id: ${userUniqueID}\n${err.message}`};
         }
     }
 };

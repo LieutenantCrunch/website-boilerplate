@@ -1,4 +1,4 @@
-import { DataTypes, Model, ModelCtor, Optional, Sequelize, HasManyGetAssociationsMixin, HasManyAddAssociationMixin, HasManyRemoveAssociationMixin, BelongsToManyGetAssociationsMixin, BelongsToManyAddAssociationMixin, BelongsToManyAddAssociationsMixin, BelongsToManyRemoveAssociationMixin, BelongsToManyRemoveAssociationsMixin, HasManyCreateAssociationMixin, HasManyRemoveAssociationsMixin, HasManyAddAssociationsMixin, BelongsToManyHasAssociationMixin } from 'sequelize';
+import { DataTypes, Model, ModelCtor, Optional, Sequelize, HasManyGetAssociationsMixin, HasManyAddAssociationMixin, HasManyRemoveAssociationMixin, BelongsToManyGetAssociationsMixin, BelongsToManyAddAssociationMixin, BelongsToManyAddAssociationsMixin, BelongsToManyRemoveAssociationMixin, BelongsToManyRemoveAssociationsMixin, HasManyCreateAssociationMixin, HasManyRemoveAssociationsMixin, HasManyAddAssociationsMixin, BelongsToManyHasAssociationMixin, HasOneGetAssociationMixin } from 'sequelize';
 import { SequelizeAttributes } from '../typings/SequelizeAttributes';
 import { DisplayNameInstance } from './DisplayName';
 import { PasswordResetTokenInstance } from './PasswordResetToken';
@@ -9,6 +9,7 @@ import { ProfilePictureInstance } from './ProfilePicture';
 import { RoleInstance } from './Role';
 import { UserConnectionInstance } from './UserConnection';
 import { UserJWTInstance } from './UserJWT';
+import { UserPreferencesInstance } from './UserPreferences';
 
 export interface UserAttributes {
     id?: number;
@@ -30,6 +31,7 @@ export interface UserAttributes {
     postNotifications?: PostNotificationInstance[];
     profilePictures?: ProfilePictureInstance[];
     roles?: RoleInstance[];
+    userPreferences?: UserPreferencesInstance;
     triggeredPostNotifications?: PostNotificationInstance[];
 };
 
@@ -86,6 +88,8 @@ export interface UserInstance extends Model<UserAttributes, UserCreationAttribut
     addRoles: BelongsToManyAddAssociationsMixin<RoleInstance, RoleInstance['id']>;
     removeRole: BelongsToManyRemoveAssociationMixin<RoleInstance, RoleInstance['id']>;
     removeRoles: BelongsToManyRemoveAssociationsMixin<RoleInstance, RoleInstance['id']>;
+
+    getUserPreferences: HasOneGetAssociationMixin<UserPreferencesInstance>;
 
     addTriggeredPostNotification: HasManyAddAssociationMixin<PostNotificationInstance, PostNotificationInstance['id']>;
     getTriggeredPostNotifications: HasManyGetAssociationsMixin<PostNotificationInstance>;
@@ -232,6 +236,14 @@ export const UserFactory = (sequelize: Sequelize): ModelCtor<UserInstance> => {
         User.belongsToMany(models.Role, {
             as: 'roles',
             through: models.UserRoleJunction,
+            foreignKey: {
+                name: 'registeredUserId',
+                field: 'registered_user_id'
+            }
+        });
+
+        User.hasOne(models.UserPreferences, {
+            as: 'userPreferences',
             foreignKey: {
                 name: 'registeredUserId',
                 field: 'registered_user_id'

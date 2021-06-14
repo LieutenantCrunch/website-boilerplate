@@ -14,6 +14,17 @@ declare namespace WebsiteBoilerplate {
         roles?: string[];
         uniqueId: string;
         hasUnseenPostNotifications?: Boolean;
+        preferences?: UserPreferences;
+    }
+
+    export interface UserPreferences {
+        customAudience: string | undefined;
+        feedFilter: number;
+        mediaVolume: number;
+        postAudience: number;
+        postType: number;
+        showMyPostsInFeed: Boolean;
+        startPage: string | undefined;
     }
 
     export interface UserSearchResults {
