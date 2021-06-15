@@ -1,17 +1,18 @@
-import * as http from 'http';
-import path from 'path';
-import express, {Request, Response, NextFunction} from 'express';
-import * as SocketIO from 'socket.io';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import express, {Request, Response, NextFunction} from 'express';
+import * as http from 'http';
+import path from 'path';
+import * as SocketIO from 'socket.io';
+
+import * as ClientConstants from './constants/constants.client';
+import * as ServerConstants from './constants/constants.server';
+
+import { models } from './models/_index';
 
 import AuthHelper from './utilities/authHelper';
 import FileHandler from './utilities/fileHandler';
 import { socketCache } from './utilities/socketCache';
-
-import * as ClientConstants from './constants/constants.client';
-
-const LISTEN_PORT: number = 3000;
 
 const app: express.Application = express();
 const server: http.Server = http.createServer(app);
@@ -52,8 +53,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     );
     next();
 });
-
-
 
 import {apiRouter} from './routers/api';
 app.use('/api', apiRouter);
@@ -103,6 +102,14 @@ io.on('connection', (socket: SocketIO.Socket) => {
     });
 });
 
-server.listen(LISTEN_PORT, () => {
-    console.log(`Listening on http://localhost:${LISTEN_PORT}`);
+models.sequelize.authenticate().then(() => {
+    console.log(`Successfully connected to database via Sequelize.`);
+
+    // Don't start listening unless we have a successful database connection
+    server.listen(ServerConstants.LISTEN_PORT, () => {
+        console.log(`Listening on http://localhost:${ServerConstants.LISTEN_PORT}`);
+    });
+}).catch((err: Error) => {
+    console.error(`Unable to connect to the database: ${err.message}`);
+    process.exit(1);
 });

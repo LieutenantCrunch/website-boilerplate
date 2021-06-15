@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 
 import AuthHelper from '../../utilities/authHelper';
-import { databaseHelper } from '../../utilities/databaseHelper';
+import { dbMethods } from '../../database/dbMethods';
 import * as ClientConstants from '../../constants/constants.client';
 import * as ServerConstants from '../../constants/constants.server';
 
@@ -26,7 +26,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
 
             if (req.body.email) {
                 let email: string = req.body.email;
-                let userExists: Boolean = await databaseHelper.userExistsForEmail(email);
+                let userExists: Boolean = await dbMethods.Users.Searches.userExistsForEmail(email);
 
                 if (userExists) {
                     canContinue = false;
@@ -50,7 +50,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
             if (canContinue) {
                 if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
                     // TODO: Validate password strength
-                    let registerResults: {id: string | null, success: Boolean} = await databaseHelper.registerNewUser(req.body.email, req.body.displayName, req.body.profileName, req.body.password);
+                    let registerResults: {id: string | null, success: Boolean} = await dbMethods.Users.registerNewUser(req.body.email, req.body.displayName, req.body.profileName, req.body.password);
                     
                     if (registerResults.success) {
                         res.status(200).json({success: true, message: 'Registration success! You can now log in.'});
@@ -71,7 +71,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
         }
         else {
             if (req.body.email && req.body.password) {
-                let uniqueId: string | null = await databaseHelper.validateCredentials(req.body.email, req.body.password);
+                let uniqueId: string | null = await dbMethods.Users.Authorization.validateCredentials(req.body.email, req.body.password);
 
                 if (uniqueId) {
                     let expirationDate: Date = new Date(Date.now()).addDays(ServerConstants.JWT_EXPIRATION_DAYS);
@@ -81,18 +81,18 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
 
                     if (req.authToken) { // Scenario: Maybe they lost their client token but not their cookie, so they're trying to log in again, just extend the life of their current cookie
                         authToken = req.authToken;
-                        jwtResults = await databaseHelper.extendJWTForUser(uniqueId, {jti: req.jti!, expirationDate})
+                        jwtResults = await dbMethods.Users.Authorization.extendJWTForUser(uniqueId, {jti: req.jti!, expirationDate})
                     }
                     else {
                         let secret: string = await AuthHelper.getJWTSecret();
                         let jti: string = uuidv4();
                         authToken = jwt.sign({id: uniqueId}, secret, {expiresIn: (60 * 60 * 24 * ServerConstants.JWT_EXPIRATION_DAYS), jwtid: jti}); /* Could pass in options on the third parameter */
 
-                        jwtResults = await databaseHelper.addJWTToUser(uniqueId, {jti, expirationDate})
+                        jwtResults = await dbMethods.Users.Authorization.addJWTToUser(uniqueId, {jti, expirationDate})
                     }
 
                     if (jwtResults.success) {
-                        let startPage: string | undefined = await databaseHelper.getStartPageForUser(uniqueId);
+                        let startPage: string | undefined = await dbMethods.Users.Fields.getStartPageForUser(uniqueId);
 
                         res.status(200)
                             .cookie('authToken', authToken, {
@@ -126,13 +126,13 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
     case 'logout':
         if (req.userId && req.jti) {
             if (req.body.fromHere && req.body.fromOtherLocations) { // Everywhere - Here and Everywhere Else
-                await databaseHelper.invalidateJWTsForUser(req.userId, ServerConstants.INVALIDATE_TOKEN_MODE.ALL, req.jti); 
+                await dbMethods.Users.Authorization.invalidateJWTsForUser(req.userId, ServerConstants.INVALIDATE_TOKEN_MODE.ALL, req.jti); 
             }
             else if (!req.body.fromHere && req.body.fromOtherLocations) { // Everywhere Else - Not Here but Everywhere Else
-                await databaseHelper.invalidateJWTsForUser(req.userId, ServerConstants.INVALIDATE_TOKEN_MODE.OTHERS, req.jti);
+                await dbMethods.Users.Authorization.invalidateJWTsForUser(req.userId, ServerConstants.INVALIDATE_TOKEN_MODE.OTHERS, req.jti);
             }
             else { // Only Here
-                await databaseHelper.invalidateJWTsForUser(req.userId, ServerConstants.INVALIDATE_TOKEN_MODE.SPECIFIC, req.jti);
+                await dbMethods.Users.Authorization.invalidateJWTsForUser(req.userId, ServerConstants.INVALIDATE_TOKEN_MODE.SPECIFIC, req.jti);
             }
         }
 
@@ -142,7 +142,7 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
         break;
     case 'reset-password-request':
         if (req.body.email) {
-            let tokenResults: {token: string | null, errorCode: number} = await databaseHelper.generatePasswordResetToken(req.body.email);
+            let tokenResults: {token: string | null, errorCode: number} = await dbMethods.Users.Authorization.generatePasswordResetToken(req.body.email);
             let success: Boolean = true;
             let message: string = 'If you are a valid user you will be sent a password reset email shortly. Please check your spam/junk folder if you do not see it soon.';
 
@@ -188,14 +188,14 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
         // Make them re-enter their email address, a new password, and confirm the new password
         if (req.body.token && req.body.email) {
             // Verify email and token and that they match
-            let tokenIsValid: Boolean = await databaseHelper.validatePasswordResetToken(req.body.token, req.body.email);
+            let tokenIsValid: Boolean = await dbMethods.Users.Authorization.validatePasswordResetToken(req.body.token, req.body.email);
 
             if (tokenIsValid) {
                 if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
                     // Update their password with the new one
-                    if (await databaseHelper.updateCredentials(req.body.email, req.body.password)) {
+                    if (await dbMethods.Users.Authorization.updateCredentials(req.body.email, req.body.password)) {
                         // Invalidate all of their existing JWTs
-                        await databaseHelper.invalidateJWTsForUser('', ServerConstants.INVALIDATE_TOKEN_MODE.ALL);
+                        await dbMethods.Users.Authorization.invalidateJWTsForUser('', ServerConstants.INVALIDATE_TOKEN_MODE.ALL);
 
                         // Clear their cookie if they have one and send them back to the login
                         res.status(200)

@@ -1,12 +1,10 @@
 import express, {Request, Response, Router} from 'express';
-import path from 'path';
 
+import { dbMethods } from '../../database/dbMethods';
 import AuthHelper from '../../utilities/authHelper';
 import PostUploadHelper from '../../utilities/postUploadHelper';
-import { databaseHelper } from '../../utilities/databaseHelper';
-import { adjustGUIDDashes, dateFromInput } from '../../utilities/utilityFunctions';
+import { dateFromInput } from '../../utilities/utilityFunctions';
 import * as ClientConstants from '../../constants/constants.client';
-import { generateAudioThumbnail, generateVideoThumbnail } from '../../utilities/ffmpegHelper';
 import FileHandler from '../../utilities/fileHandler';
 import { apiPostsPublicRouter } from './posts/public';
 
@@ -32,7 +30,7 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
 
                 }
 
-                let {posts, total, returnPostType} : {posts: WebsiteBoilerplate.Post[], total: number, returnPostType: number} = await databaseHelper.getFeed(req.userId, postType, endDate, pageNumber);
+                let {posts, total, returnPostType} : {posts: WebsiteBoilerplate.Post[], total: number, returnPostType: number} = await dbMethods.Posts.getFeed(req.userId, postType, endDate, pageNumber);
 
                 return res.status(200).json({success: true, posts, total, returnPostType});
             }
@@ -56,7 +54,7 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
 
                 }
 
-                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsByUser(req.userId, req.userId, undefined, null, endDate, pageNumber);
+                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await dbMethods.Posts.getPostsByUser(req.userId, req.userId, undefined, null, endDate, pageNumber);
 
                 return res.status(200).json({success: true, posts, total});
             }
@@ -82,7 +80,7 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
                 }
 
                 if (postUniqueId) {
-                    let {comments, total}: {comments: WebsiteBoilerplate.PostComment[], total: number} = await databaseHelper.getCommentsForPost(req.userId, postUniqueId, endDate, pageNumber);
+                    let {comments, total}: {comments: WebsiteBoilerplate.PostComment[], total: number} = await dbMethods.Posts.Comments.getCommentsForPost(req.userId, postUniqueId, endDate, pageNumber);
 
                     return res.status(200).json({success: true, comments, total});
                 }
@@ -99,7 +97,7 @@ apiPostsRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request
     case 'getPostNotifications':
         try {
             if (req.userId !== undefined) {
-                let notifications: WebsiteBoilerplate.PostNotification[] = await databaseHelper.getPostNotifications(req.userId);
+                let notifications: WebsiteBoilerplate.PostNotification[] = await dbMethods.Posts.Notifications.getPostNotifications(req.userId);
 
                 return res.status(200).json({success: true, notifications});
             }
@@ -160,7 +158,7 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                     }
                 }
 
-                let {newPost, postId}: {newPost: WebsiteBoilerplate.Post | undefined, postId: number | undefined} = await databaseHelper.addNewPost(req.userId, postType, postTitle, postText, audience, customAudience, postFiles);
+                let {newPost, postId}: {newPost: WebsiteBoilerplate.Post | undefined, postId: number | undefined} = await dbMethods.Posts.addNewPost(req.userId, postType, postTitle, postText, audience, customAudience, postFiles);
 
                 if (newPost && postId) {
                     if (avFile) {
@@ -183,7 +181,7 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                 let { postUniqueId, commentText, parentCommentUniqueId}: { postUniqueId: string | undefined, commentText: string | undefined, parentCommentUniqueId: string | undefined} = req.body;
 
                 if (postUniqueId && commentText && commentText.length <= 500) {
-                    let newComment: WebsiteBoilerplate.PostComment | undefined = await databaseHelper.addNewPostComment(req.userId, postUniqueId, commentText, parentCommentUniqueId);
+                    let newComment: WebsiteBoilerplate.PostComment | undefined = await dbMethods.Posts.Comments.addNewPostComment(req.userId, postUniqueId, commentText, parentCommentUniqueId);
 
                     if (newComment) {
                         return res.status(200).json({success: true, newComment});
@@ -204,7 +202,7 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                 let { uniqueId }: { uniqueId: string | undefined } = req.body;
 
                 if (uniqueId) {
-                    let success: Boolean = await databaseHelper.deletePost(req.userId, uniqueId);
+                    let success: Boolean = await dbMethods.Posts.deletePost(req.userId, uniqueId);
 
                     return res.status(200).json({success});
                 }
@@ -223,7 +221,7 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                 let { uniqueId }: { uniqueId: string | undefined } = req.body;
 
                 if (uniqueId) {
-                    let success: Boolean = await databaseHelper.deletePostComment(req.userId, uniqueId);
+                    let success: Boolean = await dbMethods.Posts.Comments.deletePostComment(req.userId, uniqueId);
 
                     return res.status(200).json({success});
                 }
@@ -254,7 +252,7 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                 }
 
                 if (postId) {
-                    databaseHelper.markPostNotificationsAsRead(req.userId, postId, endDate);
+                    dbMethods.Posts.Notifications.markPostNotificationsAsRead(req.userId, postId, endDate);
 
                     return res.status(200).json({success: true});
                 }
@@ -284,7 +282,7 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                     }
                 }
 
-                databaseHelper.markAllPostNotificationsAsSeen(req.userId, endDate);
+                dbMethods.Posts.Notifications.markAllPostNotificationsAsSeen(req.userId, endDate);
 
                 return res.status(200).json({success: true});
             }
@@ -314,7 +312,7 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                 }
 
                 if (postId) {
-                    databaseHelper.removePostNotifications(req.userId, postId, endDate);
+                    dbMethods.Posts.Notifications.removePostNotifications(req.userId, postId, endDate);
 
                     return res.status(200).json({success: true});
                 }
@@ -345,7 +343,7 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                 }
 
                 if (endDate) {
-                    databaseHelper.removeAllPostNotifications(req.userId, endDate);
+                    dbMethods.Posts.Notifications.removeAllPostNotifications(req.userId, endDate);
 
                     return res.status(200).json({success: true});
                 }

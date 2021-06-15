@@ -52,7 +52,7 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         UserConnectionType: { ttl: ServerConstants.CACHE_DURATIONS.CONNECTION_TYPES }
     });
 
-    const db: DbInterface = {
+    const models: DbInterface = {
         sequelize,
         DisplayName: DisplayNameFactory(sequelize),
         PasswordResetToken: PasswordResetTokenFactory(sequelize),
@@ -77,19 +77,19 @@ const createModels = (sequelizeConfig: any): DbInterface => {
         }
     };
 
-    Object.values(db).forEach((model: any) => {
+    Object.values(models).forEach((model: any) => {
         if (model.associate) {
-            model.associate(db.sequelize.models);
+            model.associate(models.sequelize.models);
         }
     });
 
-    Object.values(db.Views).forEach((model: any) => {
+    Object.values(models.Views).forEach((model: any) => {
         if (model.associate) {
-            model.associate(db.sequelize.models);
+            model.associate(models.sequelize.models);
         }
     });
 
-    return db;
+    return models;
 };
 
-export const db = createModels(sequelizeConfig);
+export const models = createModels(sequelizeConfig);

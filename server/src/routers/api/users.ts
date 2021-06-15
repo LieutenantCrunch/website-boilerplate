@@ -1,6 +1,6 @@
 import express, {Request, Response, Router, NextFunction} from 'express';
 
-import { databaseHelper } from '../../utilities/databaseHelper';
+import { dbMethods } from '../../database/dbMethods';
 import AuthHelper from '../../utilities/authHelper';
 import {apiUserPFPRouter} from './users/pfp';
 import {apiUserPublicRouter} from './users/public';
@@ -15,11 +15,7 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
     {
     case 'currentDisplayName':
         if (req.userId) {
-            if (databaseHelper === undefined || databaseHelper === null) {
-                res.send('No database connection found');
-            }
-
-            const displayName: string | null = await databaseHelper.getUserDisplayName(req.userId);
+            const displayName: string | null = await dbMethods.Users.Fields.getUserDisplayName(req.userId);
 
             if (displayName) {
                 res.status(200).json({displayName});
@@ -31,11 +27,7 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         break;
     case 'currentEmail':
         if (req.userId) {
-            if (databaseHelper === undefined || databaseHelper === null) {
-                res.send('No database connection found');
-            }
-
-            const email: string | null = await databaseHelper.getUserEmail(req.userId);
+            const email: string | null = await dbMethods.Users.Fields.getUserEmail(req.userId);
 
             if (email) {
                 res.status(200).json({email});
@@ -48,11 +40,7 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
     case 'currentUserDetails':
         try {
             if (req.userId) {
-                if (databaseHelper === undefined || databaseHelper === null) {
-                    res.send('No database connection found');
-                }
-
-                let userDetails: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getUserDetails(req.userId, req.userId, true);
+                let userDetails: WebsiteBoilerplate.UserDetails | null = await dbMethods.Users.Searches.getUserDetails(req.userId, req.userId, true);
 
                 if (userDetails) {
                     return res.status(200).json({success: true, userDetails});
@@ -72,17 +60,13 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
             let currentId: string | undefined = req.userId;
 
             if (currentId) {
-                if (await databaseHelper.checkUserForRole(currentId, 'Administrator')) {
+                if (await dbMethods.Users.Roles.checkUserForRole(currentId, 'Administrator')) {
                     hasEmailRole = true;
                 }
             }
 
             if (req.query.uniqueId) {
-                if (databaseHelper === undefined || databaseHelper === null) {
-                    res.send('No database connection found');
-                }
-
-                let userDetails: WebsiteBoilerplate.UserDetails | null = await databaseHelper.getUserDetails(currentId, req.query.uniqueId.toString(), hasEmailRole);
+                let userDetails: WebsiteBoilerplate.UserDetails | null = await dbMethods.Users.Searches.getUserDetails(currentId, req.query.uniqueId.toString(), hasEmailRole);
 
                 if (userDetails) {
                     return res.status(200).json({success: true, userDetails});
@@ -105,7 +89,7 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
                 let pageNumber: number = req.query.pageNumber ? parseInt(req.query.pageNumber.toString()) : 0;
                 let excludeConnections: Boolean = req.query.excludeConnections ? req.query.excludeConnections.toString().toLowerCase() === 'true' : false;
 
-                let results: WebsiteBoilerplate.UserSearchResults | null = await databaseHelper.searchUsers(userID, displayNameFilter, displayNameIndexFilter, pageNumber, excludeConnections);
+                let results: WebsiteBoilerplate.UserSearchResults | null = await dbMethods.Users.Searches.searchUsers(userID, displayNameFilter, displayNameIndexFilter, pageNumber, excludeConnections);
 
                 return res.status(200).json({success: true, results});
             }
@@ -127,7 +111,7 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
                     uniqueId = req.userId!;
                 }
 
-                let connections: WebsiteBoilerplate.UserDetails[] = await databaseHelper.getOutgoingConnections(uniqueId);
+                let connections: WebsiteBoilerplate.UserDetails[] = await dbMethods.Users.Connections.getOutgoingConnections(uniqueId);
 
                 return res.status(200).json({success: true, connections});
             }
@@ -149,7 +133,7 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
                     uniqueId = req.userId!;
                 }
 
-                let connections: WebsiteBoilerplate.UserDetails[] = await databaseHelper.getIncomingConnections(uniqueId);
+                let connections: WebsiteBoilerplate.UserDetails[] = await dbMethods.Users.Connections.getIncomingConnections(uniqueId);
 
                 return res.status(200).json({success: true, connections});
             }
@@ -161,7 +145,7 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         return res.status(200).json({success: false, connections: {}});
     case 'getConnectionTypeDict':
         try {
-            let connectionTypeDict: WebsiteBoilerplate.UserConnectionTypeDictionary = await databaseHelper.getConnectionTypeDict();
+            let connectionTypeDict: WebsiteBoilerplate.UserConnectionTypeDictionary = await dbMethods.Users.Connections.getConnectionTypeDict();
 
             return res.status(200).json({success: true, connectionTypeDict});
         }
@@ -185,7 +169,7 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
             let { blockUserUniqueId } = req.body;
 
             if (currentUserUniqueId && blockUserUniqueId) {
-                let success: Boolean = await databaseHelper.blockUser(currentUserUniqueId, blockUserUniqueId);
+                let success: Boolean = await dbMethods.Users.Blocking.blockUser(currentUserUniqueId, blockUserUniqueId);
 
                 return res.status(200).json({ success });
             }
@@ -201,7 +185,7 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
                 let { connectedUserUniqueId } = req.body;
     
                 if (uniqueId && connectedUserUniqueId) {
-                    let results: WebsiteBoilerplate.RemoveUserConnectionResults = await databaseHelper.removeUserConnection(uniqueId, connectedUserUniqueId);
+                    let results: WebsiteBoilerplate.RemoveUserConnectionResults = await dbMethods.Users.Connections.removeUserConnection(uniqueId, connectedUserUniqueId);
     
                     return res.status(200).json({success: results.success, results, message: ''});
                 }
@@ -215,11 +199,7 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
             break;
     case 'setDisplayName':
         if (req.userId && req.body.displayName) {
-            if (databaseHelper === undefined || databaseHelper === null) {
-                res.send('No database connection found');
-            }
-
-            const results: {success: Boolean, displayNameIndex?: number, message?: string} = await databaseHelper.setUserDisplayName(req.userId, req.body.displayName);
+            const results: {success: Boolean, displayNameIndex?: number, message?: string} = await dbMethods.Users.Fields.setUserDisplayName(req.userId, req.body.displayName);
 
             res.status(200).json(results);
         }
@@ -233,7 +213,7 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
             let { unblockUserUniqueId } = req.body;
 
             if (currentUserUniqueId && unblockUserUniqueId) {
-                let success = await databaseHelper.unblockUser(currentUserUniqueId, unblockUserUniqueId);
+                let success = await dbMethods.Users.Blocking.unblockUser(currentUserUniqueId, unblockUserUniqueId);
 
                 return res.status(200).json({ success });
             }
@@ -249,7 +229,7 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
             let { connection } = req.body;
 
             if (uniqueId && connection) {
-                let results: WebsiteBoilerplate.UpdateUserConnectionResults = await databaseHelper.updateUserConnection(uniqueId, connection);
+                let results: WebsiteBoilerplate.UpdateUserConnectionResults = await dbMethods.Users.Connections.updateUserConnection(uniqueId, connection);
 
                 return res.status(200).json({success: results.success, results, message: ''});
             }
@@ -269,7 +249,7 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
                 let { preferences }: { preferences: Array<{ name: string, value: string | Boolean | number }> | undefined } = req.body;
 
                 if (preferences !== undefined) {
-                    if (await databaseHelper.updateUserPreferences(uniqueId, preferences)) {
+                    if (await dbMethods.Users.Fields.updateUserPreferences(uniqueId, preferences)) {
                         return res.status(200).json({ success: true });
                     }
                 }
@@ -288,8 +268,8 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
             let { userUniqueID, displayName } = req.body;
 
             if (uniqueId && userUniqueID && displayName) {
-                if (await databaseHelper.checkUserForRole(uniqueId, 'Administrator')) {
-                    let results: {success: Boolean, message: string} = await databaseHelper.verifyUserDisplayName(userUniqueID, displayName);
+                if (await dbMethods.Users.Roles.checkUserForRole(uniqueId, 'Administrator')) {
+                    let results: {success: Boolean, message: string} = await dbMethods.Users.Fields.verifyUserDisplayName(userUniqueID, displayName);
 
                     return res.status(200).json(results);
                 }

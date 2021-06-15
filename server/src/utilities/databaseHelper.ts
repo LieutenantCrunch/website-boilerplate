@@ -1,4 +1,12 @@
-import fs from 'fs';
+//#############################################################
+//#############################################################
+//##
+//##                THIS FILE IS OBSOLETE
+//##           Use ./database/dbMethods instead
+//##
+//#############################################################
+//#############################################################
+
 import memoize from 'memoizee';
 import bcrypt from 'bcryptjs';
 import NodeCache from 'node-cache';
@@ -8,26 +16,26 @@ import { v4 as uuidv4 } from 'uuid';
 
 import * as ClientConstants from '../constants/constants.client';
 import * as ServerConstants from '../constants/constants.server';
-import { adjustGUIDDashes, isNullOrWhiteSpaceOnly } from './utilityFunctions';
-import { SocketHelper } from './socketHelper';
 
-import { db } from '../models/_index';
-import { UserInstance } from '../models/User';
-import { ProfilePictureInstance } from '../models/ProfilePicture';
-import { UserJWTInstance } from '../models/UserJWT';
+import { notificationHelper } from './notificationHelper';
+import { SocketHelper } from './socketHelper';
+import { adjustGUIDDashes, isNullOrWhiteSpaceOnly } from './utilityFunctions';
+
+import { models } from '../models/_index';
 import { DisplayNameInstance } from '../models/DisplayName';
+import { FeedViewInstance } from '../models/views/FeedView';
+import { PasswordResetTokenInstance } from '../models/PasswordResetToken';
+import { PostCommentInstance } from '../models/PostComment';
+import { PostFileInstance } from '../models/PostFile';
+import { PostInstance } from '../models/Post';
+import { PostNotificationInstance } from '../models/PostNotification';
+import { ProfilePictureInstance } from '../models/ProfilePicture';
+import { UserBlockInstance } from '../models/UserBlock';
 import { UserConnectionInstance } from '../models/UserConnection';
 import { UserConnectionTypeInstance } from '../models/UserConnectionType';
-import { PasswordResetTokenInstance } from '../models/PasswordResetToken';
-import { UserBlockInstance } from '../models/UserBlock';
-
-import { FeedViewInstance } from '../models/views/FeedView';
 import { UserConnectionViewInstance } from '../models/views/UserConnectionView';
-import { PostInstance } from '../models/Post';
-import { PostFileInstance } from '../models/PostFile';
-import { PostCommentInstance } from '../models/PostComment';
-import { notificationHelper } from './notificationHelper';
-import { PostNotificationInstance } from '../models/PostNotification';
+import { UserInstance } from '../models/User';
+import { UserJWTInstance } from '../models/UserJWT';
 import { UserPreferencesInstance } from '../models/UserPreferences';
 
 class DatabaseHelper {
@@ -40,27 +48,12 @@ class DatabaseHelper {
         }
 
         DatabaseHelper.instance = this;
-
-        fs.readFile('./private/dbpass.txt', 'utf8', (readFileError: NodeJS.ErrnoException | null, data: string) => {
-            if (readFileError) {
-                console.error(readFileError);
-            }
-
-            db.sequelize.authenticate()
-            .then(() => {
-                console.log(`Successfully connected to database via Sequelize.`);
-            })
-            .catch((err: Error) =>
-            {
-                console.error(`Unable to connect to the database: ${err.message}`);
-            });
-        });
     };
 
     async userExistsForEmail(email: string): Promise<Boolean> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 attributes: [
                     'id'
                 ],
@@ -127,7 +120,7 @@ class DatabaseHelper {
         }
 
         if (actualFirstId !== undefined && actualSecondId !== undefined) {
-            let results: UserBlockInstance | null = await db.UserBlock.findOne({
+            let results: UserBlockInstance | null = await models.UserBlock.findOne({
                 where: {
                     registeredUserId: actualFirstId,
                     blockedUserId: actualSecondId
@@ -163,7 +156,7 @@ class DatabaseHelper {
                 ],
                 include: [
                     {
-                        model: db.DisplayName,
+                        model: models.DisplayName,
                         as: 'displayNames',
                         where: {
                             isActive: true
@@ -174,7 +167,7 @@ class DatabaseHelper {
                         ]
                     },
                     {
-                        model: db.ProfilePicture,
+                        model: models.ProfilePicture,
                         as: 'profilePictures',
                         required: false,
                         on: {
@@ -202,7 +195,7 @@ class DatabaseHelper {
                 connectionTypes = await this.getConnectionTypeDict();
                 
                 queryOptions.include.push({
-                    model: db.UserConnection,
+                    model: models.UserConnection,
                     as: 'incomingConnections',
                     required: false,
                     where: {
@@ -210,14 +203,14 @@ class DatabaseHelper {
                     },
                     include: [
                         {
-                            model: db.UserConnectionType,
+                            model: models.UserConnectionType,
                             as: 'connectionTypes',
                             required: false
                         }
                     ]
                 },
                 {
-                    model: db.User,
+                    model: models.User,
                     as: 'blockingUsers',
                     required: false,
                     attributes: [
@@ -229,7 +222,7 @@ class DatabaseHelper {
                 });
             }
 
-            let registeredUser: UserInstance | null = await db.User.findOne(queryOptions);
+            let registeredUser: UserInstance | null = await models.User.findOne(queryOptions);
 
             if (registeredUser) {
                 let isMutual: Boolean = false;
@@ -258,7 +251,7 @@ class DatabaseHelper {
                         return null;
                     }
 
-                    let connectionViewRecord: UserConnectionViewInstance | null = await db.Views.UserConnectionView.findOne({
+                    let connectionViewRecord: UserConnectionViewInstance | null = await models.Views.UserConnectionView.findOne({
                         where: {
                             requestedUserId: currentUserId,
                             connectedUserId: registeredUser.id!
@@ -316,7 +309,7 @@ class DatabaseHelper {
         }
 
         if (registeredUserId !== undefined) {
-            let userPreferences: UserPreferencesInstance | null = await db.UserPreferences.findOne({
+            let userPreferences: UserPreferencesInstance | null = await models.UserPreferences.findOne({
                 attributes: [
                     'startPage'
                 ],
@@ -341,7 +334,7 @@ class DatabaseHelper {
     async _getUserIdForUniqueId(uniqueId: string): Promise<number | undefined> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 where: {
                     uniqueId
                 },
@@ -370,7 +363,7 @@ class DatabaseHelper {
     async _getUniqueIdForUserId(id: number): Promise<string | undefined> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 where: {
                     id
                 },
@@ -399,13 +392,13 @@ class DatabaseHelper {
     async _getUserWithId(id: number): Promise<UserInstance | null> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 where: {
                     id
                 },
                 include: [
                     {
-                        model: db.DisplayName,
+                        model: models.DisplayName,
                         as: 'displayNames',
                         where: {
                             isActive: true
@@ -416,7 +409,7 @@ class DatabaseHelper {
                         ]
                     },
                     {
-                        model: db.ProfilePicture,
+                        model: models.ProfilePicture,
                         as: 'profilePictures',
                         required: false,
                         on: {
@@ -450,13 +443,13 @@ class DatabaseHelper {
     async _getUserWithUniqueId(uniqueId: string): Promise<UserInstance | null> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 where: {
                     uniqueId
                 },
                 include: [
                     {
-                        model: db.DisplayName,
+                        model: models.DisplayName,
                         as: 'displayNames',
                         where: {
                             isActive: true
@@ -467,7 +460,7 @@ class DatabaseHelper {
                         ]
                     },
                     {
-                        model: db.ProfilePicture,
+                        model: models.ProfilePicture,
                         as: 'profilePictures',
                         required: false,
                         on: {
@@ -501,13 +494,13 @@ class DatabaseHelper {
     async _getUserWithProfileName(profileName: string): Promise<UserInstance | null> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 where: {
                     profileName
                 },
                 include: [
                     {
-                        model: db.DisplayName,
+                        model: models.DisplayName,
                         as: 'displayNames',
                         where: {
                             isActive: true
@@ -518,7 +511,7 @@ class DatabaseHelper {
                         ]
                     },
                     {
-                        model: db.ProfilePicture,
+                        model: models.ProfilePicture,
                         as: 'profilePictures',
                         required: false,
                         on: {
@@ -563,7 +556,7 @@ class DatabaseHelper {
             let passwordHash: string = await bcrypt.hash(password, salt);
             let uniqueId: string = uuidv4();
 
-            let registeredUser: UserInstance | null = await db.User.create({
+            let registeredUser: UserInstance | null = await models.User.create({
                 email,
                 passwordHash,
                 uniqueId,
@@ -571,7 +564,7 @@ class DatabaseHelper {
             });
 
             if (registeredUser) {
-                db.UserPreferences.create({
+                models.UserPreferences.create({
                     registeredUserId: registeredUser.id!
                 });
 
@@ -593,7 +586,7 @@ class DatabaseHelper {
         {
             let salt: string = await bcrypt.genSalt(10);
             let hash: string = await bcrypt.hash(password, salt);
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 where: {
                     email
                 }
@@ -617,7 +610,7 @@ class DatabaseHelper {
     async validateCredentials(email: string, password: string): Promise<string | null> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 attributes: [
                     'passwordHash',
                     'uniqueId'
@@ -650,7 +643,7 @@ class DatabaseHelper {
 
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 attributes: [
                     'id'
                 ],
@@ -658,7 +651,7 @@ class DatabaseHelper {
                     email
                 },
                 include: {
-                    model: db.PasswordResetToken,
+                    model: models.PasswordResetToken,
                     as: 'passwordResetTokens',
                     required: false,
                     where: {
@@ -702,12 +695,12 @@ class DatabaseHelper {
     async validatePasswordResetToken(token: string, email: string): Promise<Boolean> {
         try
         {
-            let resetToken: PasswordResetTokenInstance | null = await db.PasswordResetToken.findOne({
+            let resetToken: PasswordResetTokenInstance | null = await models.PasswordResetToken.findOne({
                 where: {
                     token
                 },
                 include: {
-                    model: db.User,
+                    model: models.User,
                     as: 'registeredUser',
                     required: true,
                     where: {
@@ -761,7 +754,7 @@ class DatabaseHelper {
     async getPFPFileNameForUserId(uniqueId: string, originalSize?: Boolean): Promise<string | null> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 attributes: [
                     'id'
                 ],
@@ -817,7 +810,7 @@ class DatabaseHelper {
     async extendJWTForUser(uniqueId: string, jwtInfo: {jti: string, expirationDate: Date}): Promise<{success: Boolean}> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 attributes: [
                     'id'
                 ],
@@ -825,7 +818,7 @@ class DatabaseHelper {
                     uniqueId
                 },
                 include: {
-                    model: db.UserJWT,
+                    model: models.UserJWT,
                     as: 'activeJWTs',
                     required: true,
                     where: {
@@ -854,7 +847,7 @@ class DatabaseHelper {
     async validateJWTForUserId(uniqueId: string, jti: string): Promise<Boolean> {
         try
         {
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 attributes: [
                     'id'
                 ],
@@ -914,7 +907,7 @@ class DatabaseHelper {
                     break;
             }
 
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 attributes: [
                     'id'
                 ],
@@ -922,7 +915,7 @@ class DatabaseHelper {
                     uniqueId
                 },
                 include: {
-                    model: db.UserJWT,
+                    model: models.UserJWT,
                     as: 'activeJWTs',
                     required: true,
                     where: {
@@ -939,7 +932,7 @@ class DatabaseHelper {
                 let activeJWTs: UserJWTInstance[] = registeredUser.activeJWTs;
                 let idArray: number[] = activeJWTs.map(activeJWT => activeJWT.id!);
 
-                await db.UserJWT.update(
+                await models.UserJWT.update(
                     {
                         isValid: false
                     },
@@ -967,7 +960,7 @@ class DatabaseHelper {
     async getUserEmail(uniqueId: string): Promise<string | null> {
         try
         {   
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 attributes: [
                     'email'
                 ],
@@ -1088,7 +1081,7 @@ class DatabaseHelper {
             }
 
             // Create a new display name
-            const currentMax: number = await db.DisplayName.max('displayNameIndex', {
+            const currentMax: number = await models.DisplayName.max('displayNameIndex', {
                 where: {
                     displayName
                 }
@@ -1096,7 +1089,7 @@ class DatabaseHelper {
 
             const nextIndex: number = (isNaN(currentMax) ? 0 : currentMax) + 1;
 
-            let newDisplayName: DisplayNameInstance = await db.DisplayName.create({
+            let newDisplayName: DisplayNameInstance = await models.DisplayName.create({
                 registeredUserId: registeredUser.id!,
                 displayName,
                 displayNameIndex: nextIndex,
@@ -1118,7 +1111,7 @@ class DatabaseHelper {
         try 
         {
             // Make sure the display name is not already verified
-            let verifiedDisplayName: DisplayNameInstance | null = await db.DisplayName.findOne({
+            let verifiedDisplayName: DisplayNameInstance | null = await models.DisplayName.findOne({
                 where: {
                     displayName,
                     displayNameIndex: 0
@@ -1129,12 +1122,12 @@ class DatabaseHelper {
                 return {success: false, message: 'That display name has already been verified.'};
             }
             else {
-                verifiedDisplayName = await db.DisplayName.findOne({
+                verifiedDisplayName = await models.DisplayName.findOne({
                     where: {
                         displayName
                     },
                     include: {
-                        model: db.User,
+                        model: models.User,
                         as: 'registeredUser',
                         where: {
                             uniqueId
@@ -1175,7 +1168,7 @@ class DatabaseHelper {
                 currentUser = await this.getUserWithUniqueId(currentUniqueId);
             }
 
-            let registeredUser: UserInstance | null = await db.User.findOne({
+            let registeredUser: UserInstance | null = await models.User.findOne({
                 where: {
                     uniqueId
                 },
@@ -1188,7 +1181,7 @@ class DatabaseHelper {
                 ],
                 include: [
                     {
-                        model: db.DisplayName,
+                        model: models.DisplayName,
                         as: 'displayNames',
                         attributes: [
                             'displayName',
@@ -1196,7 +1189,7 @@ class DatabaseHelper {
                         ]
                     }, 
                     {
-                        model: db.ProfilePicture,
+                        model: models.ProfilePicture,
                         as: 'profilePictures',
                         attributes: [
                             'fileName',
@@ -1204,7 +1197,7 @@ class DatabaseHelper {
                         ]
                     },
                     {
-                        model: db.Role,
+                        model: models.Role,
                         as: 'roles',
                         attributes: [
                             'roleName'
@@ -1217,7 +1210,7 @@ class DatabaseHelper {
                 let isMutual: Boolean = false;
 
                 if (currentUser) {
-                    let connectionViewRecord: UserConnectionViewInstance | null = await db.Views.UserConnectionView.findOne({
+                    let connectionViewRecord: UserConnectionViewInstance | null = await models.Views.UserConnectionView.findOne({
                         attributes: [
                             'id'
                         ],
@@ -1244,7 +1237,7 @@ class DatabaseHelper {
                 };
 
                 if (userIsCurrent) {
-                    let unseenPostNotifications: PostNotificationInstance[] = await db.PostNotification.findAll({
+                    let unseenPostNotifications: PostNotificationInstance[] = await models.PostNotification.findAll({
                         attributes: [
                             'postId',
                             'notificationType'
@@ -1279,7 +1272,7 @@ class DatabaseHelper {
                         console.warn(`User ${uniqueId} does not have a preferences record, creating one`);
 
                         try {
-                            let testPrefs: UserPreferencesInstance = await db.UserPreferences.create({
+                            let testPrefs: UserPreferencesInstance = await models.UserPreferences.create({
                                 registeredUserId: registeredUser.id!
                             });
 
@@ -1312,7 +1305,7 @@ class DatabaseHelper {
                                 requestedUserId: currentUser.id!
                             },
                             include: {
-                                model: db.UserConnectionType,
+                                model: models.UserConnectionType,
                                 as: 'connectionTypes'
                             }
                         });
@@ -1378,7 +1371,7 @@ class DatabaseHelper {
                 }
 
                 if (id) {
-                    let registeredUser: UserInstance | null = await db.User.findOne({
+                    let registeredUser: UserInstance | null = await models.User.findOne({
                         attributes: [
                             'id'
                         ],
@@ -1386,7 +1379,7 @@ class DatabaseHelper {
                             id
                         },
                         include: {
-                            model: db.Role,
+                            model: models.Role,
                             as: 'roles',
                             required: true,
                             attributes: [
@@ -1443,7 +1436,7 @@ class DatabaseHelper {
                     },
                     include: [
                         {
-                            model: db.User,
+                            model: models.User,
                             as: 'registeredUser',
                             required: true,
                             attributes: [
@@ -1452,7 +1445,7 @@ class DatabaseHelper {
                             ],
                             include: [
                                 {
-                                    model: db.ProfilePicture,
+                                    model: models.ProfilePicture,
                                     as: 'profilePictures',
                                     required: false,
                                     on: {
@@ -1467,7 +1460,7 @@ class DatabaseHelper {
                                     ]
                                 },
                                 {
-                                    model: db.User,
+                                    model: models.User,
                                     as: 'blockingUsers',
                                     required: false,
                                     attributes: [
@@ -1530,7 +1523,7 @@ class DatabaseHelper {
                 let connectionViewRecords: UserConnectionViewInstance[] | null = null;
 
                 // This will get all of the incoming connections to the current user
-                connectionViewRecords = await db.Views.UserConnectionView.findAll({
+                connectionViewRecords = await models.Views.UserConnectionView.findAll({
                     where: {
                         connectedUserId: currentUserId,
                         isMutual: true
@@ -1550,19 +1543,19 @@ class DatabaseHelper {
                     userQueryOptions.include = [
                         ...userQueryOptions.include,
                         {
-                            model: db.UserConnection,
+                            model: models.UserConnection,
                             as: 'outgoingConnections',
                             attributes: [],
                             required: false
                         },
                         {
-                            model: db.UserConnection,
+                            model: models.UserConnection,
                             as: 'incomingConnections',
                             attributes: [],
                             required: false,
                             include: [
                                 {
-                                    model: db.User,
+                                    model: models.User,
                                     as: 'requestedUser',
                                     attributes: [],
                                     required: false
@@ -1607,7 +1600,7 @@ class DatabaseHelper {
                     }
                 }
 
-                let {rows, count}: {rows: DisplayNameInstance[]; count: number} = await db.DisplayName.findAndCountAll(queryOptions);
+                let {rows, count}: {rows: DisplayNameInstance[]; count: number} = await models.DisplayName.findAndCountAll(queryOptions);
 
                 let results: WebsiteBoilerplate.UserSearchResults = {
                     currentPage: pageNumber,
@@ -1667,7 +1660,7 @@ class DatabaseHelper {
 
                 let userConnectionIncludes: {[key: string]: any;}[] = [
                     {
-                        model: db.User,
+                        model: models.User,
                         as: 'connectedUser',
                         attributes: [
                             'allowPublicAccess',
@@ -1677,7 +1670,7 @@ class DatabaseHelper {
                         required: true,
                         include: [
                             {
-                                model: db.DisplayName,
+                                model: models.DisplayName,
                                 as: 'displayNames',
                                 where: {
                                     isActive: 1
@@ -1689,7 +1682,7 @@ class DatabaseHelper {
                                 required: false
                             },
                             {
-                                model: db.ProfilePicture,
+                                model: models.ProfilePicture,
                                 as: 'profilePictures',
                                 attributes: [
                                     'fileName',
@@ -1701,7 +1694,7 @@ class DatabaseHelper {
                         ]
                     },
                     {
-                        model: db.UserConnectionType,
+                        model: models.UserConnectionType,
                         as: 'connectionTypes',
                         required: false,
                         attributes: [
@@ -1722,7 +1715,7 @@ class DatabaseHelper {
                     // Need to filter out users that are blocking the current user if the current user is not an administrator
                     // left join userBlock using the keys on userConnection and select the results where userBlock.registeredUserId is null
                     userConnectionIncludes.push({
-                        model: db.UserBlock,
+                        model: models.UserBlock,
                         as: 'userBlock',
                         required: false
                     });
@@ -1742,7 +1735,7 @@ class DatabaseHelper {
                     ],
                     include: [
                         {
-                            model: db.UserConnection,
+                            model: models.UserConnection,
                             as: 'userConnection',
                             required: true,
                             include: userConnectionIncludes
@@ -1750,7 +1743,7 @@ class DatabaseHelper {
                     ]
                 };
 
-                let outgoingConnectionsView: UserConnectionViewInstance[] | null = await db.Views.UserConnectionView.findAll(queryOptions);
+                let outgoingConnectionsView: UserConnectionViewInstance[] | null = await models.Views.UserConnectionView.findAll(queryOptions);
 
                 if (outgoingConnectionsView && outgoingConnectionsView.length > 0) {
                     return outgoingConnectionsView.map(connectionView => {
@@ -1800,7 +1793,7 @@ class DatabaseHelper {
             let registeredUserId: number | undefined = await this.getUserIdForUniqueId(uniqueId);
 
             if (registeredUserId !== undefined) {
-                let incomingConnectionsView: UserConnectionViewInstance[] | null = await db.Views.UserConnectionView.findAll({
+                let incomingConnectionsView: UserConnectionViewInstance[] | null = await models.Views.UserConnectionView.findAll({
                     where: {
                         connectedUserId: registeredUserId
                     },
@@ -1809,12 +1802,12 @@ class DatabaseHelper {
                     ],
                     include: [
                         {
-                            model: db.UserConnection,
+                            model: models.UserConnection,
                             as: 'userConnection',
                             required: true,
                             include: [
                                 {
-                                    model: db.User,
+                                    model: models.User,
                                     as: 'requestedUser',
                                     attributes: [
                                         'allowPublicAccess',
@@ -1824,7 +1817,7 @@ class DatabaseHelper {
                                     required: true,
                                     include: [
                                         {
-                                            model: db.DisplayName,
+                                            model: models.DisplayName,
                                             as: 'displayNames',
                                             where: {
                                                 isActive: 1
@@ -1836,7 +1829,7 @@ class DatabaseHelper {
                                             required: false
                                         },
                                         {
-                                            model: db.ProfilePicture,
+                                            model: models.ProfilePicture,
                                             as: 'profilePictures',
                                             attributes: [
                                                 'fileName',
@@ -1846,7 +1839,7 @@ class DatabaseHelper {
                                             required: false
                                         },
                                         {
-                                            model: db.User,
+                                            model: models.User,
                                             as: 'blockingUsers',
                                             required: false,
                                             attributes: [
@@ -1859,7 +1852,7 @@ class DatabaseHelper {
                                     ]
                                 },
                                 {
-                                    model: db.UserConnectionType,
+                                    model: models.UserConnectionType,
                                     as: 'connectionTypes',
                                     required: false,
                                     attributes: [
@@ -1872,12 +1865,12 @@ class DatabaseHelper {
                             ]
                         },
                         {
-                            model: db.UserConnection,
+                            model: models.UserConnection,
                             as: 'mutualConnection',
                             required: false,
                             include: [
                                 {
-                                    model: db.UserConnectionType,
+                                    model: models.UserConnectionType,
                                     as: 'connectionTypes',
                                     required: false,
                                     attributes: [
@@ -1961,7 +1954,7 @@ class DatabaseHelper {
 
     async getConnectionTypes(): Promise<UserConnectionTypeInstance[]> {
         try {
-            let userConnectionTypes: UserConnectionTypeInstance[] | null = await db.UserConnectionType.findAll();
+            let userConnectionTypes: UserConnectionTypeInstance[] | null = await models.UserConnectionType.findAll();
 
             if (userConnectionTypes)
             {
@@ -1982,7 +1975,7 @@ class DatabaseHelper {
             let connectedUser: UserInstance | null = await this.getUserWithUniqueId(connectedUserUniqueId);
 
             if (currentUser && connectedUser) {
-                let userConnection: UserConnectionInstance | null = await db.UserConnection.findOne({
+                let userConnection: UserConnectionInstance | null = await models.UserConnection.findOne({
                     where: {
                         requestedUserId: currentUser.id!,
                         connectedUserId: connectedUser.id!
@@ -1992,7 +1985,7 @@ class DatabaseHelper {
                 let wasMutual: Boolean = false;
 
                 if (userConnection) {
-                    let userConnectionView: UserConnectionViewInstance | null = await db.Views.UserConnectionView.findOne({
+                    let userConnectionView: UserConnectionViewInstance | null = await models.Views.UserConnectionView.findOne({
                         where: {
                             id: userConnection.id!
                         }
@@ -2028,13 +2021,13 @@ class DatabaseHelper {
             let connectedUser: UserInstance | null = await this.getUserWithUniqueId(connectedUserUniqueId);
 
             if (connectedUser) {
-                let currentUser: UserInstance | null = await db.User.findOne({
+                let currentUser: UserInstance | null = await models.User.findOne({
                     where: {
                         uniqueId: currentUserUniqueId
                     },
                     include: [
                         {
-                            model: db.UserConnection,
+                            model: models.UserConnection,
                             as: 'outgoingConnections',
                             required: false,
                             where: {
@@ -2042,17 +2035,17 @@ class DatabaseHelper {
                             },
                             include: [
                                 {
-                                    model: db.UserConnectionType,
+                                    model: models.UserConnectionType,
                                     as: 'connectionTypes',
                                     required: false
                                 },
                                 {
-                                    model: db.User,
+                                    model: models.User,
                                     as: 'connectedUser',
                                     required: false,
                                     include: [
                                         {
-                                            model: db.User,
+                                            model: models.User,
                                             as: 'blockingUsers',
                                             required: false,
                                             attributes: [
@@ -2074,7 +2067,7 @@ class DatabaseHelper {
                     let allConnectionTypes: UserConnectionTypeInstance[] = await this.getConnectionTypes();
                     let connectionTypes: WebsiteBoilerplate.UserConnectionTypeDictionary = connectionUpdates.connectionTypes!;
 
-                    let incomingConnection: UserConnectionInstance | null = await db.UserConnection.findOne({
+                    let incomingConnection: UserConnectionInstance | null = await models.UserConnection.findOne({
                         where: {
                             requestedUserId: connectedUser.id!,
                             connectedUserId: currentUser.id!
@@ -2146,7 +2139,7 @@ class DatabaseHelper {
                         return results;
                     }
                     else { // Else, this is a new connection
-                        let newConnection: UserConnectionInstance = await db.UserConnection.create({
+                        let newConnection: UserConnectionInstance = await models.UserConnection.create({
                             requestedUserId: currentUser.id!,
                             connectedUserId: connectedUser.id!
                         });
@@ -2365,7 +2358,7 @@ class DatabaseHelper {
 
                 // If the dictionaries have keys, update the tables
                 if (Object.keys(userUpdateAttributes).length > 0) {
-                    await db.User.update(
+                    await models.User.update(
                         userUpdateAttributes,
                         {
                             where: {
@@ -2378,7 +2371,7 @@ class DatabaseHelper {
                 }
 
                 if (Object.keys(preferenceUpdateAttributes).length > 0) {
-                    await db.UserPreferences.update(
+                    await models.UserPreferences.update(
                         preferenceUpdateAttributes,
                         {
                             where: {
@@ -2435,13 +2428,12 @@ class DatabaseHelper {
                     // You can delete your own posts
                     canDelete = true;
                 }
-                /*## Disabled for testing
                 else if (await this.checkUserForRole(registeredUser.id!, 'Administrator')) {
                     // Administrators can view all posts
                     canView = true;
                     // Administrators can delete all posts
                     canDelete = true;
-                }*/
+                }
                 else if (isPublicUser && registeredUser.allowPublicAccess) {
                     // Public users can view posts of registered users that allow it
                     canView = true;
@@ -2455,7 +2447,7 @@ class DatabaseHelper {
                     // This has to be done separate due to the fact that the files are being joined in, 
                     // thus causing single posts to be counted multiple times when there are multiple 
                     // images for a particular post
-                    let count: number = await db.Views.FeedView.count({
+                    let count: number = await models.Views.FeedView.count({
                         where: {
                             userUniqueId: isPublicUser ? { [Op.is]: null } : requestingUserUniqueId,
                             postedByUniqueId,
@@ -2465,7 +2457,7 @@ class DatabaseHelper {
                         }
                     });
 
-                    let rows: FeedViewInstance[] = await db.Views.FeedView.findAll({
+                    let rows: FeedViewInstance[] = await models.Views.FeedView.findAll({
                         where: {
                             userUniqueId: isPublicUser ? { [Op.is]: null } : requestingUserUniqueId,
                             postedByUniqueId,
@@ -2478,7 +2470,7 @@ class DatabaseHelper {
                         ],
                         include: [
                             {
-                                model: db.PostFile,
+                                model: models.PostFile,
                                 as: 'postFiles'
                             }
                         ],
@@ -2568,7 +2560,7 @@ class DatabaseHelper {
             let showMyPostsInFeed: Boolean = false;
 
             if (registeredUserId !== undefined) { // It shouldn't be undefined, but we have to check it to keep TypeScript happy
-                let userPreferences: UserPreferencesInstance | null = await db.UserPreferences.findOne({
+                let userPreferences: UserPreferencesInstance | null = await models.UserPreferences.findOne({
                     attributes: [
                         'feedFilter',
                         'showMyPostsInFeed'
@@ -2617,18 +2609,18 @@ class DatabaseHelper {
                 }
             }
             
-            const count: number = await db.Views.FeedView.count({
+            const count: number = await models.Views.FeedView.count({
                 where: whereOptions
             });
 
-            const rows: FeedViewInstance[] = await db.Views.FeedView.findAll({
+            const rows: FeedViewInstance[] = await models.Views.FeedView.findAll({
                 where: whereOptions,
                 order: [
                     ['id', 'DESC']
                 ],
                 include: [
                     {
-                        model: db.PostFile,
+                        model: models.PostFile,
                         as: 'postFiles'
                     }
                 ],
@@ -2822,7 +2814,7 @@ class DatabaseHelper {
                 let postedOn: Date = new Date(Date.now());
                 let postUniqueId: string = uuidv4();
 
-                let newPost: PostInstance | null = await db.Post.create({
+                let newPost: PostInstance | null = await models.Post.create({
                     audience,
                     postedOn,
                     postText: postText || null,
@@ -2838,7 +2830,7 @@ class DatabaseHelper {
                     if (customAudience) {
                         parsedConnectionTypes = customAudience.split(',');
 
-                        let connectionTypes: UserConnectionTypeInstance[] = await db.UserConnectionType.findAll({
+                        let connectionTypes: UserConnectionTypeInstance[] = await models.UserConnectionType.findAll({
                             where: {
                                 displayName: {
                                     [Op.in]: parsedConnectionTypes
@@ -2853,7 +2845,7 @@ class DatabaseHelper {
 
                     if (fileCount > 0) {
                         for (let postFile of postFiles!) {
-                            await db.PostFile.create({
+                            await models.PostFile.create({
                                 postId: newPost!.id,
                                 registeredUserId: registeredUser.id!,
                                 fileName: postFile.fileName,
@@ -2914,14 +2906,14 @@ class DatabaseHelper {
 
     async getPost(userUniqueId: string | undefined, postUniqueId: string, commentUniqueId: string | undefined): Promise<WebsiteBoilerplate.Post | undefined> {
         let isPublicUser: Boolean = isNullOrWhiteSpaceOnly(userUniqueId);
-        let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
+        let postInfo: FeedViewInstance | null = await models.Views.FeedView.findOne({
             where: {
                 uniqueId: postUniqueId,
                 userUniqueId: isPublicUser ? { [Op.is]: null } : userUniqueId
             },
             include: [
                 {
-                    model: db.PostFile,
+                    model: models.PostFile,
                     as: 'postFiles'
                 }
             ],
@@ -3019,7 +3011,7 @@ class DatabaseHelper {
             let registeredUser: UserInstance | null = await this.getUserWithUniqueId(userUniqueId);
 
             // Validate that this user can actually view the post
-            let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
+            let postInfo: FeedViewInstance | null = await models.Views.FeedView.findOne({
                 attributes: [
                     'id'
                 ],
@@ -3034,11 +3026,10 @@ class DatabaseHelper {
 
             if (registeredUser && postInfo) {
                 let isAdministrator: Boolean = await this.checkUserForRole(registeredUser.id!, 'Administrator');
-                isAdministrator = false; //## Temp override for development
 
                 let parentCommentInclude: Array<any> = [
                     {
-                        model: db.User,
+                        model: models.User,
                         as: 'registeredUser',
                         attributes: [
                             'id'
@@ -3046,7 +3037,7 @@ class DatabaseHelper {
                         include: [
                             {
                                 /* Include DisplayName only for parentComment previews */
-                                model: db.DisplayName,
+                                model: models.DisplayName,
                                 as: 'displayNames',
                                 where: {
                                     isActive: true
@@ -3062,7 +3053,7 @@ class DatabaseHelper {
 
                 if (!isAdministrator) {
                     parentCommentInclude.push({
-                        model: db.UserBlock,
+                        model: models.UserBlock,
                         as: 'userBlocks',
                         on: {
                             [Op.or]: [
@@ -3097,7 +3088,7 @@ class DatabaseHelper {
 
                 let postCommentInclude: Array<any> = [
                     {
-                        model: db.User,
+                        model: models.User,
                         as: 'registeredUser',
                         attributes: [
                             'id',
@@ -3107,7 +3098,7 @@ class DatabaseHelper {
                         include: [
                             /* Include DisplayName and ProfilePicture for top-level comments */
                             {
-                                model: db.DisplayName,
+                                model: models.DisplayName,
                                 as: 'displayNames',
                                 where: {
                                     isActive: true
@@ -3118,7 +3109,7 @@ class DatabaseHelper {
                                 ]
                             },
                             {
-                                model: db.ProfilePicture,
+                                model: models.ProfilePicture,
                                 as: 'profilePictures',
                                 required: false,
                                 on: {
@@ -3133,7 +3124,7 @@ class DatabaseHelper {
                         ]
                     },
                     {
-                        model: db.PostComment,
+                        model: models.PostComment,
                         as: 'parentComment',
                         required: false,
                         attributes: [
@@ -3146,7 +3137,7 @@ class DatabaseHelper {
 
                 if (!isAdministrator) {
                     postCommentInclude.push({
-                        model: db.UserBlock,
+                        model: models.UserBlock,
                         as: 'userBlocks',
                         on: {
                             [Op.or]: [
@@ -3179,7 +3170,7 @@ class DatabaseHelper {
                     });
                 }
 
-                const {rows, count}: {rows: PostCommentInstance[]; count: number} = await db.PostComment.findAndCountAll({
+                const {rows, count}: {rows: PostCommentInstance[]; count: number} = await models.PostComment.findAndCountAll({
                     where: {
                         postId: postInfo.id!
                     },
@@ -3272,7 +3263,7 @@ class DatabaseHelper {
     async addNewPostComment(userUniqueId: string, postUniqueId: string, commentText: string, parentCommentUniqueId: string | undefined): Promise<WebsiteBoilerplate.PostComment | undefined> {
         try {
             // Validate that this user can actually comment on the post
-            let postInfo: FeedViewInstance | null = await db.Views.FeedView.findOne({
+            let postInfo: FeedViewInstance | null = await models.Views.FeedView.findOne({
                 attributes: [
                     'id',
                     'postedByUniqueId',
@@ -3295,7 +3286,7 @@ class DatabaseHelper {
                     let parentComment: PostCommentInstance | null = null;
 
                     if (parentCommentUniqueId) {
-                        parentComment = await db.PostComment.findOne({
+                        parentComment = await models.PostComment.findOne({
                             attributes: [
                                 'id',
                                 'commentText',
@@ -3314,7 +3305,7 @@ class DatabaseHelper {
 
                     let uniqueId: string = uuidv4();
 
-                    let newPostComment: PostCommentInstance | null = await db.PostComment.create({
+                    let newPostComment: PostCommentInstance | null = await models.PostComment.create({
                         postedOn,
                         postId: postInfo.id!,
                         registeredUserId: commenter.id!,
@@ -3358,7 +3349,7 @@ class DatabaseHelper {
                                     uniqueId: parentComment.uniqueId
                                 };
 
-                                db.PostNotification.create({
+                                models.PostNotification.create({
                                     commentId: newPostComment.id!,
                                     createdOn: postedOn,
                                     notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNSEEN, /* This is defaulted in the model, but set it here to be safe */
@@ -3375,8 +3366,8 @@ class DatabaseHelper {
                         let { postedByUniqueId }: { postedByUniqueId: string } = postInfo;
 
                         // Shouldn't have to wait for the Post Notification to be created
-                        // let postNotification: PostNotificationInstance = await db.PostNotification.create({
-                        db.PostNotification.create({
+                        // let postNotification: PostNotificationInstance = await models.PostNotification.create({
+                        models.PostNotification.create({
                             commentId: newPostComment.id!,
                             createdOn: postedOn,
                             notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNSEEN, /* This is defaulted in the model, but set it here to be safe */
@@ -3414,11 +3405,11 @@ class DatabaseHelper {
                     whereOptions.registeredUserId = registeredUserId;
                 }
 
-                let post: PostInstance | null = await db.Post.findOne({
+                let post: PostInstance | null = await models.Post.findOne({
                     where: whereOptions,
                     include: [
                         {
-                            model: db.PostComment,
+                            model: models.PostComment,
                             as: 'postComments',
                             attributes: [
                                 'id',
@@ -3426,7 +3417,7 @@ class DatabaseHelper {
                             ],
                             include: [
                                 {
-                                    model: db.User,
+                                    model: models.User,
                                     as: 'registeredUser',
                                     attributes: [
                                         'uniqueId'
@@ -3480,11 +3471,11 @@ class DatabaseHelper {
                     whereOptions.registeredUserId = registeredUserId;
                 }
 
-                let postComment: PostCommentInstance | null = await db.PostComment.findOne({
+                let postComment: PostCommentInstance | null = await models.PostComment.findOne({
                     where: whereOptions,
                     include: [
                         {
-                            model: db.Post,
+                            model: models.Post,
                             as: 'post',
                             attributes: [
                                 'id',
@@ -3492,7 +3483,7 @@ class DatabaseHelper {
                             ],
                             include: [
                                 {
-                                    model: db.User,
+                                    model: models.User,
                                     as: 'registeredUser',
                                     attributes: [
                                         'uniqueId'
@@ -3501,7 +3492,7 @@ class DatabaseHelper {
                             ]
                         },
                         {
-                            model: db.PostComment,
+                            model: models.PostComment,
                             as: 'parentComment',
                             attributes: [
                                 'id',
@@ -3509,7 +3500,7 @@ class DatabaseHelper {
                             ],
                             include: [
                                 {
-                                    model: db.User,
+                                    model: models.User,
                                     as: 'registeredUser',
                                     attributes: [
                                         'uniqueId'
@@ -3569,14 +3560,14 @@ class DatabaseHelper {
                 let postNotifications: PostNotificationInstance[] = await registeredUser.getPostNotifications({
                     include: [
                         {
-                            model: db.User,
+                            model: models.User,
                             as: 'triggeredByUser',
                             attributes: [
                                 'id'
                             ],
                             include: [
                                 {
-                                    model: db.DisplayName,
+                                    model: models.DisplayName,
                                     as: 'displayNames',
                                     where: {
                                         isActive: true
@@ -3589,7 +3580,7 @@ class DatabaseHelper {
                             ]
                         },
                         {
-                            model: db.Post,
+                            model: models.Post,
                             as: 'post',
                             attributes: [
                                 'postTitle',
@@ -3597,7 +3588,7 @@ class DatabaseHelper {
                             ]
                         },
                         {
-                            model: db.PostComment,
+                            model: models.PostComment,
                             as: 'comment',
                             required: false,
                             attributes: [
@@ -3620,7 +3611,7 @@ class DatabaseHelper {
                     notifications = filteredNotifications;
 
                     if (purgeNotifications.length > 0) {
-                        db.PostNotification.destroy({
+                        models.PostNotification.destroy({
                             where: {
                                 id: purgeNotifications.map(notification => notification.id!)
                             }
@@ -3661,7 +3652,7 @@ class DatabaseHelper {
                     }
 
                     // Don't need to wait
-                    db.PostNotification.update({
+                    models.PostNotification.update({
                             notificationStatus: ClientConstants.NOTIFICATION_STATUS.READ
                         },
                         {
@@ -3694,7 +3685,7 @@ class DatabaseHelper {
 
                 // Mark all that they've seen at least once before as Unread
                 // Need to wait so we don't accidentally update the same notification twice
-                await db.PostNotification.update({
+                await models.PostNotification.update({
                         notificationStatus: ClientConstants.NOTIFICATION_STATUS.UNREAD
                     },
                     {
@@ -3706,7 +3697,7 @@ class DatabaseHelper {
 
                 // Mark all that they haven't seen as Seen Once
                 // Don't need to wait
-                db.PostNotification.update({
+                models.PostNotification.update({
                         notificationStatus: ClientConstants.NOTIFICATION_STATUS.SEEN_ONCE
                     },
                     {
@@ -3741,7 +3732,7 @@ class DatabaseHelper {
                         };
                     }
 
-                    await db.PostNotification.destroy({
+                    await models.PostNotification.destroy({
                         where: whereOptions
                     });
                 }
@@ -3767,7 +3758,7 @@ class DatabaseHelper {
                     };
                 }
 
-                await db.PostNotification.destroy({
+                await models.PostNotification.destroy({
                     where: whereOptions
                 });
             }
@@ -3779,7 +3770,7 @@ class DatabaseHelper {
 
     async updateThumbnailForPostFile(postId: number, thumbnailFileName: string) {
         try {
-            let postFile: PostFileInstance | null = await db.PostFile.findOne({
+            let postFile: PostFileInstance | null = await models.PostFile.findOne({
                 where: {
                     postId
                 }

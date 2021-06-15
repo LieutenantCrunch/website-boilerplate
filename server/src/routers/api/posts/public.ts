@@ -1,7 +1,7 @@
 import express, {Request, Response} from 'express';
 import AuthHelper from '../../../utilities/authHelper';
 
-import { databaseHelper } from '../../../utilities/databaseHelper';
+import { dbMethods } from '../../../database/dbMethods';
 import { adjustGUIDDashes } from '../../../utilities/utilityFunctions';
 
 const apiPostsPublicRouter = express.Router();
@@ -27,12 +27,12 @@ apiPostsPublicRouter.get('/:methodName', [AuthHelper.verifyTokenAndPassThrough],
             }
 
             if (postedByUniqueId) {
-                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsByUser(userUniqueId, postedByUniqueId, undefined, null, endDate, pageNumber);
+                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await dbMethods.Posts.getPostsByUser(userUniqueId, postedByUniqueId, undefined, null, endDate, pageNumber);
 
                 return res.status(200).json({success: true, posts, total});
             }
             else if (profileName) {
-                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await databaseHelper.getPostsByUser(userUniqueId, undefined, profileName, null, endDate, pageNumber);
+                let {posts, total} : {posts: WebsiteBoilerplate.Post[], total: number} = await dbMethods.Posts.getPostsByUser(userUniqueId, undefined, profileName, null, endDate, pageNumber);
 
                 return res.status(200).json({success: true, posts, total});
             }
@@ -53,7 +53,7 @@ apiPostsPublicRouter.get('/:methodName', [AuthHelper.verifyTokenAndPassThrough],
                 let commentUniqueId: string | undefined = commentId ? adjustGUIDDashes(commentId, true) : undefined;
 
                 if (postUniqueId) {
-                    let post: WebsiteBoilerplate.Post | undefined = await databaseHelper.getPost(userUniqueId, postUniqueId, commentUniqueId);
+                    let post: WebsiteBoilerplate.Post | undefined = await dbMethods.Posts.getPost(userUniqueId, postUniqueId, commentUniqueId);
 
                     if (post) {
                         return res.status(200).json({ success: true, post });

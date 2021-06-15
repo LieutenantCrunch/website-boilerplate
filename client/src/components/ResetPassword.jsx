@@ -1,14 +1,16 @@
 import React, {useEffect, useState} from 'react';
-import {withRouter} from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import AuthService from '../services/auth.service';
 import classNames from 'classnames';
 
-function ResetPassword(props) {
+export const ResetPassword = ({ setLoginDetails, setStatusMessage, setTitle, statusMessage }) => {
+    const history = useHistory();
+    const location = useLocation();
+
     const [state, setState] = useState({email: '', password: '', confirmPassword: ''});
-    const setStatusMessage = props.setStatusMessage;
 
     useEffect(() => {
-        props.setTitle('Reset Password');
+        setTitle('Reset Password');
     }, []);
 
     const handleStateChange = (e) => {
@@ -42,34 +44,34 @@ function ResetPassword(props) {
     };
 
     const resetPassword = async () => {
-        let searchParams = new URLSearchParams(props.location.search);
+        let searchParams = new URLSearchParams(location.search);
         let token = searchParams.get('token');
         let results = await AuthService.resetPassword(token, state.email, state.password, state.confirmPassword);
 
         setStatusMessage(results.statusMessage);
         if (results.success) {
-            props.setLoginDetails(null);
+            setLoginDetails(null);
             redirectToLogin();
         }
     };
 
     const redirectToLogin = () => {
-        props.setTitle('Login');
-        props.history.push('/login')
+        setTitle('Login');
+        history.push('/login')
     };
 
-    const statusMessageType = props.statusMessage.type;
+    const statusMessageType = statusMessage.type;
 
     return (
         <>
             <div className="card col-8 col-md-4 mt-2 align-middle text-center">
                 <div className={classNames('card-header', {
-                    'd-none': !props.statusMessage.message,
+                    'd-none': !statusMessage.message,
                     [`bg-${statusMessageType}`]: true,
                     'text-light': statusMessageType !== 'warning',
                     'text-dark': statusMessageType === 'warning'
                 })}>
-                    {props.statusMessage.message}
+                    {statusMessage.message}
                 </div>
                 <div className="card-body">
                     <form>
@@ -124,5 +126,3 @@ function ResetPassword(props) {
         </>
     );
 };
-
-export default withRouter(ResetPassword);

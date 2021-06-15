@@ -82,6 +82,12 @@ export const POST_AUDIENCES = Object.freeze({
     CUSTOM: 2
 });
 
+export const POST_AUDIENCES_NAMES = Object.freeze({
+    [POST_AUDIENCES.CONNECTIONS]: 'Connections',
+    [POST_AUDIENCES.EVERYONE]: 'Everyone',
+    [POST_AUDIENCES.CUSTOM]: 'Custom'
+});
+
 export const SOCKET_EVENTS = Object.freeze({
     NOTIFY_USER: Object.freeze({
         DELETED_COMMENT: 'deletedComment',

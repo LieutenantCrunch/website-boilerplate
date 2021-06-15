@@ -2,7 +2,7 @@ import React, {useEffect, useMemo, useState, useRef} from 'react';
 import classNames from 'classnames';
 import debounce from 'lodash/debounce';
 import { usePopper } from 'react-popper';
-import {withRouter} from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import * as Constants from '../constants/constants';
 
 // Components
@@ -80,8 +80,10 @@ const useStyles = makeStyles(() => ({
     }
 }));
 
-function SettingsPage(props) {
+export const SettingsPage = ({ setLoginDetails, setStatusMessage, setTitle }) => {
     const dispatch = useDispatch();
+    const history = useHistory();
+
     const defaultConnectionTypes = useSelector(selectConnectionTypes);
     const currentUserAllowPublicAccess = useSelector(selectCurrentUserAllowPublicAccess);
     const currentUserPreferences = useSelector(selectCurrentUserPreferences);
@@ -114,7 +116,7 @@ function SettingsPage(props) {
     
     // render
     useEffect(() => {
-        props.setTitle('Settings');
+        setTitle('Settings');
 
         return () => {
             debouncedUpdateVolumePreference.cancel();
@@ -215,15 +217,6 @@ function SettingsPage(props) {
         return {};
     };
 
-    const getPostAudienceTitle = () => {
-        switch (state.postAudience) {
-            case 2: return 'Custom';
-            case 1: return 'Everyone';
-            case 0: 
-            default: return 'Outgoing Connections';
-        }
-    };
-
     const hideAudienceDropdown = (event) => {
         if (!dropdownMenuContainer.current.contains(event.target)) {
             setState(prevState => ({
@@ -310,9 +303,9 @@ function SettingsPage(props) {
         await AuthService.logout(true, true);
         let logoutConfirm = bootstrap.Modal.getInstance(document.getElementById('logoutConfirm'));
         logoutConfirm.hide();
-        props.setLoginDetails(null);
-        props.setStatusMessage({type: 'info', message: 'You have been logged out from everywhere'});
-        props.history.push('/login');
+        setLoginDetails(null);
+        setStatusMessage({type: 'info', message: 'You have been logged out from everywhere'});
+        history.push('/login');
     };
 
     const handleLogoutFromEverywhereElseClick = async () => {
@@ -535,7 +528,7 @@ function SettingsPage(props) {
                                     type="button" 
                                     onClick={handleAudienceClick}
                                 >
-                                    {getPostAudienceTitle()}
+                                    {Constants.POST_AUDIENCES_NAMES[state.postAudience]}
                                 </button>
                                 <ul ref={setPopperElement} 
                                     className={classNames('dropdown-menu', 'px-2', {'show': state.isAudienceOpen})}
@@ -673,5 +666,3 @@ function SettingsPage(props) {
         </>
     );
 };
-
-export default withRouter(SettingsPage);

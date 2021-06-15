@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import { Redirect, Route, useParams, useRouteMatch, withRouter } from 'react-router-dom';
+import { Redirect, Route, useParams, useRouteMatch } from 'react-router-dom';
 
 import ProfilePicture from './ProfilePicture';
 import ConnectionButton from './FormControls/ConnectionButton';
@@ -21,7 +21,7 @@ import { useDispatch } from 'react-redux';
 import { upsertUser } from '../redux/users/usersSlice';
 
 
-function User (props) {
+const User = ({ setTitle }) => {
     const loggedIn = useContext(LoggedInContext);
 
     const dispatch = useDispatch();
@@ -44,7 +44,7 @@ function User (props) {
                 title += `#${profileInfo.displayNameIndex}`;
             }
 
-            props.setTitle(`${title}'s Profile`);
+            setTitle(`${title}'s Profile`);
 
             setState(prevState => ({
                 ...prevState,
@@ -152,14 +152,14 @@ function User (props) {
     </>;
 }
 
-function UserPage (props) {
+export const UserPage = ({ setTitle }) => {
     const loggedIn = useContext(LoggedInContext);
     const { url } = useRouteMatch();
 
     return <>
         <Route path={`${url}/:profileName`}>
             <User 
-                setTitle={props.setTitle}
+                setTitle={setTitle}
             />
         </Route>
         <Route path={`${url}`} exact={true} render={() => {
@@ -172,5 +172,3 @@ function UserPage (props) {
         />
     </>;
 }
-
-export default withRouter(UserPage);

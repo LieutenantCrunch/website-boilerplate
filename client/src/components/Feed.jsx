@@ -1,21 +1,14 @@
 import React, {useState, useEffect} from 'react';
 import { isMobile } from 'react-device-detect';
-import { withRouter } from 'react-router-dom';
 import PostService from '../services/post.service';
 import * as Constants from '../constants/constants';
 import { useHistoryState } from '../hooks/hooks';
 import { PostCard } from './PostCard';
 
-// Redux
-import { useSelector } from 'react-redux';
-import { selectCurrentUserPreferences } from '../redux/users/currentUserSlice';
-
 // Utilities
 import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
 
-function Feed(props) {
-    const currentUserPreferences = useSelector(selectCurrentUserPreferences);
-
+export const Feed = ({ setTitle, setHeaderMiddleEl }) => {
     const [state, setState] = useState({
         fetchDate: null,
         pageNumber: 0,
@@ -27,7 +20,7 @@ function Feed(props) {
 
     useEffect(() => {
         // Set the page title
-        props.setTitle('My Feed');
+        setTitle('My Feed');
 
         // Set the initial fetch date for when the more posts button is clicked
         let fetchDate = Date.now();
@@ -48,7 +41,7 @@ function Feed(props) {
                 setPostType(returnPostType);
             }
 
-            props.setHeaderMiddleEl(getFeedFilter(returnPostType));
+            setHeaderMiddleEl(getFeedFilter(returnPostType));
         }).catch(err => console.error(err));
 
         return () => {
@@ -57,7 +50,7 @@ function Feed(props) {
             }
 
             // Clear out the middle element when unloading Feed
-            props.setHeaderMiddleEl(<></>);
+            setHeaderMiddleEl(<></>);
         }
     }, []);
 
@@ -65,7 +58,7 @@ function Feed(props) {
         let fetchDate = Date.now();
 
         setPostType(newPostType);
-        props.setHeaderMiddleEl(getFeedFilter(newPostType));
+        setHeaderMiddleEl(getFeedFilter(newPostType));
 
         PostService.getFeed(0, fetchDate, newPostType).then(({posts, total}) => {
             setState(prevState => ({
@@ -150,5 +143,3 @@ function Feed(props) {
         </div>
     );
 };
-
-export default withRouter(Feed);

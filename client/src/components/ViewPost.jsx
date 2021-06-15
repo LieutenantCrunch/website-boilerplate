@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useHistory, withRouter } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import queryString from 'query-string';
 
 import PostService from '../services/post.service';
@@ -9,7 +9,7 @@ import { PostCard } from './PostCard';
 import { useSelector } from 'react-redux';
 import { selectCurrentUserPreferences } from '../redux/users/currentUserSlice';
 
-const ViewPost = ({ setTitle }) => {
+export const ViewPost = ({ setTitle }) => {
     const currentUserPreferences = useSelector(selectCurrentUserPreferences);
 
     const [state, setState] = useState({
@@ -61,5 +61,3 @@ const ViewPost = ({ setTitle }) => {
         }
     </div>;
 };
-
-export default withRouter(ViewPost);

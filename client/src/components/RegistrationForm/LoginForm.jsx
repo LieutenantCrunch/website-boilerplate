@@ -1,6 +1,6 @@
 // https://medium.com/technoetics/create-basic-login-forms-using-react-js-hooks-and-bootstrap-2ae36c15e551
 import React, { useContext, useState, useEffect } from 'react';
-import { useHistory, withRouter } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import classNames from 'classnames';
 import {isMobile} from 'react-device-detect';
 
@@ -11,7 +11,7 @@ import { MESSAGE_BOX_TYPES } from '../Dialogs/MessageBox';
 // Contexts
 import { MessageBoxUpdaterContext } from '../../contexts/withMessageBox';
 
-function LoginForm (props) {
+export const LoginForm = ({ setLoginDetails, setStatusMessage, setTitle, statusMessage }) => {
     const history = useHistory();
 
     const [state, setState] = useState({password: ''});
@@ -19,19 +19,17 @@ function LoginForm (props) {
         email: '', 
         requestedPasswordReset: false
     });
-    const setStatusMessage = props.setStatusMessage;
-    const hasStatusMessage = (props.statusMessage && props.statusMessage.message) || false;
-    const statusMessageType = (hasStatusMessage ? props.statusMessage.type : 'transparent');
+    const hasStatusMessage = (statusMessage && statusMessage.message) || false;
+    const statusMessageType = (hasStatusMessage ? statusMessage.type : 'transparent');
     const setMessageBoxOptions = useContext(MessageBoxUpdaterContext);
 
     useEffect(() => {
-        props.setTitle('Login');
+        setTitle('Login');
     }, []);
 
     const handleSessionStateChange = (e) => {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
         const {id, value} = e.target;
-        
 
         /* Use an arrow function that returns an object literal populated with the prevSessionState (using the spread operator) and with the value set on the property specified by the target's id, pass that into setSessionState */
         setSessionState(prevSessionState => ({
@@ -44,7 +42,6 @@ function LoginForm (props) {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
         const {id, value} = e.target;
         
-
         /* Use an arrow function that returns an object literal populated with the prevState (using the spread operator) and with the value set on the property specified by the target's id, pass that into setState */
         setState(prevState => ({
             ...prevState,
@@ -53,7 +50,6 @@ function LoginForm (props) {
     }
 
     const handleSubmitClick = (e) => {
-        e.preventDefault();
         // This needs to be converted to leverage some better type of Form validation, whether HTML 5 or something else
         if (!sessionState.email.length) {
             setStatusMessage({type: 'danger', message: 'You must enter an email'});
@@ -64,6 +60,8 @@ function LoginForm (props) {
         else {
             sendCredentialsToServer();
         }
+
+        e.preventDefault();
     };
 
     const sendCredentialsToServer = async () => {
@@ -76,7 +74,7 @@ function LoginForm (props) {
                 requestedPasswordReset : false
             }));
 
-            props.setLoginDetails(loginDetails);
+            setLoginDetails(loginDetails);
 
             // Redirect to their startPage if they have one set, otherwise redirect to their profile
             history.push(`/${startPage || 'profile'}`);
@@ -135,7 +133,7 @@ function LoginForm (props) {
                     'text-light': statusMessageType !== 'warning',
                     'text-dark': statusMessageType === 'warning'
                 })}>
-                    {hasStatusMessage ? props.statusMessage.message : ''}
+                    {hasStatusMessage ? statusMessage.message : ''}
                 </div>
                 <div className="card-body">
                     <form>
@@ -180,6 +178,3 @@ function LoginForm (props) {
         </>
     );
 };
-
-// Wrap in withRouter so it can get access to props.history
-export default withRouter(LoginForm);

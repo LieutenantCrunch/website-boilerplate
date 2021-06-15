@@ -1,8 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import * as ClientConstants from '../constants/constants.client';
-import { databaseHelper } from './databaseHelper';
-import path from 'path';
+import { dbMethods } from '../database/dbMethods';
 import FileHandler from './fileHandler';
 
 import { generateAudioThumbnail, generateVideoThumbnail } from './ffmpegHelper';
@@ -140,7 +139,7 @@ export default class PostUploadHelper {
             }
 
             if (thumbnailFileName) {
-                databaseHelper.updateThumbnailForPostFile(postId, thumbnailFileName);
+                dbMethods.Posts.Files.updateThumbnailForPostFile(postId, thumbnailFileName);
             }
         }
     }

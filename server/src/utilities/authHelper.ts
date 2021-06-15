@@ -6,7 +6,7 @@ import fs from 'fs';
 import {promisify} from 'util';
 import cookie from 'cookie';
 
-import { databaseHelper } from './databaseHelper';
+import { dbMethods } from '../database/dbMethods';
 import * as ServerConstants from '../constants/constants.server';
 
 // Socket.IO
@@ -23,7 +23,7 @@ export default class AuthHelper {
 
             if (decodedToken) {
                 let jwtID: string = decodedToken.jti;
-                let isValid: Boolean = await databaseHelper.validateJWTForUserId(decodedToken.id, jwtID);
+                let isValid: Boolean = await dbMethods.Users.Authorization.validateJWTForUserId(decodedToken.id, jwtID);
 
                 if (!isValid) {
                     return {results: ServerConstants.VERIFY_TOKEN_RESULTS.EXPIRED};
@@ -159,7 +159,7 @@ export default class AuthHelper {
         let uniqueId: string | undefined = req.userId;
 
         if (uniqueId) {
-            let hasAdminRole: Boolean = await databaseHelper.checkUserForRole(uniqueId, 'Administrator');
+            let hasAdminRole: Boolean = await dbMethods.Users.Roles.checkUserForRole(uniqueId, 'Administrator');
 
             if (hasAdminRole) {
                 return next();
@@ -173,7 +173,7 @@ export default class AuthHelper {
         let uniqueId: string | undefined = req.userId;
 
         if (uniqueId) {
-            //let isNotBlocked: Boolean = await databaseHelper.checkUserForBlock(uniqueId, );
+            //let isNotBlocked: Boolean = await dbMethods.Users.Blocking.checkUserForBlock(uniqueId, );
         }
 
         return next();

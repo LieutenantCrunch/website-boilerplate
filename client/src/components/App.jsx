@@ -10,17 +10,17 @@ import {BrowserRouter as Router,
 import * as Hooks from '../hooks/hooks';
 
 // Components
-import Feed from './Feed';
-import Header from './Header';
-import LoginForm from './RegistrationForm/LoginForm';
-import Profile from './Profile';
-import RegistrationForm from './RegistrationForm/RegistrationForm';
-import ResetPassword from './ResetPassword';
-import SettingsPage from './SettingsPage';
+import { Feed } from './Feed';
+import { Header } from './Header';
+import { LoginForm } from './RegistrationForm/LoginForm';
+import { Profile } from './Profile';
+import { RegistrationForm } from './RegistrationForm/RegistrationForm';
+import { ResetPassword } from './ResetPassword';
+import { SettingsPage } from './SettingsPage';
 import SideMenu from './SideMenu/SideMenu';
-import UserPage from './UserPage';
-import ViewPost from './ViewPost';
-import Welcome from './Welcome';
+import { UserPage } from './UserPage';
+import { ViewPost } from './ViewPost';
+import { Welcome } from './Welcome';
 
 // Services
 import UserService from '../services/user.service';

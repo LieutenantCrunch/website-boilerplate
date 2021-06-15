@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import {withRouter} from 'react-router-dom';
 import PostService from '../services/post.service';
 
 import { PostCard } from './PostCard';
@@ -14,7 +13,7 @@ import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
 import { useSelector } from 'react-redux';
 import { selectCurrentUserDisplayName, selectCurrentUserDisplayNameIndex, selectCurrentUserEmail } from '../redux/users/currentUserSlice';
 
-function Profile(props) {
+export const Profile = ({ setTitle }) => {
     const currentUserDisplayName = useSelector(selectCurrentUserDisplayName);
     const currentUserDisplayNameIndex = useSelector(selectCurrentUserDisplayNameIndex);
     const currentUserEmail = useSelector(selectCurrentUserEmail);
@@ -27,7 +26,7 @@ function Profile(props) {
     });
 
     useEffect(() => {
-        props.setTitle('Profile');
+        setTitle('Profile');
 
         let fetchDate = Date.now();
 
@@ -131,5 +130,3 @@ function Profile(props) {
         </>
     );
 };
-
-export default withRouter(Profile);

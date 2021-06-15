@@ -569,32 +569,6 @@ export const NewPostForm = ({ onNewPostCreated }) => {
         });
     };
 
-    const getCurrentPostType = () => {
-        switch (state.postType) {
-            case Constants.POST_TYPES.AUDIO:
-                return 'Audio';
-            case Constants.POST_TYPES.IMAGE:
-                return 'Image';
-            case Constants.POST_TYPES.VIDEO:
-                return 'Video';
-            case Constants.POST_TYPES.TEXT:
-            default:
-                return 'Text';
-        }
-    };
-
-    const getCurrentAudience = () => {
-        switch (state.postAudience) {
-            case Constants.POST_AUDIENCES.EVERYONE:
-                return 'Everyone';
-            case Constants.POST_AUDIENCES.CUSTOM:
-                return 'Custom';
-            case Constants.POST_AUDIENCES.CONNECTIONS:
-            default:
-                return 'Outgoing Connections';
-        }
-    };
-
     const getCurrentDropText = () => {
         return state.isLoading ? 'Please wait...' : 'Drop files here';
     }
@@ -1257,7 +1231,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
                 </div>
                 <div className={classes.footer}>
                     <div className="dropdown">
-                        <button className="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" id="newPostTypeDropdown" aria-expanded="false">{getCurrentPostType()}</button>
+                        <button className="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" id="newPostTypeDropdown" aria-expanded="false">{Constants.POST_TYPES_NAMES[state.postType]}</button>
                         <ul className="dropdown-menu" aria-labelledby="newPostTypeDropdown">
                             <li><button className="dropdown-item" type="button" onClick={selectAudioType}>Audio</button></li>
                             <li><button className="dropdown-item" type="button" onClick={selectImageType}>Image</button></li>
@@ -1271,7 +1245,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
                             type="button" 
                             onClick={handleAudienceClick}
                         >
-                                {getCurrentAudience()}
+                                {Constants.POST_AUDIENCES_NAMES[state.postAudience]}
                         </button>
                         <ul ref={setPopperElement} 
                             className={classNames('dropdown-menu', 'px-2', {'show': state.isAudienceOpen})}

@@ -1,3 +1,5 @@
+export const LISTEN_PORT: number = 3000; // The port the server will listen on
+
 export const JWT_EXPIRATION_DAYS: number = 30;
 export const RPT_EXPIRATION_MINUTES: number = 5; // Reset Password Token Expiration
 export const RPT_MAX_ACTIVE_TOKENS: number = 5; // The maximum allowable number of active Reset Password Tokens
@@ -12,8 +14,8 @@ export const CACHE_DURATIONS = Object.freeze({
     USER_PREFERENCE_START_PAGE: 24 * 60 * 60 * 1000 // This will get invalidated if they change it, so it can be long
 });
 
-export const CACHE_KEY_CONNECTION_TYPES_DICT: string = 'db.connectionTypesDict'; // The connection types dictionary used by databaseHelper
-export const CACHE_KEY_CONNECTION_TYPES_ARRAY: string = 'db.connectionTypesArray'; // The connection types array used by databaseHelper
+export const CACHE_KEY_CONNECTION_TYPES_DICT: string = 'db.connectionTypesDict'; // The connection types dictionary used by dbMethods
+export const CACHE_KEY_CONNECTION_TYPES_ARRAY: string = 'db.connectionTypesArray'; // The connection types array used by dbMethods
 
 export const DB_USER_FETCH_PAGE_SIZE: number = 5; // The number of users to fetch at one time
 export const DB_FEED_FETCH_PAGE_SIZE: number = 5; // The number of posts to fetch at one time for feeds

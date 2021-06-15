@@ -29,7 +29,7 @@ import {
     postConnectionUpdate
 } from '../../redux/connections/connectionsSlice';
 
-export default function ConnectionsSideMenuItem(props) {
+export const ConnectionsSideMenuItem = () => {
     const dispatch = useDispatch();
     const outgoingConnectionsStatus = useSelector(selectOutgoingConnectionsStatus);
     const outgoingConnectionIds = useSelector(selectOutgoingConnectionIds, shallowEqual);

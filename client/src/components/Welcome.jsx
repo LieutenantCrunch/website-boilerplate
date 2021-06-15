@@ -1,9 +1,8 @@
 import React, {useEffect} from 'react';
-import {withRouter} from 'react-router-dom';
 
-function Welcome(props) {
+export const Welcome = ({ setTitle }) => {
     useEffect(() => {
-        props.setTitle('Welcome!')
+        setTitle('Welcome!')
     }, []);
 
     return (
@@ -12,5 +11,3 @@ function Welcome(props) {
         </div>
     );
 };
-
-export default withRouter(Welcome);

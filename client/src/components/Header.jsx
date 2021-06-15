@@ -1,7 +1,6 @@
 // https://medium.com/technoetics/create-basic-login-forms-using-react-js-hooks-and-bootstrap-2ae36c15e551
 import React, { useEffect, useRef, useState } from 'react';
-import { withRouter, Link } from 'react-router-dom';
-import classNames from 'classnames';
+import { Link, useLocation } from 'react-router-dom';
 import AuthService from '../services/auth.service';
 import { reduxLogout } from '../redux/rootReducer';
 import { capitalizeString } from '../utilities/TextUtilities';
@@ -20,7 +19,7 @@ import Badge from '@material-ui/core/Badge';
 import NotificationsOutlinedIcon from '@material-ui/icons/NotificationsOutlined';
 import { makeStyles, withStyles } from '@material-ui/core/styles';
 
-const StyledBadge = withStyles((theme) => ({
+const PrimaryBadge = withStyles((theme) => ({
     badge: {
         backgroundColor: 'rgb(11,94,215)'
     }
@@ -35,7 +34,7 @@ const useStyles = makeStyles(() => ({
     }
 }));
 
-function Header(props) {
+export const Header = ({ headerMiddleEl, loginDetails, setLoginDetails, title }) => {
     const [state, setState] = useState({
         notificationsExpanded: false,
         notificationsCollapse: null,
@@ -44,8 +43,9 @@ function Header(props) {
     });
 
     const classes = useStyles();
-
     const dispatch = useDispatch();
+    const location = useLocation();
+
     const currentRoles = useSelector(selectCurrentUserRoles);
     const postNotificationIds = useSelector(selectAllPostNotificationIds, shallowEqual);
     const hasUnseenPostNotifications = useSelector(selectHasUnseenPostNotifications);
@@ -212,13 +212,13 @@ function Header(props) {
     const handleMenuClickLogout = () => {
         hideNavbarMenu();
         AuthService.logout();
-        props.setLoginDetails(null);
+        setLoginDetails(null);
         dispatch(reduxLogout());
     };
 
     /* TODO: Default this better. This does not handle if they come in without a path, ex: http://localhost:3000/ */
-    const title = capitalizeString(props.location.pathname.substring(1, props.location.pathname.length) || 'Welcome!');
-    const loginDetailsExists = props.loginDetails !== null;
+    const locationTitle = capitalizeString(location.pathname.substring(1, location.pathname.length) || 'Welcome!');
+    const loginDetailsExists = loginDetails !== null;
 
     return (
         /*  bg-dark sets the background color of the navbar to the dark theme (dark) color
@@ -227,17 +227,17 @@ function Header(props) {
         /* <></> is short for React.Fragment, which will eliminate a TypeScript warning about a parent element being necessary */
         <nav className="navbar fixed-top bg-dark navbar-dark">
             <div className="container-fluid">
-                <a className="navbar-brand" href="#">{props.title || title}</a>
+                <a className="navbar-brand" href="#">{title || locationTitle}</a>
                 {
-                    props.headerMiddleEl
+                    headerMiddleEl
                 }
                 <div>
                     {
                         loginDetailsExists &&
                         <button className="navbar-toggler mx-1" type="button" data-bs-toggle="collapse" aria-expanded="false" aria-label="Toggle notifications" onClick={handleNotificationClick}>
-                            <StyledBadge variant="dot" invisible={!hasUnseenPostNotifications}>
+                            <PrimaryBadge variant="dot" invisible={!hasUnseenPostNotifications}>
                                 <NotificationsOutlinedIcon style={{color: 'rgba(255,255,255,0.55)', fontSize: '1.5em'}} />
-                            </StyledBadge>
+                            </PrimaryBadge>
                         </button>
                     }
                     <button className="navbar-toggler ms-1" type="button" data-bs-toggle="collapse" aria-expanded="false" aria-label="Toggle navigation" onClick={handleMenuClick}>
@@ -313,5 +313,3 @@ function Header(props) {
         </nav>
     )
 };
-
-export default withRouter(Header);

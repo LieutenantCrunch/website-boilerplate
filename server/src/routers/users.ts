@@ -3,7 +3,7 @@ import express, {Request, Response} from 'express';
 import * as ClientConstants from '../constants/constants.client';
 import FileHandler from '../utilities/fileHandler';
 import AuthHelper from '../utilities/authHelper';
-import { databaseHelper } from '../utilities/databaseHelper';
+import { dbMethods } from '../database/dbMethods';
 
 const usersRouter = express.Router();
 
@@ -12,7 +12,7 @@ usersRouter.get('/:profileName', [AuthHelper.verifyTokenAndPassThrough], async (
 
     if (ClientConstants.PROFILE_NAME_REGEX.test(profileName)) {
         let currentUserUniqueId: string | undefined = req.userId;
-        let result: {exists: Boolean, allowPublicAccess: Boolean} = await databaseHelper.userExistsForProfileName(currentUserUniqueId, profileName);
+        let result: {exists: Boolean, allowPublicAccess: Boolean} = await dbMethods.Users.Searches.userExistsForProfileName(currentUserUniqueId, profileName);
         
         if (result.exists && (currentUserUniqueId || result.allowPublicAccess)) {
             FileHandler.sendFileResponse(res, './dist/index.html');

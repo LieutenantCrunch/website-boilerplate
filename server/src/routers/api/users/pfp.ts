@@ -4,8 +4,8 @@ import path, { ParsedPath } from 'path';
 import sharp, { OutputInfo, Sharp } from 'sharp';
 import {promisify} from 'util';
 
+import { dbMethods } from '../../../database/dbMethods';
 import AuthHelper from '../../../utilities/authHelper';
-import { databaseHelper } from '../../../utilities/databaseHelper';
 import PFPUploadHelper from '../../../utilities/pfpUploadHelper';
 
 const apiUserPFPRouter = express.Router();
@@ -16,7 +16,7 @@ apiUserPFPRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Reque
     case 'get':
         if (req.userId) {
             
-            const pfpFileName: string | null = await databaseHelper.getPFPFileNameForUserId(req.userId);
+            const pfpFileName: string | null = await dbMethods.Users.Fields.getPFPFileNameForUserId(req.userId);
 
             if (pfpFileName) {
                 res.status(200).json({success: true, path: `i/u/${req.userId}/${pfpFileName}`, message: null});
@@ -75,7 +75,7 @@ apiUserPFPRouter.post('/:methodName', [AuthHelper.verifyToken, PFPUploadHelper.u
 
         try
         {
-            let {success, pfp, pfpSmall}: {success: Boolean, pfp?: string, pfpSmall?: string} = await databaseHelper.addProfilePictureToUser(req.file.filename, smallFileName, req.file.originalname, req.file.mimetype, req.userId!);
+            let {success, pfp, pfpSmall}: {success: Boolean, pfp?: string, pfpSmall?: string} = await dbMethods.Users.Fields.addProfilePictureToUser(req.file.filename, smallFileName, req.file.originalname, req.file.mimetype, req.userId!);
 
             if (success) {
                 return res.status(200).json({success: true, message: 'Upload success!', pfp, pfpSmall});

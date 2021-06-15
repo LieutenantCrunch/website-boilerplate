@@ -6,7 +6,7 @@ import ConnectionButton from '../FormControls/ConnectionButton';
 import { selectUserById, upsertUser } from '../../redux/users/usersSlice';
 import { useDispatch, useSelector } from 'react-redux';
 
-export default function AddConnectionDialog (props) {
+export default function AddConnectionDialog ({ id }) {
     const dispatch = useDispatch();
     const [selectedUserId, setSelectedUserId] = useState(null);
     const userSearch = useRef();
@@ -31,7 +31,7 @@ export default function AddConnectionDialog (props) {
     };
 
     return (
-        <div id={props.id} className="modal fade" data-backdrop="static" tabIndex="-1" aria-labelledby="connectionDetailsLabel" aria-hidden="true">
+        <div id={id} className="modal fade" data-backdrop="static" tabIndex="-1" aria-labelledby="connectionDetailsLabel" aria-hidden="true">
             <div>
                 <div className="modal-dialog">
                     <div className="modal-content">

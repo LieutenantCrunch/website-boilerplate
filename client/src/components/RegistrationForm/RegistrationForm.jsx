@@ -1,6 +1,6 @@
 // https://medium.com/technoetics/create-basic-login-forms-using-react-js-hooks-and-bootstrap-2ae36c15e551
 import React, {useState} from 'react';
-import { withRouter } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import classNames from 'classnames';
 import zxcvbn from 'zxcvbn';
 
@@ -9,17 +9,15 @@ import AuthService from '../../services/auth.service';
 
 import { HtmlTooltip } from '../HtmlTooltip';
 
-// Redux
-import { useSelector } from 'react-redux';
+export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) => {
+    const history = useHistory();
 
-function RegistrationForm(props) {
     const [state, setState] = useState({password: '', confirmPassword: ''});
     const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {
         email: '', 
         displayName: '',
         profileName: ''
     });
-    const setStatusMessage = props.setStatusMessage;
 
     const handleSessionStateChange = (e) => {
         /* Use destructuring to populate an object with id/value from the event target ({id = event.target.id, value = event.target.value}) */
@@ -91,8 +89,8 @@ function RegistrationForm(props) {
     };
 
     const redirectToLogin = () => {
-        props.setTitle('Login');
-        props.history.push('/login')
+        setTitle('Login');
+        history.push('/login')
     };
 
     const getPasswordStrength = () => {
@@ -137,7 +135,7 @@ function RegistrationForm(props) {
         };
     };
 
-    const statusMessageType = props.statusMessage.type;
+    const statusMessageType = statusMessage.type;
 
     return (
         /* https://getbootstrap.com/docs/4.0/components/forms/#form-groups
@@ -146,12 +144,12 @@ function RegistrationForm(props) {
          */
         <div className="card col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mt-2 align-middle text-center">
             <div className={classNames('card-header', {
-                'd-none': !props.statusMessage.message,
+                'd-none': !statusMessage.message,
                 [`bg-${statusMessageType}`]: true,
                 'text-light': statusMessageType !== 'warning',
                 'text-dark': statusMessageType === 'warning'
             })}>
-                {props.statusMessage.message}
+                {statusMessage.message}
             </div>
             <div className="card-body">
                 <form>
@@ -299,6 +297,3 @@ function RegistrationForm(props) {
         </div>
     );
 };
-
-// Wrap in withRouter so it can get access to props.history
-export default withRouter(RegistrationForm);
