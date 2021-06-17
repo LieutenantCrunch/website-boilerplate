@@ -7,7 +7,7 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
+            "name": "Launch Dev",
             "skipFiles": [
                 "<node_internals>/**"
             ],
@@ -15,7 +15,26 @@
             "outFiles": [
                 "${workspaceFolder}/runtime/**/*.js"
             ],
-            "sourceMaps": true
+            "sourceMaps": true,
+            "env": {
+                "NODE_ENV": "development"
+            }
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Prod",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}\\src\\app.ts",
+            "outFiles": [
+                "${workspaceFolder}/runtime/**/*.js"
+            ],
+            "sourceMaps": true,
+            "env": {
+                "NODE_ENV": "production"
+            }
         }
     ]
 }

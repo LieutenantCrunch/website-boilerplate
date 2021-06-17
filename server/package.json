@@ -9,7 +9,8 @@
     "clean:dev": "rimraf runtime",
     "compile:dev": "tsc",
     "copy-images:dev": "xcopy /e /i /q /r /s /y \"./public/images/static\" \"./dist/i/s\"",
-    "start:dev": "node runtime/app.js"
+    "start:dev": "NODE_ENV=development node runtime/app.js",
+    "start:prod": "NODE_ENV=production node runtime/app.js"
   },
   "author": "Lieutenant Crunch",
   "license": "MIT",
