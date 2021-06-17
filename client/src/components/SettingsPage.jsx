@@ -575,7 +575,7 @@ export const SettingsPage = ({ setLoginDetails, setStatusMessage, setTitle }) =>
                                 secondary={<span>When viewing an audio/video post, this is what the volume will default to before the media is played. <em>May not work on mobile.</em></span>}
                                 style={{width: '100%'}}
                             />
-                            <MuiGrid container spacing={2} style={{width: '50%'}}>
+                            <MuiGrid container spacing={2} style={{width: '75%'}}>
                                 <MuiGrid item>
                                     <VolumeDownRoundedIcon style={{cursor: 'pointer' }} onClick={handleZeroVolumeClick} />
                                 </MuiGrid>
