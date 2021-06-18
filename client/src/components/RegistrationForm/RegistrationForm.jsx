@@ -58,7 +58,12 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
                 setStatusMessage({type: 'danger', message: 'You must enter a password'});
             }
             else {
-                sendRegistrationToServer();
+                if (zxcvbn(state.password).score < 3) {
+                    setStatusMessage({type: 'danger', message: 'Your password isn\'t strong enough'})
+                }
+                else {
+                    sendRegistrationToServer();
+                }
             }
         }
         else {

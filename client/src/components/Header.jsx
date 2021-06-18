@@ -209,6 +209,10 @@ export const Header = ({ headerMiddleEl, loginDetails, setLoginDetails, title })
         hideNavbarMenu();
     };
 
+    const handleMenuClickTerms = () => {
+        hideNavbarMenu();
+    };
+
     const handleMenuClickLogout = () => {
         hideNavbarMenu();
         AuthService.logout();
@@ -289,10 +293,13 @@ export const Header = ({ headerMiddleEl, loginDetails, setLoginDetails, title })
                                     <Link className="nav-link text-end" to={'/profile'} onClick={handleMenuClickProfile}>Profile</Link>
                                 </li>
                                 <li className="nav-item">
+                                    <Link className="nav-link text-end" to={'/settings'} onClick={handleMenuClickSettings}>Settings</Link>
+                                </li>
+                                <li className="nav-item">
                                     <Link className="nav-link text-end" to={'/'} onClick={handleMenuClickHome}>Home</Link>
                                 </li>
                                 <li className="nav-item">
-                                    <Link className="nav-link text-end" to={'/settings'} onClick={handleMenuClickSettings}>Settings</Link>
+                                    <Link className="nav-link text-end" to={'/terms'} onClick={handleMenuClickTerms}>Terms</Link>
                                 </li>
                                 <li className="nav-item">
                                     <Link className="nav-link text-end" to={'/login'} onClick={handleMenuClickLogout}>Logout</Link>
@@ -304,6 +311,9 @@ export const Header = ({ headerMiddleEl, loginDetails, setLoginDetails, title })
                                 </li>
                                 <li className="nav-item">
                                     <Link className="nav-link text-end" to={'/'} onClick={handleMenuClickHome}>Home</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link className="nav-link text-end" to={'/terms'} onClick={handleMenuClickTerms}>Terms</Link>
                                 </li>
                             </>
                         }

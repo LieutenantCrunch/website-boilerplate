@@ -1,6 +1,7 @@
 import express, {Request, Response, Router, NextFunction} from 'express';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
+import zxcvbn from 'zxcvbn';
 
 import AuthHelper from '../../utilities/authHelper';
 import { dbMethods } from '../../database/dbMethods';
@@ -39,24 +40,28 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
             }
 
             if (canContinue && !req.body.displayName) {
-                res.status(200).json({success: false, message: 'You must provide a display name.'})
+                res.status(200).json({success: false, message: 'You must provide a display name.'});
                 canContinue = false;
             }
             else if (canContinue && !req.body.profileName) {
-                res.status(200).json({success: false, message: 'You must provide a profile name.'})
+                res.status(200).json({success: false, message: 'You must provide a profile name.'});
                 canContinue = false;
             }
 
             if (canContinue) {
                 if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
-                    // TODO: Validate password strength
-                    let registerResults: {id: string | null, success: Boolean} = await dbMethods.Users.registerNewUser(req.body.email, req.body.displayName, req.body.profileName, req.body.password);
-                    
-                    if (registerResults.success) {
-                        res.status(200).json({success: true, message: 'Registration success! You can now log in.'});
+                    if (zxcvbn(req.body.password).score < 3) {
+                        res.status(200).json({success: false, message: 'Your password isn\'t strong enough.'});
                     }
                     else {
-                        res.status(200).json({success: false, message: 'An error occurred during registration.'});
+                        let registerResults: {id: string | null, success: Boolean} = await dbMethods.Users.registerNewUser(req.body.email, req.body.displayName, req.body.profileName, req.body.password);
+                        
+                        if (registerResults.success) {
+                            res.status(200).json({success: true, message: 'Registration success! You can now log in.'});
+                        }
+                        else {
+                            res.status(200).json({success: false, message: 'An error occurred during registration.'});
+                        }
                     }
                 }
                 else {
@@ -98,7 +103,8 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
                             .cookie('authToken', authToken, {
                                 expires: expirationDate,
                                 httpOnly: true,
-                                sameSite: true
+                                sameSite: 'strict',
+                                secure: process.env.NODE_ENV === 'production'
                             })
                             .json({
                                 loginDetails: {

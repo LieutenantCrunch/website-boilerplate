@@ -24,14 +24,18 @@ const privateKey: string = fs.readFileSync('./private/certs/localhost+3-key.pem'
 const httpApp: express.Application = express();
 const httpServer: http.Server = http.createServer(httpApp);
 
-/*
-// This is for hosting the cert so you can load it on mobile
-httpApp.get('/rootCA.pem', (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    FileHandler.sendFileResponse(res, './private/certs/rootCA.pem');
-});
-*/
-
 if (isProd) {
+    /*
+    // This is for hosting the cert so you can load it on mobile
+    httpApp.get('/rootCA.pem', (req: Request, res: Response) => {
+        FileHandler.sendFileResponse(res, './private/certs/rootCA.pem');
+    });
+    */
+
+    httpApp.get(/^\/robots\.txt$/, (req: Request, res: Response) => {
+        FileHandler.sendFileResponse(res, './dist/robots.txt');
+    });
+
     httpApp.get('*', (req: express.Request, res: express.Response, next: express.NextFunction) => {
         let portIndex: number | undefined = req.headers.host?.indexOf(':');
         let actualHost: string | undefined = req.headers.host;
@@ -98,6 +102,10 @@ httpsApp.use('/api', apiRouter);
 
 import {usersRouter} from './routers/users';
 httpsApp.use('/u', usersRouter);
+
+httpsApp.get(/^\/robots\.txt$/, (req: Request, res: Response) => {
+    FileHandler.sendFileResponse(res, './dist/robots.txt');
+});
 
 httpsApp.get(/^\/admin$/, [AuthHelper.verifyToken, AuthHelper.verifyAdmin], (req: Request, res: Response) => {
     FileHandler.sendFileResponse(res, './dist/admin.html');

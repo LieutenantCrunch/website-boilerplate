@@ -99,14 +99,17 @@ export const generatePasswordResetToken = async function(email: string): Promise
 
         if (registeredUser) {
             if (registeredUser.passwordResetTokens && registeredUser.passwordResetTokens.length < ServerConstants.RPT_MAX_ACTIVE_TOKENS) {
-                token = uuidv4();
+                let tempToken: string = uuidv4();
 
                 let expirationDate: Date = new Date(Date.now()).addMinutes(ServerConstants.RPT_EXPIRATION_MINUTES);
 
-                let newResetToken: PasswordResetTokenInstance = await registeredUser.createPasswordResetToken({
-                    token,
+                await registeredUser.createPasswordResetToken({
+                    token: tempToken,
                     expirationDate
                 });
+
+                // Set token after the database interaction so a token doesn't get returned if it fails
+                token = tempToken;
 
                 errorCode = 0;
             }
