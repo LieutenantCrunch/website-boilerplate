@@ -20,6 +20,7 @@ import { SettingsPage } from './SettingsPage';
 import SideMenu from './SideMenu/SideMenu';
 import { UserPage } from './UserPage';
 import { ViewPost } from './ViewPost';
+import { Terms } from './Terms';
 import { Welcome } from './Welcome';
 
 // Services
@@ -150,6 +151,9 @@ export default function App() {
                                     <UserPage 
                                         setTitle={setTitle}
                                     />
+                                </Route>
+                                <Route path="/terms" exact={true}>
+                                    <Terms setTitle={setTitle} />
                                 </Route>
                                 <Route path="/" exact={true}>
                                     <Welcome setTitle={setTitle} />
