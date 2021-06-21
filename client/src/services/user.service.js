@@ -274,7 +274,7 @@ export default class UserService {
             }
         }
         catch (err) {
-            console.error(`Error updating preference ${name} to ${value}:\n${err.message}`);
+            console.error(`Error updating preferences: ${JSON.stringify(preferences)}:\n${err.message}`);
         }
 
         return false;

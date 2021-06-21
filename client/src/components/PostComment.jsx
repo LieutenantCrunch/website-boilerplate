@@ -115,6 +115,20 @@ export const PostComment = ({ comment, takeFocus, handleReplyClick, deleteCommen
                 deleteCommentCB(uniqueId);
             }
         }
+        else {
+            setMessageBoxOptions({
+                isOpen: true,
+                messageBoxProps: {
+                    actions: MESSAGE_BOX_TYPES.OK,
+                    caption: 'Delete Comment Failed',
+                    message: 'Failed to delete the comment, please try again later.',
+                    onConfirm: () => {},
+                    onDeny: undefined,
+                    onCancel: undefined,
+                    subtext: undefined
+                }
+            });
+        }
     };
 
     return <li key={commentId} id={commentId}>
