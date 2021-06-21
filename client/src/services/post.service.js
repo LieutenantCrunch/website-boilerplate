@@ -7,122 +7,6 @@ import { isNullOrWhiteSpaceOnly } from '../utilities/TextUtilities';
 const CancelToken = axios.CancelToken;
 
 export default class PostService {
-    static async getMyPosts(pageNumber, endDate) {
-        try {
-            if (this.getMyPostsCancel !== undefined) {
-                this.getMyPostsCancel();
-            }
-
-            let queryParameters = {
-                pageNumber,
-                endDate
-            };
-
-            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
-
-            let response = await axiosApi.get(Constants.API_PATH_POSTS + `getMyPosts?${queryString}`, {
-                cancelToken: new CancelToken(c => this.getMyPostsCancel = c)
-            });
-
-            if (response.data && response.data.success) {
-                const {posts, total} = response.data;
-
-                return {posts, total};
-            }
-        }
-        catch (err) {
-            if (axios.isCancel(err)) {
-                // Don't need to do anything special, the return below will handle it
-            }
-            else {
-                console.error(`Error getting my posts:\n${err.message}`);
-            }
-        }
-
-        return {posts: [], total: 0};
-    }
-
-    static async getUserPosts(uniqueId, profileName, pageNumber, endDate) {
-        try {
-            if (this.getUserPostsCancel !== undefined) {
-                this.getUserPostsCancel();
-            }
-
-            let queryParameters = {
-                pageNumber,
-                endDate
-            };
-
-            if (!isNullOrWhiteSpaceOnly(uniqueId)) {
-                queryParameters.postedByUniqueId = uniqueId;
-            }
-            else if (!isNullOrWhiteSpaceOnly(profileName)) {
-                queryParameters.profileName = profileName;
-            }
-
-            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
-
-            let response = await axiosApi.get(Constants.API_PATH_POSTS + Constants.API_PATH_PUBLIC + `getUserPosts?${queryString}`, {
-                cancelToken: new CancelToken(c => this.getUserPostsCancel = c)
-            });
-
-            if (response.data && response.data.success) {
-                const {posts, total} = response.data;
-
-                return {posts, total};
-            }
-        }
-        catch (err) {
-            if (axios.isCancel(err)) {
-                // Don't need to do anything special, the return below will handle it
-            }
-            else {
-                console.error(`Error getting my posts:\n${err.message}`);
-            }
-        }
-
-        return {posts: [], total: 0};
-    }
-
-    static async getFeed(pageNumber, endDate, postType) {
-        try {
-            if (this.getFeedCancel !== undefined) {
-                this.getFeedCancel();
-            }
-
-            let queryParameters = {
-                pageNumber,
-                endDate
-            };
-
-            if (postType !== undefined) {
-                queryParameters.postType = postType;
-            }
-
-            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
-            
-            let response = await axiosApi.get(Constants.API_PATH_POSTS + `getFeed?${queryString}`, {
-                cancelToken: new CancelToken(c => this.getFeedCancel = c)
-            });
-
-            if (response.data && response.data.success) {
-                const {posts, total, returnPostType} = response.data;
-
-                return {posts, total, returnPostType};
-            }
-        }
-        catch (err) {
-            if (axios.isCancel(err)) {
-                // Don't need to do anything special, the return below will handle it
-            }
-            else {
-                console.error(`Error getting posts:\n${err.message}`);
-            }
-        }
-
-        return {posts: [], total: 0, postType: Constants.POST_TYPES.ALL};
-    }
-
     static async createNewPost(postData, onUploadProgress) {
         try {
             let formData = new FormData();
@@ -159,37 +43,6 @@ export default class PostService {
         }
         catch (err) {
             console.error(`Error creating new post:\n${err.message}`);
-        }
-
-        return null;
-    }
-
-    static async getPost(postId, commentId) {
-        try {
-            if (this.getPostCancel !== undefined) {
-                this.getPostCancel();
-            }
-
-            let queryParameters = {
-                postId
-            };
-
-            if (!isNullOrWhiteSpaceOnly(commentId)) {
-                queryParameters.commentId = commentId;
-            }
-
-            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
-
-            let response = await axiosApi.get(Constants.API_PATH_POSTS + Constants.API_PATH_PUBLIC + `getPost?${queryString}`, {
-                cancelToken: new CancelToken(c => this.getPostCancel = c)
-            });
-
-            if (response.data && response.data.success) {
-                return response.data.post;
-            }
-        }
-        catch (err) {
-            console.error(`Error getting post:\n${err.message}`);
         }
 
         return null;
@@ -246,6 +99,111 @@ export default class PostService {
         }
 
         return false;
+    }
+
+    static async getFeed(pageNumber, endDate, postType) {
+        try {
+            if (this.getFeedCancel !== undefined) {
+                this.getFeedCancel();
+            }
+
+            let queryParameters = {
+                pageNumber,
+                endDate
+            };
+
+            if (postType !== undefined) {
+                queryParameters.postType = postType;
+            }
+
+            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
+            
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + `getFeed?${queryString}`, {
+                cancelToken: new CancelToken(c => this.getFeedCancel = c)
+            });
+
+            if (response.data && response.data.success) {
+                const {posts, total, returnPostType} = response.data;
+
+                return {posts, total, returnPostType};
+            }
+        }
+        catch (err) {
+            if (axios.isCancel(err)) {
+                // Don't need to do anything special, the return below will handle it
+            }
+            else {
+                console.error(`Error getting posts:\n${err.message}`);
+            }
+        }
+
+        return {posts: [], total: 0, postType: Constants.POST_TYPES.ALL};
+    }
+
+    static async getMyPosts(pageNumber, endDate) {
+        try {
+            if (this.getMyPostsCancel !== undefined) {
+                this.getMyPostsCancel();
+            }
+
+            let queryParameters = {
+                pageNumber,
+                endDate
+            };
+
+            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
+
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + `getMyPosts?${queryString}`, {
+                cancelToken: new CancelToken(c => this.getMyPostsCancel = c)
+            });
+
+            if (response.data && response.data.success) {
+                const {posts, total} = response.data;
+
+                return {posts, total};
+            }
+        }
+        catch (err) {
+            if (axios.isCancel(err)) {
+                // Don't need to do anything special, the return below will handle it
+            }
+            else {
+                console.error(`Error getting my posts:\n${err.message}`);
+            }
+        }
+
+        return {posts: [], total: 0};
+    }
+
+    static async getPost(postId, commentId) {
+        try {
+            if (this.getPostCancel !== undefined) {
+                this.getPostCancel();
+            }
+
+            let queryParameters = {
+                postId
+            };
+
+            if (!isNullOrWhiteSpaceOnly(commentId)) {
+                queryParameters.commentId = commentId;
+            }
+
+            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
+
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + Constants.API_PATH_PUBLIC + `getPost?${queryString}`, {
+                cancelToken: new CancelToken(c => this.getPostCancel = c)
+            });
+
+            if (response.data && response.data.success) {
+                return response.data.post;
+            }
+        }
+        catch (err) {
+            console.error(`Error getting post:\n${err.message}`);
+        }
+
+        return null;
     }
 
     static async getPostComments(postUniqueId, pageNumber, endDate) {
@@ -312,6 +270,66 @@ export default class PostService {
         return [];
     }
 
+    static async getUserPosts(uniqueId, profileName, pageNumber, endDate) {
+        try {
+            if (this.getUserPostsCancel !== undefined) {
+                this.getUserPostsCancel();
+            }
+
+            let queryParameters = {
+                pageNumber,
+                endDate
+            };
+
+            if (!isNullOrWhiteSpaceOnly(uniqueId)) {
+                queryParameters.postedByUniqueId = uniqueId;
+            }
+            else if (!isNullOrWhiteSpaceOnly(profileName)) {
+                queryParameters.profileName = profileName;
+            }
+
+            let queryString = encodeURI(Object.keys(queryParameters).map(key => `${key}=${queryParameters[key]}`).join('&'));
+
+            let response = await axiosApi.get(Constants.API_PATH_POSTS + Constants.API_PATH_PUBLIC + `getUserPosts?${queryString}`, {
+                cancelToken: new CancelToken(c => this.getUserPostsCancel = c)
+            });
+
+            if (response.data && response.data.success) {
+                const {posts, total} = response.data;
+
+                return {posts, total};
+            }
+        }
+        catch (err) {
+            if (axios.isCancel(err)) {
+                // Don't need to do anything special, the return below will handle it
+            }
+            else {
+                console.error(`Error getting my posts:\n${err.message}`);
+            }
+        }
+
+        return {posts: [], total: 0};
+    }
+
+    static async markAllPostNotificationsAsSeen() {
+        try {
+            let endDate = Date.now();
+            let payload = { endDate };
+
+            let response = await axiosApi.post(Constants.API_PATH_POSTS + 'markAllPostNotificationsAsSeen', payload);
+    
+            if (response.data) {
+                return response.data.success;
+            }
+        }
+        catch (err) {
+            console.error(`Error marking post notifications as seen:\n${err.message}`);
+        }
+
+        return undefined;
+    }
+
     static async markPostNotificationsAsRead(postId, endDate) {
         try {
             let payload = { postId, endDate };
@@ -333,19 +351,18 @@ export default class PostService {
         return undefined;
     }
 
-    static async markAllPostNotificationsAsSeen() {
+    static async removeAllPostNotifications(endDate) {
         try {
-            let endDate = Date.now();
             let payload = { endDate };
 
-            let response = await axiosApi.post(Constants.API_PATH_POSTS + 'markAllPostNotificationsAsSeen', payload);
+            let response = await axiosApi.post(Constants.API_PATH_POSTS + 'removeAllPostNotifications', payload);
     
             if (response.data) {
                 return response.data.success;
             }
         }
         catch (err) {
-            console.error(`Error marking post notifications as seen:\n${err.message}`);
+            console.error(`Error removing all post notifications:\n${err.message}`);
         }
 
         return undefined;
@@ -363,23 +380,6 @@ export default class PostService {
         }
         catch (err) {
             console.error(`Error removing post notifications:\n${err.message}`);
-        }
-
-        return undefined;
-    }
-
-    static async removeAllPostNotifications(endDate) {
-        try {
-            let payload = { endDate };
-
-            let response = await axiosApi.post(Constants.API_PATH_POSTS + 'removeAllPostNotifications', payload);
-    
-            if (response.data) {
-                return response.data.success;
-            }
-        }
-        catch (err) {
-            console.error(`Error removing all post notifications:\n${err.message}`);
         }
 
         return undefined;

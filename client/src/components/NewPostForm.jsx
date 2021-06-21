@@ -1162,6 +1162,20 @@ export const NewPostForm = ({ onNewPostCreated }) => {
                 resetForm();
                 onNewPostCreated(newPost);
             }
+            else {
+                setMessageBoxOptions({
+                    isOpen: true,
+                    messageBoxProps: {
+                        actions: MESSAGE_BOX_TYPES.OK,
+                        caption: 'Create Post Failed',
+                        message: 'Failed to create the post, please try again.',
+                        onConfirm: () => {},
+                        onDeny: undefined,
+                        onCancel: undefined,
+                        subtext: 'Make sure you have an internet connection'
+                    }
+                });
+            }
         }
     };
 

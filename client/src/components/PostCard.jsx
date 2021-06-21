@@ -204,6 +204,20 @@ export const PostCard = ({ post, fetchDate, focusCommentId, deletePostCB } ) => 
                     }));
                 }
             }
+            else {
+                setMessageBoxOptions({
+                    isOpen: true,
+                    messageBoxProps: {
+                        actions: MESSAGE_BOX_TYPES.OK,
+                        caption: 'Add Comment Failed',
+                        message: 'Failed to add the comment, please try again.',
+                        onConfirm: () => {},
+                        onDeny: undefined,
+                        onCancel: undefined,
+                        subtext: 'Make sure you have an internet connection'
+                    }
+                });
+            }
         }
     };
 
@@ -290,6 +304,20 @@ export const PostCard = ({ post, fetchDate, focusCommentId, deletePostCB } ) => 
             if (deletePostCB) {
                 deletePostCB(postUniqueId);
             }
+        }
+        else {
+            setMessageBoxOptions({
+                isOpen: true,
+                messageBoxProps: {
+                    actions: MESSAGE_BOX_TYPES.OK,
+                    caption: 'Delete Post Failed',
+                    message: 'Failed to delete the post, please try again later.',
+                    onConfirm: () => {},
+                    onDeny: undefined,
+                    onCancel: undefined,
+                    subtext: undefined
+                }
+            });
         }
     };
 
