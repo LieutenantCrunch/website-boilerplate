@@ -1,3 +1,4 @@
+/* https://webpack.js.org/guides/production/ */
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
@@ -6,7 +7,6 @@ module.exports = {
         index: './src/index.jsx',
         admin: './src/admin.jsx'
     },
-    mode: 'development',
     module: {
         rules: [
             {
@@ -51,7 +51,6 @@ module.exports = {
         publicPath: '/public/js/',
         filename: '[name].[contenthash].js'
     },
-    devtool: 'source-map',
     plugins: [
         new HtmlWebpackPlugin({
             filename: '../index.html',

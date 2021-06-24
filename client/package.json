@@ -6,8 +6,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:dev": "run-s clean-wp-output:dev compile:dev",
-    "compile:dev": "npx webpack",
-    "clean-wp-output:dev": "rimraf ../server/dist/js"
+    "build:prod": "run-s clean-wp-output:prod compile:prod",
+    "compile:dev": "npx webpack --config webpack.dev.js",
+    "compile:prod": "npx webpack --config webpack.prod.js",
+    "clean-wp-output:dev": "rimraf ../server/dist/js",
+    "clean-wp-output:prod": "rimraf ../server/dist/js"
   },
   "author": "Lieutenant Crunch",
   "license": "MIT",
@@ -56,6 +59,7 @@
     "html-webpack-plugin": "^5.3.0",
     "style-loader": "^2.0.0",
     "webpack": "^5.38.1",
-    "webpack-cli": "^4.7.0"
+    "webpack-cli": "^4.7.0",
+    "webpack-merge": "^5.8.0"
   }
 }
