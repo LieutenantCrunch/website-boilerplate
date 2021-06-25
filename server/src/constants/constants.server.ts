@@ -1,5 +1,7 @@
-export const LISTEN_PORT: number = 3000; // The port the server will listen on for http
-export const LISTEN_PORT_SECURE: number = 3443; // The port the server will listen on for https
+const isProd: Boolean = process.env.NODE_ENV === 'production';
+
+export const LISTEN_PORT: number = isProd ? 80 : 3000; // The port the server will listen on for http
+export const LISTEN_PORT_SECURE: number = isProd ? 443 : 3443; // The port the server will listen on for https
 
 export const JWT_EXPIRATION_DAYS: number = 30;
 export const RPT_EXPIRATION_MINUTES: number = 5; // Reset Password Token Expiration
@@ -18,9 +20,9 @@ export const CACHE_DURATIONS = Object.freeze({
 export const CACHE_KEY_CONNECTION_TYPES_DICT: string = 'db.connectionTypesDict'; // The connection types dictionary used by dbMethods
 export const CACHE_KEY_CONNECTION_TYPES_ARRAY: string = 'db.connectionTypesArray'; // The connection types array used by dbMethods
 
-export const DB_USER_FETCH_PAGE_SIZE: number = 5; // The number of users to fetch at one time
-export const DB_FEED_FETCH_PAGE_SIZE: number = 5; // The number of posts to fetch at one time for feeds
-export const DB_COMMENT_FETCH_PAGE_SIZE: number = 2; // The number of post comments to fetch at one time
+export const DB_USER_FETCH_PAGE_SIZE: number = isProd ? 15 : 5; // The number of users to fetch at one time
+export const DB_FEED_FETCH_PAGE_SIZE: number = isProd ? 15 : 5; // The number of posts to fetch at one time for feeds
+export const DB_COMMENT_FETCH_PAGE_SIZE: number = isProd ? 10 : 2; // The number of post comments to fetch at one time
 
 export const INVALIDATE_TOKEN_MODE = Object.freeze({
     SPECIFIC: 0,
