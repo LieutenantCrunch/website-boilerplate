@@ -25,13 +25,6 @@ const httpApp: express.Application = express();
 const httpServer: http.Server = http.createServer(httpApp);
 
 if (isProd) {
-    /*
-    // This is for hosting the cert so you can load it on mobile
-    httpApp.get('/rootCA.pem', (req: Request, res: Response) => {
-        FileHandler.sendFileResponse(res, './private/certs/rootCA.pem');
-    });
-    */
-
     httpApp.get(/^\/robots\.txt$/, (req: Request, res: Response) => {
         FileHandler.sendFileResponse(res, './dist/robots.txt');
     });
@@ -50,6 +43,12 @@ if (isProd) {
         else {
             return next();
         }
+    });
+}
+else {
+    // This is for hosting the cert so you can load it on mobile
+    httpApp.get('/rootCA.pem', (req: Request, res: Response) => {
+        FileHandler.sendFileResponse(res, './private/certs/rootCA.pem');
     });
 }
 
@@ -139,13 +138,13 @@ httpsApp.use((req: Request, res: Response) => {
 io.use(AuthHelper.verifySocketToken);
 
 io.on('connection', (socket: SocketIO.Socket) => {
-    console.log(`${socket.id} connected`);
+    // console.log(`${socket.id} connected`);
 
     // socket.server.sockets.sockets
     socket.on('disconnect', () => {
         let success: Boolean = socketCache.deleteSocket(socket.id);
 
-        console.log(`${socket.id} disconnected, socket deleted: ${success}`);
+        // console.log(`${socket.id} disconnected, socket deleted: ${success}`);
     });
 });
 
