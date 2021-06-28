@@ -1,7 +1,7 @@
 const isProd: Boolean = process.env.NODE_ENV === 'production';
 
-export const LISTEN_PORT: number = isProd ? 80 : 3000; // The port the server will listen on for http
-export const LISTEN_PORT_SECURE: number = isProd ? 443 : 3443; // The port the server will listen on for https
+export const LISTEN_PORT: number = 3000; // The port the server will listen on for http
+export const LISTEN_PORT_SECURE: number = 3443; // The port the server will listen on for https
 
 export const JWT_EXPIRATION_DAYS: number = 30;
 export const RPT_EXPIRATION_MINUTES: number = 5; // Reset Password Token Expiration
