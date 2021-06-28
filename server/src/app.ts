@@ -6,6 +6,7 @@ import * as http from 'http';
 import * as https from 'https';
 import path from 'path';
 import * as SocketIO from 'socket.io';
+import args from 'args';
 
 import * as ClientConstants from './constants/constants.client';
 import * as ServerConstants from './constants/constants.server';
@@ -16,6 +17,11 @@ import AuthHelper from './utilities/authHelper';
 import FileHandler from './utilities/fileHandler';
 import { socketCache } from './utilities/socketCache';
 
+// npm run start:dev -- --ports || npm run start:dev -- -p
+args.option('ports', 'Pass this argument if explicit ports are necessary in prod. Ex: No firewall routing (80->3000, 443->3443) will require redirects to addresses containing the port numbers.', false);
+const flags = args.parse(process.argv);
+
+const explicitPorts: Boolean = flags.p || flags.ports;
 const isProd: Boolean = process.env.NODE_ENV === 'production';
 
 const certificate: string = fs.readFileSync('./private/certs/localhost+3.pem', 'utf8');
@@ -38,7 +44,12 @@ if (isProd) {
         }
 
         if (actualHost) {
-            res.redirect(`https://${actualHost}:${ServerConstants.LISTEN_PORT_SECURE}${req.path}`);
+            if (explicitPorts) {
+                res.redirect(`https://${actualHost}:${ServerConstants.LISTEN_PORT_SECURE}${req.path}`);
+            }
+            else {
+                res.redirect(`https://${actualHost}${req.path}`);
+            }
         }
         else {
             return next();
@@ -154,16 +165,16 @@ models.sequelize.authenticate().then(() => {
     // Don't start listening unless we have a successful database connection
     if (isProd) {
         httpServer.listen(ServerConstants.LISTEN_PORT, () => {
-            console.log(`Listening on http://localhost:${ServerConstants.LISTEN_PORT}`);
+            console.log(`Listening on port ${ServerConstants.LISTEN_PORT}`);
         });
 
         httpsServer.listen(ServerConstants.LISTEN_PORT_SECURE, () => {
-            console.log(`Listening on https://localhost:${ServerConstants.LISTEN_PORT_SECURE}`);
+            console.log(`Listening on port ${ServerConstants.LISTEN_PORT_SECURE}`);
         });
     }
     else {
         httpsServer.listen(ServerConstants.LISTEN_PORT, () => {
-            console.log(`Listening on http://localhost:${ServerConstants.LISTEN_PORT}`);
+            console.log(`Listening on port ${ServerConstants.LISTEN_PORT}`);
         });
     }
 }).catch((err: Error) => {
