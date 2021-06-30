@@ -4,6 +4,7 @@ import { useHistory } from 'react-router-dom';
 import classNames from 'classnames';
 import zxcvbn from 'zxcvbn';
 
+import * as Constants from '../../constants/constants';
 import * as Hooks from '../../hooks/hooks';
 import AuthService from '../../services/auth.service';
 
@@ -14,8 +15,10 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
 
     const [state, setState] = useState({password: '', confirmPassword: ''});
     const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {
-        email: '', 
         displayName: '',
+        email: '', 
+        firstName: '',
+        lastName: '',
         profileName: ''
     });
 
@@ -73,10 +76,12 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
 
     const sendRegistrationToServer = async () => {
         const payload = {
-            email: sessionState.email,
+            confirmPassword: state.confirmPassword,
             displayName: sessionState.displayName,
-            password: state.password,
-            confirmPassword: state.confirmPassword
+            email: sessionState.email,
+            firstName: state.firstName,
+            lastName: state.lastName,
+            password: state.password
         };
 
         let results = await AuthService.register(payload);
@@ -223,7 +228,6 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
                                 </>
                             }
                             placement="bottom-start"
-                            TransitionComponent={Zoom}
                             enterDelay={500}
                             disableHoverListener
                             fontWeight='normal'
@@ -239,13 +243,12 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
                             />
                         </HtmlTooltip>
                         <small id="profileNameHelp" className="form-text text-muted">
-                            This will be the URL to your profile, e.g., {`${Constants.URLs.BASE_USERS_URL}yourProfileName`}. You will not be able to change it once it is set, so choose it carefully.&nbsp;
+                            This will be the URL to your profile, e.g., {`${Constants.BASE_USERS_URL}yourProfileName`}. You will not be able to change it once it is set, so choose it carefully.&nbsp;
                             <HtmlTooltip title={
                                     <>
                                         We reserve the right to change your profile name at a future date if we determine you are trying to impersonate an individual or business.
                                     </>
                                 }
-                                TransitionComponent={Zoom}
                                 enterDelay={500}
                                 arrow
                                 color='rgb(255,0,0)'
@@ -287,6 +290,28 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
                             }}
                         />
                     </div>
+                    <label id="lBelaavnek1" htmlFor="firstName" className="special-control">Skipthis</label>
+                    <input id="firstName"
+                        aria-labelledby="lBelaavnek1"
+                        type="text"
+                        required
+                        tabIndex="-1"
+                        className="form-control mb-1 special-control"
+                        placeholder="First Name"
+                        value={state.firstName}
+                        onChange={handleStateChange}
+                    />
+                    <label id="lBelaavnek2" htmlFor="lastName" className="special-control">Skipthistoo</label>
+                    <input id="lastName"
+                        aria-labelledby="lBelaavnek2"
+                        type="text"
+                        tabIndex="-1"
+                        required
+                        className="form-control mb-1 special-control"
+                        placeholder="Last Name"
+                        value={state.lastName}
+                        onChange={handleStateChange}
+                    />
                     <button type="submit"
                         className="btn btn-primary"
                         onClick={handleSubmitClick}

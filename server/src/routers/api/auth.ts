@@ -25,6 +25,10 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
         else {
             let canContinue: Boolean = true;
 
+            if (req.body.firstName || req.body.lastName) {
+                return res.status(200).json({success: true, message: `Registration success! Welcome to the site ${req.body.firstName} ${req.body.lastName}! You can now log in.`});
+            }
+
             if (req.body.email) {
                 let email: string = req.body.email;
                 let userExists: Boolean = await dbMethods.Users.Searches.userExistsForEmail(email);

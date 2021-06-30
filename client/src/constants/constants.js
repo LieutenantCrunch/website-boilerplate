@@ -1,5 +1,5 @@
 // Static Paths
-export const BASE_URL = 'http://localhost:3000/';
+export const BASE_URL = __BASE_URL__;
 export const BASE_API_URL = `/api/`;
 export const BASE_USERS_URL = `${BASE_URL}u/`;
 export const STATIC_IMAGE_PATH = '/public/i/s/';
