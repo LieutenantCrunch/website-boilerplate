@@ -7,3 +7,4 @@ server/Ethereal
 server/IMAP
 server/Pending
 server/Project
+**/Thumbs.db

@@ -30,6 +30,10 @@ const privateKey: string = fs.readFileSync('./private/certs/localhost+3-key.pem'
 const httpApp: express.Application = express();
 const httpServer: http.Server = http.createServer(httpApp);
 
+httpApp.get(/^\/favicon\.png$/, (req: Request, res: Response) => {
+    FileHandler.sendFileResponse(res, './dist/favicon.png');
+});
+
 if (isProd) {
     httpApp.get(/^\/robots\.txt$/, (req: Request, res: Response) => {
         FileHandler.sendFileResponse(res, './dist/robots.txt');
@@ -80,6 +84,12 @@ const corsOptions: Object = {
 function send404Response (res: Response, message = 'Not Found'): any {
     res.status(404).send(message);
 };
+
+if (isProd) {
+    httpsApp.get(/^\/favicon\.png$/, (req: Request, res: Response) => {
+        FileHandler.sendFileResponse(res, './dist/favicon.png');
+    });
+}
 
 // When serving svgz, need to add the gzip Content-Encoding header so the browser knows what to do with it
 // This has to come before the app.use(express.static('dist')) line
