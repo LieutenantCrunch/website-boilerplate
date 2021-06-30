@@ -1,5 +1,12 @@
+const isProd: Boolean = process.env.NODE_ENV === 'production';
+const __BASE_URL__: string = isProd ? 'https://10.0.0.10/' : 'http://localhost:3000/';
+
+// ##################################################################
+// Code above this is server-specific due to webpack not being used
+// ##################################################################
+
 // Static Paths
-export const BASE_URL: string = 'http://localhost:3000/';
+export const BASE_URL: string = __BASE_URL__;
 export const BASE_API_URL: string = `${BASE_URL}api/`;
 export const BASE_USERS_URL: string = `${BASE_URL}u/`;
 export const STATIC_IMAGE_PATH = '/public/i/s/';

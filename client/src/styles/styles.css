@@ -360,3 +360,15 @@ body {
         width: auto;
     }
 }
+
+/* They're so special they're hidden */
+.special-control {
+    height: 0;
+    left: -1px;
+    margin: 0;
+    padding: 0;
+    position: fixed;
+    top: -1px;
+    visibility: hidden;
+    width: 0;
+}
