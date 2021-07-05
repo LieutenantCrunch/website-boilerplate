@@ -39,7 +39,7 @@ const sequelizeConfig = {
     database: currentConfig['database'],
     username: currentConfig['username'],
     password: currentConfig['password'],
-    logging: currentConfig['logging'],
+    logging: currentConfig['logging'] ? console.log : false,
     define: {
         freezeTableName: true,
         timestamps: false

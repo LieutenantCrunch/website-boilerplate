@@ -150,7 +150,11 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                     postFiles = [];
 
                     for (let file of req.files) {
-                        let flagType: number = await NSFWJSHelper.processImage(file.path);
+                        let flagType: number = 0;
+                        
+                        if (postType === ClientConstants.POST_TYPES.IMAGE) {
+                            flagType = await NSFWJSHelper.processImage(file.path);
+                        }
 
                         postFiles.push({
                             fileName: file.filename,

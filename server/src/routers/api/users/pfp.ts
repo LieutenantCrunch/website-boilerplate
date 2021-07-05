@@ -1,8 +1,7 @@
 import express, {Request, Response, Router, NextFunction, json} from 'express';
-import fs from 'fs';
+import fs from 'fs/promises';
 import path, { ParsedPath } from 'path';
 import sharp, { OutputInfo, Sharp } from 'sharp';
-import {promisify} from 'util';
 
 import { dbMethods } from '../../../database/dbMethods';
 import AuthHelper from '../../../utilities/authHelper';
@@ -20,16 +19,13 @@ apiUserPFPRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Reque
             const pfpFileName: string | null = await dbMethods.Users.Fields.getPFPFileNameForUserId(req.userId);
 
             if (pfpFileName) {
-                res.status(200).json({success: true, path: `i/u/${req.userId}/${pfpFileName}`, message: null});
-            }
-            else {
-                res.status(200).json({success: false, path: `i/s/pfpDefault.svgz`, message: null});
+                return res.status(200).json({success: true, path: `i/u/${req.userId}/${pfpFileName}`, message: null});
             }
         }
-        break;
+
+        return res.status(200).json({success: false, path: `i/s/pfpDefault.svgz`, message: null});
     default:
-        res.status(404).json({success: false, path: null, message: `${req.params.methodName} is not a valid user PFP method`});
-        break;
+        return res.status(404).json({success: false, path: null, message: `${req.params.methodName} is not a valid user PFP method`});
     }
 });
 
@@ -63,9 +59,7 @@ apiUserPFPRouter.post('/:methodName', [AuthHelper.verifyToken, PFPUploadHelper.u
                 }).toFormat('png').toFile(smallFilePath);
             }
             else {
-                const copyFileAsync = promisify(fs.copyFile);
-
-                await copyFileAsync(originalPath, smallFilePath);
+                await fs.copyFile(originalPath, smallFilePath);
             }
         }
         catch (err)
@@ -91,7 +85,6 @@ apiUserPFPRouter.post('/:methodName', [AuthHelper.verifyToken, PFPUploadHelper.u
         return res.status(500).json({success: false, message: 'An error has occurred while uploading your profile picture'});
     default:
         return res.status(404).send(req.params.methodName + ' is not a valid user PFP method')
-        break;
     }
 });
 

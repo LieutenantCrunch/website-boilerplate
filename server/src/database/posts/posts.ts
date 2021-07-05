@@ -1,3 +1,5 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { Op } from 'sequelize';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -653,6 +655,11 @@ export const deletePost = async function(userUniqueId: string, uniqueId: string)
             }
 
             let post: PostInstance | null = await models.Post.findOne({
+                attributes: [
+                    'id',
+                    'postType',
+                    'registeredUserId'
+                ],
                 where: whereOptions,
                 include: [
                     {
@@ -671,11 +678,60 @@ export const deletePost = async function(userUniqueId: string, uniqueId: string)
                                 ]
                             }
                         ]
+                    },
+                    {
+                        model: models.PostFile,
+                        as: 'postFiles',
+                        attributes: [
+                            'fileName',
+                            'thumbnailFileName'
+                        ]
+                    },
+                    {
+                        model: models.User,
+                        as: 'registeredUser',
+                        attributes: [
+                            'uniqueId'
+                        ]
                     }
                 ]
             });
 
             if (post) {
+                let registeredUser: UserInstance = post.registeredUser!;
+                let userUniqueId: string = registeredUser.uniqueId;
+                let filesToRemove: string[] = [];
+
+                if (post.postFiles && post.postFiles[0]) {
+                    for (let postFile of post.postFiles) {
+                        let fileDirectory: string = `${process.cwd()}/dist/u/${userUniqueId}`;
+
+                        switch (post.postType) {
+                            case ClientConstants.POST_TYPES.IMAGE:
+                                fileDirectory = `${process.cwd()}/dist/u/${userUniqueId}/i`;
+                                break;
+                            case ClientConstants.POST_TYPES.VIDEO:
+                                fileDirectory = `${process.cwd()}/dist/u/${userUniqueId}/v`;
+                                break;
+                            case ClientConstants.POST_TYPES.AUDIO:
+                                fileDirectory = `${process.cwd()}/dist/u/${userUniqueId}/a`;
+                                break;
+                            default:
+                                break;
+                        }
+                        
+                        let filePath: string = path.resolve(fileDirectory, postFile.fileName);
+
+                        filesToRemove.push(filePath);
+
+                        if (postFile.thumbnailFileName) {
+                            filePath = path.resolve(fileDirectory, postFile.thumbnailFileName);
+
+                            filesToRemove.push(filePath);
+                        }
+                    }
+                }
+
                 await post.destroy();
 
                 let notificationIds: string[] = [userUniqueId];
@@ -692,6 +748,16 @@ export const deletePost = async function(userUniqueId: string, uniqueId: string)
                 }
 
                 SocketHelper.notifyUsers(notificationIds, ClientConstants.SOCKET_EVENTS.NOTIFY_USER.DELETED_POST);
+
+                // Do this after the post has been deleted to reduce cases where they could get the record back on the client before the file is deleted
+                for (let fileToRemove of filesToRemove) {
+                    try {
+                        fs.rm(fileToRemove, { force: true });
+                    }
+                    catch (err) {
+                        ; // Oh well, I tried
+                    }
+                }
 
                 return true;
             }

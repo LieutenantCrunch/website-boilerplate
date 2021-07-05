@@ -2,8 +2,7 @@ import express, {Request, Response, NextFunction} from 'express';
 import * as SocketIO from 'socket.io';
 //import jwt from 'jsonwebtoken';
 const jwt = require('jsonwebtoken'); // Need to do this so TypeScript doesn't throw an error about properties not existing on the decodedToken - https://stackoverflow.com/questions/47508424/how-to-get-token-expiration-with-jsonwebtoken-using-typescript
-import fs from 'fs';
-import {promisify} from 'util';
+import fs from 'fs/promises';
 import cookie from 'cookie';
 
 import { dbMethods } from '../database/dbMethods';
@@ -139,12 +138,10 @@ export default class AuthHelper {
     }
 
     static async getJWTSecret(): Promise<string> {
-        const readFileAsync = promisify(fs.readFile);
-    
         if (this.jwtSecret === '') {
             try
             {
-                this.jwtSecret = (await readFileAsync('./private/jwtsecret.txt', 'utf8')).trim();
+                this.jwtSecret = (await fs.readFile('./private/jwtsecret.txt', 'utf8')).trim();
             }
             catch (readFileError)
             {

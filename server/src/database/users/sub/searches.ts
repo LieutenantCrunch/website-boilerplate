@@ -213,7 +213,10 @@ export const getUserDetails = async function(currentUniqueId: string | undefined
                     attributes: [
                         'displayName',
                         'displayNameIndex'
-                    ]
+                    ],
+                    where: {
+                        isActive: true
+                    }
                 }, 
                 {
                     model: models.ProfilePicture,
@@ -221,7 +224,12 @@ export const getUserDetails = async function(currentUniqueId: string | undefined
                     attributes: [
                         'fileName',
                         'smallFileName'
-                    ]
+                    ],
+                    on: {
+                        id: {
+                            [Op.eq]: Sequelize.literal('(select `id` FROM `profile_picture` where `profile_picture`.`registered_user_id` = `User`.`id` order by `profile_picture`.`id` desc limit 1)')
+                        }
+                    }
                 },
                 {
                     model: models.Role,
@@ -230,7 +238,8 @@ export const getUserDetails = async function(currentUniqueId: string | undefined
                         'roleName'
                     ]
                 }
-            ]
+            ],
+            subQuery: false // See notes elsewhere
         });
 
         if (registeredUser) {
