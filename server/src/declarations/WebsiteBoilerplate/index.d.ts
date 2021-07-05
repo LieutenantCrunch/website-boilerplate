@@ -32,6 +32,7 @@ declare namespace WebsiteBoilerplate {
     
     export interface PostFileInfo {
         fileName: string;
+        flagType?: number;
         mimeType: string;
         originalFileName: string;
         size: number;

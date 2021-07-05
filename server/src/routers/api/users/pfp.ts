@@ -6,6 +6,7 @@ import {promisify} from 'util';
 
 import { dbMethods } from '../../../database/dbMethods';
 import AuthHelper from '../../../utilities/authHelper';
+import { NSFWJSHelper } from '../../../utilities/nsfwjsHelper';
 import PFPUploadHelper from '../../../utilities/pfpUploadHelper';
 
 const apiUserPFPRouter = express.Router();
@@ -75,23 +76,19 @@ apiUserPFPRouter.post('/:methodName', [AuthHelper.verifyToken, PFPUploadHelper.u
 
         try
         {
-            let {success, pfp, pfpSmall}: {success: Boolean, pfp?: string, pfpSmall?: string} = await dbMethods.Users.Fields.addProfilePictureToUser(req.file.filename, smallFileName, req.file.originalname, req.file.mimetype, req.userId!);
+            let flagType: number = await NSFWJSHelper.processImage(smallFilePath);
+            let {success, pfp, pfpSmall}: {success: Boolean, pfp?: string, pfpSmall?: string} = await dbMethods.Users.Fields.addProfilePictureToUser(req.file.filename, smallFileName, req.file.originalname, req.file.mimetype, req.userId!, flagType);
 
             if (success) {
                 return res.status(200).json({success: true, message: 'Upload success!', pfp, pfpSmall});
             }
-            else {
-                return res.status(500).json({success: false, message: 'An error has occurred while uploading your profile picture'});
-            }
-
         }
         catch (err)
         {
             console.error(`Error uploading profile picture: ${err.message}`);
-            return res.status(500).json({success: false, message: 'An error has occurred while uploading your profile picture'});
         }
 
-        break;
+        return res.status(500).json({success: false, message: 'An error has occurred while uploading your profile picture'});
     default:
         return res.status(404).send(req.params.methodName + ' is not a valid user PFP method')
         break;

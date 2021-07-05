@@ -2502,6 +2502,7 @@ class DatabaseHelper {
         
                             postFiles = dbPostFiles.map(dbPostFile => ({
                                 fileName: `${filePath}${dbPostFile.fileName}`,
+                                flagType: dbPostFile.flagType || 0,
                                 mimeType: dbPostFile.mimeType,
                                 originalFileName: dbPostFile.originalFileName,
                                 size: dbPostFile.fileSize,
@@ -2651,6 +2652,7 @@ class DatabaseHelper {
 
                     postFiles = dbPostFiles.map(dbPostFile => ({
                         fileName: `${filePath}${dbPostFile.fileName}`,
+                        flagType: dbPostFile.flagType || 0,
                         mimeType: dbPostFile.mimeType,
                         originalFileName: dbPostFile.originalFileName,
                         size: dbPostFile.fileSize,
@@ -2850,6 +2852,7 @@ class DatabaseHelper {
                                 registeredUserId: registeredUser.id!,
                                 fileName: postFile.fileName,
                                 fileSize: postFile.size,
+                                flagType: postFile.flagType || 0,
                                 mimeType: postFile.mimeType,
                                 originalFileName: postFile.originalFileName,
                                 thumbnailFileName: postFile.thumbnailFileName || null
@@ -2970,6 +2973,7 @@ class DatabaseHelper {
 
                 postFiles = dbPostFiles.map(dbPostFile => ({
                     fileName: `${filePath}${dbPostFile.fileName}`,
+                    flagType: dbPostFile.flagType || 0,
                     mimeType: dbPostFile.mimeType,
                     originalFileName: dbPostFile.originalFileName,
                     size: dbPostFile.fileSize,

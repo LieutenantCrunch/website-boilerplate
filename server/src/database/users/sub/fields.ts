@@ -13,7 +13,7 @@ import { isNullOrWhiteSpaceOnly } from '../../../utilities/utilityFunctions';
 
 import { getUserWithUniqueId } from './searches';
 
-export const addProfilePictureToUser = async function(fileName: string, smallFileName: string, originalFileName: string, mimeType: string, userUniqueId: string): Promise<{success: Boolean, pfp?: string, pfpSmall?: string}> {
+export const addProfilePictureToUser = async function(fileName: string, smallFileName: string, originalFileName: string, mimeType: string, userUniqueId: string, flagType: number): Promise<{success: Boolean, pfp?: string, pfpSmall?: string}> {
     try
     {
         let registeredUser: UserInstance | null = await getUserWithUniqueId(userUniqueId);
@@ -21,8 +21,9 @@ export const addProfilePictureToUser = async function(fileName: string, smallFil
         if (registeredUser) {
             let newPFP: ProfilePictureInstance | null = await registeredUser.createProfilePicture({
                 fileName,
-                originalFileName,
+                flagType,
                 mimeType,
+                originalFileName,
                 smallFileName
             });
 

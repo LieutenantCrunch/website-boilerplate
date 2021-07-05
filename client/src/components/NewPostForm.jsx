@@ -104,7 +104,7 @@ const useStyles = makeStyles(() => ({
         }
     },
     postProgress: {
-        backgroundColor: 'rgba(255,255,255)',
+        backgroundColor: 'rgb(255,255,255)',
         position: 'absolute',
         bottom: 0,
         left: 0,
@@ -190,6 +190,12 @@ const useStyles = makeStyles(() => ({
     }
 }));
 
+const UPLOAD_STATE = Object.freeze({
+    IDLE: 0,
+    UPLOADING: 1,
+    PROCESSING: 2
+});
+
 export const NewPostForm = ({ onNewPostCreated }) => {
     const MAX_TEXT_LENGTH = 2000;
     const MAX_TITLE_LENGTH = 50;
@@ -234,7 +240,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
         titleLimit: 0
     });
 
-    const [isUploading, setIsUploading] = useState(false);
+    const [uploadState, setUploadState] = useState(UPLOAD_STATE.IDLE);
     const [uploadProgress, setUploadProgress] = useState(0);
 
     // References
@@ -1129,7 +1135,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
     const validateAndPost = async () => {
         if (validatePost()) {
             setUploadProgress(0);
-            setIsUploading(true);
+            setUploadState(UPLOAD_STATE.UPLOADING);
 
             let postData = {
                 audience: state.postAudience,
@@ -1148,11 +1154,13 @@ export const NewPostForm = ({ onNewPostCreated }) => {
 
             let newPost = await PostService.createNewPost(postData, (event) => {
                 if (event.loaded === event.total) {
-                    setIsUploading(false);
+                    setUploadState(UPLOAD_STATE.PROCESSING);
                 }
 
                 setUploadProgress(Math.round((100 * event.loaded) / event.total));
             });
+
+            setUploadState(UPLOAD_STATE.IDLE);
 
             if (newPost) {
                 if (state.postType === Constants.POST_TYPES.VIDEO) {
@@ -1291,7 +1299,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
                         {getCurrentDropText()}
                     </div>
                 </div>
-                <div className={classes.postProgress} style={{ display: isUploading ? 'flex' : 'none' }}>
+                <div className={classes.postProgress} style={{ display: uploadState !== UPLOAD_STATE.IDLE ? 'flex' : 'none' }}>
                     <div className="progress-bar progress-bar-striped progress-bar-animated" 
                         aria-valuenow={uploadProgress} 
                         aria-valuemin="0" 
@@ -1304,7 +1312,9 @@ export const NewPostForm = ({ onNewPostCreated }) => {
                             width: '100%'
                         }}
                     >
-                        Uploading... ({uploadProgress}%)
+                        {
+                            uploadState === UPLOAD_STATE.UPLOADING ? `Uploading... (${uploadProgress}%)` : `Processing...`
+                        }
                     </div>
                 </div>
             </Paper>

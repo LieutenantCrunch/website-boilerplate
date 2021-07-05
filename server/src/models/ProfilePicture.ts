@@ -7,6 +7,7 @@ export interface ProfilePictureAttributes {
     registeredUserId: number;
     mimeType: string;
     fileName: string;
+    flagType: number;
     originalFileName: string;
     smallFileName: string;
     user?: UserInstance;
@@ -26,21 +27,26 @@ export const ProfilePictureFactory = (sequelize: Sequelize): ModelCtor<ProfilePi
             primaryKey: true,
             autoIncrement: true
         },
-        registeredUserId: {
+        fileName: {
+            type: DataTypes.STRING(200),
+            field: 'file_name'
+        },
+        flagType: {
             type: DataTypes.INTEGER,
-            field: 'registered_user_id'
+            field: 'flag_type',
+            defaultValue: 0
         },
         mimeType: {
             type: DataTypes.STRING(50),
             field: 'mime_type'
         },
-        fileName: {
-            type: DataTypes.STRING(200),
-            field: 'file_name'
-        },
         originalFileName: {
             type: DataTypes.STRING(150),
             field: 'original_file_name'
+        },
+        registeredUserId: {
+            type: DataTypes.INTEGER,
+            field: 'registered_user_id'
         },
         smallFileName: {
             type: DataTypes.STRING(206),
