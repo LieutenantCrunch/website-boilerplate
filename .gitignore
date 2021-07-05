@@ -1,5 +1,7 @@
+server/build/
 server/dist/
 server/node_modules/
+server/nsfwjs/
 server/private/
 server/runtime/
 client/node_modules/

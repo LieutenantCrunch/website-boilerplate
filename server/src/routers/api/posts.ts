@@ -2,6 +2,7 @@ import express, {Request, Response, Router} from 'express';
 
 import { dbMethods } from '../../database/dbMethods';
 import AuthHelper from '../../utilities/authHelper';
+import { NSFWJSHelper } from '../../utilities/nsfwjsHelper';
 import PostUploadHelper from '../../utilities/postUploadHelper';
 import { dateFromInput } from '../../utilities/utilityFunctions';
 import * as ClientConstants from '../../constants/constants.client';
@@ -146,12 +147,19 @@ apiPostsRouter.post('/:methodName', [AuthHelper.verifyToken, PostUploadHelper.up
                         return res.status(200).json({success: false});
                     }
 
-                    postFiles = req.files.map(file => ({
-                        fileName: file.filename,
-                        mimeType: file.mimetype,
-                        originalFileName: file.originalname,
-                        size: file.size
-                    }));
+                    postFiles = [];
+
+                    for (let file of req.files) {
+                        let flagType: number = await NSFWJSHelper.processImage(file.path);
+
+                        postFiles.push({
+                            fileName: file.filename,
+                            flagType,
+                            mimeType: file.mimetype,
+                            originalFileName: file.originalname,
+                            size: file.size
+                        });
+                    }
 
                     if (postType === ClientConstants.POST_TYPES.AUDIO || postType === ClientConstants.POST_TYPES.VIDEO) {
                         avFile = req.files[0];

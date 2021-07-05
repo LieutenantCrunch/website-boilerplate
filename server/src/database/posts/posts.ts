@@ -485,6 +485,7 @@ export const addNewPost = async function(uniqueId: string, postType: number, pos
                             registeredUserId: registeredUser.id!,
                             fileName: postFile.fileName,
                             fileSize: postFile.size,
+                            flagType: postFile.flagType || 0,
                             mimeType: postFile.mimeType,
                             originalFileName: postFile.originalFileName,
                             thumbnailFileName: postFile.thumbnailFileName || null

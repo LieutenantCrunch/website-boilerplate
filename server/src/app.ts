@@ -15,6 +15,7 @@ import { models } from './models/_index';
 
 import AuthHelper from './utilities/authHelper';
 import FileHandler from './utilities/fileHandler';
+import { NSFWJSHelper } from './utilities/nsfwjsHelper';
 import { socketCache } from './utilities/socketCache';
 
 // npm run start:dev -- --ports || npm run start:dev -- -p
@@ -173,20 +174,29 @@ models.sequelize.authenticate().then(() => {
     console.log(`Successfully connected to database via Sequelize.`);
 
     // Don't start listening unless we have a successful database connection
-    if (isProd) {
-        httpServer.listen(ServerConstants.LISTEN_PORT, () => {
-            console.log(`Listening on port ${ServerConstants.LISTEN_PORT}`);
-        });
 
-        httpsServer.listen(ServerConstants.LISTEN_PORT_SECURE, () => {
-            console.log(`Listening on port ${ServerConstants.LISTEN_PORT_SECURE}`);
-        });
-    }
-    else {
-        httpsServer.listen(ServerConstants.LISTEN_PORT, () => {
-            console.log(`Listening on port ${ServerConstants.LISTEN_PORT}`);
-        });
-    }
+    NSFWJSHelper.load().then(() => {
+        // Don't start listening unless the NSFWJS model has loaded
+
+        if (isProd) {
+            httpServer.listen(ServerConstants.LISTEN_PORT, () => {
+                console.log(`Listening on port ${ServerConstants.LISTEN_PORT}`);
+            });
+
+            httpsServer.listen(ServerConstants.LISTEN_PORT_SECURE, () => {
+                console.log(`Listening on port ${ServerConstants.LISTEN_PORT_SECURE}`);
+            });
+        }
+        else {
+            httpsServer.listen(ServerConstants.LISTEN_PORT, () => {
+                console.log(`Listening on port ${ServerConstants.LISTEN_PORT}`);
+            });
+        }
+    })
+    .catch((err: Error) => {
+        console.error(`Unable to load the NSFWJS model:\n${err.message}`);
+        process.exit(1);
+    })
 }).catch((err: Error) => {
     console.error(`Unable to connect to the database or start listening on ports: ${err.message}`);
     process.exit(1);
