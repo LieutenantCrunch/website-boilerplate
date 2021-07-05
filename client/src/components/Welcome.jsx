@@ -88,6 +88,7 @@ export const Welcome = ({ setTitle }) => {
                         What Advantages Does This Site Have Over Others?
                     </Typography>
                     <List className={classes.root}>
+                        <Divider component="li" />
                         <ListItem button onClick={handleFacebookClick}>
                             <ListItemIcon>
                                 <FacebookIcon style={{ color: 'rgb(24,119,242)' }} />
@@ -148,7 +149,14 @@ export const Welcome = ({ setTitle }) => {
                                 </ListItem>
                             </List>
                         </Collapse>
+                        <Divider component="li" />
                     </List>
+                    <Typography variant="h6">
+                        Do my photos and other files stay around even if I delete them?
+                    </Typography>
+                    <Typography gutterBottom>
+                        When you delete something, I try my best to get rid of it. That's not to say it could be in a backup somewhere, but assuming there's no need to revert to a backup where it exists, it shouldn't come back.
+                    </Typography>
                 </CardContent>
             </Card>
         </div>

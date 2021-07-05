@@ -12,24 +12,21 @@ export const Terms = ({ setTitle }) => {
             </div>
             <ul className="list-group">
                 <li className="list-group-item">
-                    You will not hold me legally responsible for anything related to this website (or whatever you could possibly come up with).
+                    You won't hold me legally responsible for anything related to this website (or whatever you could possibly come up with).
                     I just built this thing to improve my skills so I could get a job. There's no security team to ensure your data is safe or that best practices are being followed 100%.
                 </li>
                 <li className="list-group-item">
-                    You will not use a password for this website that you use elsewhere.
+                    You won't use a password for this website that you use elsewhere.
                     Passwords are encrypted and are not stored in plain text, but it's just general bad practice to reuse passwords.
                 </li>
                 <li className="list-group-item">
                     I reserve the right to delete anything I find on this website.
                 </li>
                 <li className="list-group-item">
-                    You will not post anything here you wouldn't want the entire world to see.
+                    You won't post stuff you don't have the rights to post or that would be illegal to post (i.e. mp3s/videos/anything that could get you or me nailed with a copyright notice or some other legal stupidity).
                 </li>
                 <li className="list-group-item">
-                    You will not post stuff you don't have the rights to post (i.e. mp3s/videos/whatever that could get you or me nailed with a copyright notice).
-                </li>
-                <li className="list-group-item">
-                    You will not use this site to launch a nuclear missile. I don't know how you would, but that seems to be a popular thing to put in terms of service.
+                    You won't use this site to launch a nuclear missile. I don't know how you would, but that seems to be a popular thing to put in terms of service.
                 </li>
                 <li className="list-group-item">
                     You understand that these Terms of Service could change at some point in the future.

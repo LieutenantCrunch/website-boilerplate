@@ -1,4 +1,6 @@
+import fs from 'fs/promises';
 import memoize from 'memoizee';
+import path from 'path';
 
 import * as ClientConstants from '../../../constants/constants.client';
 import * as ServerConstants from '../../../constants/constants.server';
@@ -11,7 +13,11 @@ import { UserInstance } from '../../../models/User';
 
 import { isNullOrWhiteSpaceOnly } from '../../../utilities/utilityFunctions';
 
-import { getUserWithUniqueId } from './searches';
+import { 
+    getUserWithId,
+    getUserWithProfileName,
+    getUserWithUniqueId 
+} from './searches';
 
 export const addProfilePictureToUser = async function(fileName: string, smallFileName: string, originalFileName: string, mimeType: string, userUniqueId: string, flagType: number): Promise<{success: Boolean, pfp?: string, pfpSmall?: string}> {
     try
@@ -19,6 +25,8 @@ export const addProfilePictureToUser = async function(fileName: string, smallFil
         let registeredUser: UserInstance | null = await getUserWithUniqueId(userUniqueId);
         
         if (registeredUser) {
+            let oldPFP: ProfilePictureInstance | undefined = await getProfilePictureForUser(registeredUser.id!);
+
             let newPFP: ProfilePictureInstance | null = await registeredUser.createProfilePicture({
                 fileName,
                 flagType,
@@ -28,6 +36,33 @@ export const addProfilePictureToUser = async function(fileName: string, smallFil
             });
 
             if (newPFP) {
+                // Delete all of the cached records for this user that contain the profile picture
+                getProfilePictureForUser.delete(registeredUser.id!);
+                getProfilePictureForUser.delete(userUniqueId);
+                getUserWithId.delete(registeredUser.id!);
+                getUserWithProfileName.delete(registeredUser.profileName);
+                getUserWithUniqueId.delete(userUniqueId);
+
+                //## Temporary: In the future, this can be removed when users can view all of their past profile pictures and can choose which ones to delete
+                if (oldPFP) {
+                    let filesToRemove: string[] = [];
+                    let fileDirectory: string = `${process.cwd()}/dist/u/${userUniqueId}`;
+
+                    filesToRemove.push(path.resolve(fileDirectory, oldPFP.fileName));
+                    filesToRemove.push(path.resolve(fileDirectory, oldPFP.smallFileName));
+                    
+                    await oldPFP.destroy();
+
+                    for (let fileToRemove of filesToRemove) {
+                        try {
+                            fs.rm(fileToRemove, { force: true });
+                        }
+                        catch (err) {
+                            console.error(`Error deleting old profile picture:\n${err.message}`); // Oh well, I tried
+                        }
+                    }
+                }
+
                 return {
                     success: true, 
                     pfp: `${ClientConstants.PUBLIC_USER_PATH}${userUniqueId}/${fileName}`,
@@ -47,34 +82,55 @@ export const addProfilePictureToUser = async function(fileName: string, smallFil
 export const getPFPFileNameForUserId = async function(uniqueId: string, originalSize?: Boolean): Promise<string | null> {
     try
     {
-        let registeredUser: UserInstance | null = await models.User.findOne({
-            attributes: [
-                'id'
-            ],
-            where: {
-                uniqueId
-            }
-        });
+        let profilePicture: ProfilePictureInstance | undefined = await getProfilePictureForUser(uniqueId);
 
-        if (registeredUser) {
-            let registeredUserPfps: ProfilePictureInstance[] = await registeredUser.getProfilePictures({
-                order: [['id', 'DESC']]
-            });
-
-            if (registeredUserPfps.length > 0) {
-                let registeredUserPfp: ProfilePictureInstance = registeredUserPfps[0];
-
-                return originalSize ? registeredUserPfp.fileName : registeredUserPfp.smallFileName;
-            }
+        if (profilePicture) {
+            return originalSize ? profilePicture.fileName : profilePicture.smallFileName;
         }
     }
     catch (err)
     {
-        console.error(`Error looking up user with id ${uniqueId}: ${err.message}`);
+        console.error(`Error looking up profile picture filename for user with id ${uniqueId}: ${err.message}`);
     }
 
     return null;
 }
+
+const _getProfilePictureForUser = async function (uniqueId: string | number): Promise<ProfilePictureInstance | undefined> {
+    try {
+        let registeredUserId: number | undefined = undefined;
+
+        if (typeof uniqueId === 'string') {
+            registeredUserId = await getUserIdForUniqueId(uniqueId);
+        }
+        else if (typeof uniqueId === 'number') {
+            registeredUserId = uniqueId;
+        }
+
+        if (registeredUserId) {
+            let profilePicture: ProfilePictureInstance | null = await models.ProfilePicture.findOne({
+                where: {
+                    registeredUserId
+                },
+                order: [['id', 'DESC']]
+            });
+
+            if (profilePicture) {
+                return profilePicture;
+            }
+        }
+    }
+    catch (err) {
+        console.error(`Error looking up profile picture for user ${uniqueId}:\n${err.message}`);
+    }
+
+    return undefined;
+}
+
+export const getProfilePictureForUser = memoize(_getProfilePictureForUser, {
+    maxAge: ServerConstants.CACHE_DURATIONS.PROFILE_PICTURE,
+    promise: true
+});
 
 const _getStartPageForUser = async function (uniqueId: string | number | undefined): Promise<string | undefined> {
     let registeredUserId: number | undefined = undefined;

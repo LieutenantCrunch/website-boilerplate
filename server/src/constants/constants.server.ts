@@ -10,6 +10,7 @@ export const RPT_MAX_ACTIVE_TOKENS: number = 5; // The maximum allowable number 
 // All values are in milliseconds. Note that cached values can be manually cleared, so they can be set to a fairly high value
 export const CACHE_DURATIONS = Object.freeze({
     CONNECTION_TYPES: 12 * 60 * 60 * 1000, // Connection types won't change very often
+    PROFILE_PICTURE: 7 * 24 * 60 * 60 * 1000, // This will only change if a user changes their profile picture
     USER_BY_ID: 12 * 60 * 60 * 1000, // This will only change if a user is deleted
     USER_BY_PROFILE_NAME: 12 * 60 * 60 * 1000, // This will only change if a user is deleted
     USER_BY_UNIQUE_ID: 12 * 60 * 60 * 1000, // This will only change if a user is deleted
