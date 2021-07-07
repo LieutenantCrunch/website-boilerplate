@@ -1,13 +1,18 @@
-import React, {useEffect, useMemo, useState, useRef} from 'react';
+import React, { useContext, useEffect, useMemo, useState, useRef } from 'react';
 import classNames from 'classnames';
 import debounce from 'lodash/debounce';
+import { isMobile } from 'react-device-detect';
 import { usePopper } from 'react-popper';
 import { useHistory } from 'react-router-dom';
 import * as Constants from '../constants/constants';
+import { MESSAGE_BOX_TYPES } from './Dialogs/MessageBox';
 
 // Components
 import { HtmlTooltip } from './HtmlTooltip';
 import SwitchCheckbox from './FormControls/SwitchCheckbox';
+
+// Contexts
+import { MessageBoxUpdaterContext } from './../contexts/withMessageBox';
 
 // Services
 import AuthService from '../services/auth.service';
@@ -18,6 +23,9 @@ import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
 
 // Material UI
 import { makeStyles, withStyles } from '@material-ui/core/styles';
+import Card from '@material-ui/core/Card';
+import CardContent from '@material-ui/core/CardContent';
+import CardHeader from '@material-ui/core/CardHeader';
 import Divider from '@material-ui/core/Divider';
 import MuiGrid from '@material-ui/core/Grid';
 import MuiList from '@material-ui/core/List';
@@ -68,8 +76,19 @@ const PrimarySlider = withStyles({
 
 // Redux
 import { useDispatch, useSelector } from 'react-redux';
+import { reduxLogout } from '../redux/rootReducer';
 import { selectConnectionTypes } from '../redux/connections/connectionTypesSlice';
-import { currentUserAllowPublicAccessUpdated, currentUserDisplayNameUpdated, currentUserPreferencesUpdated, selectCurrentUserAllowPublicAccess, selectCurrentUserPreferences } from '../redux/users/currentUserSlice';
+import {
+    currentUserAllowPublicAccessUpdated, 
+    currentUserDisplayNameUpdated, 
+    currentUserPreferencesUpdated, 
+    selectCurrentUserAllowPublicAccess, 
+    selectCurrentUserDisplayName, 
+    selectCurrentUserDisplayNameIndex, 
+    selectCurrentUserEmail, 
+    selectCurrentUserPreferences,
+    selectCurrentUserProfileName
+} from '../redux/users/currentUserSlice';
 
 const useStyles = makeStyles(() => ({
     preferenceHeader: {
@@ -83,10 +102,15 @@ const useStyles = makeStyles(() => ({
 export const SettingsPage = ({ setLoginDetails, setStatusMessage, setTitle }) => {
     const dispatch = useDispatch();
     const history = useHistory();
+    const setMessageBoxOptions = useContext(MessageBoxUpdaterContext);
 
     const defaultConnectionTypes = useSelector(selectConnectionTypes);
     const currentUserAllowPublicAccess = useSelector(selectCurrentUserAllowPublicAccess);
+    const currentUserDisplayName = useSelector(selectCurrentUserDisplayName);
+    const currentUserDisplayNameIndex = useSelector(selectCurrentUserDisplayNameIndex);
+    const currentUserEmail = useSelector(selectCurrentUserEmail);
     const currentUserPreferences = useSelector(selectCurrentUserPreferences);
+    const currentUserProfileName = useSelector(selectCurrentUserProfileName);
 
     const classes = useStyles();
 
@@ -96,13 +120,16 @@ export const SettingsPage = ({ setLoginDetails, setStatusMessage, setTitle }) =>
         customAudience: [],
         displayName: '', 
         displayNameError: false,
+        emailShown: false,
         isAudienceOpen: false,
         postAudience: Constants.POST_AUDIENCES.CONNECTIONS,
-        mediaVolume: 50
+        mediaVolume: 50,
+        settingsPageAlertCollapse: null
     });
 
-    const [settingsPageAlert, setSettingsPageAlert] = useState({type: 'info', message: null});
-    const settingsPageAlertEl = useRef(null);
+    const [settingsPageAlertMessage, setSettingsPageAlertMessage] = useState({type: 'info', message: null});
+    const settingsPageAlert = useRef(null);
+    
 
     // Popper
     const [referenceElement, setReferenceElement] = useState(null);
@@ -122,6 +149,28 @@ export const SettingsPage = ({ setLoginDetails, setStatusMessage, setTitle }) =>
             debouncedUpdateVolumePreference.cancel();
         }
     }, []);
+
+    // settingsPageAlert.current
+    useEffect(() => {
+        let settingsPageAlertEl = settingsPageAlert.current;
+
+        if (settingsPageAlertEl) {
+            let settingsPageAlertCollapse = new bootstrap.Collapse(settingsPageAlertEl, {
+                toggle: false
+            });
+
+            settingsPageAlertEl.addEventListener('hidden.bs.collapse', clearSettingsPageAlert);
+
+            setState(prevState => ({
+                ...prevState,
+                settingsPageAlertCollapse
+            }));
+            
+            return () => {
+                settingsPageAlertEl.removeEventListener('hidden.bs.collapse', clearSettingsPageAlert);
+            };
+        }
+    }, [settingsPageAlert.current]);
 
     // state.postAudience
     useEffect(() => {
@@ -205,8 +254,24 @@ export const SettingsPage = ({ setLoginDetails, setStatusMessage, setTitle }) =>
         }
     }, [currentUserPreferences]);
 
+    const showSettingsPageAlert = () => {
+        let { settingsPageAlertCollapse } = state;
+
+        if (settingsPageAlertCollapse) {
+            settingsPageAlertCollapse.show();
+        }
+    };
+
+    const hideSettingsPageAlert = () => {
+        let { settingsPageAlertCollapse } = state;
+
+        if (settingsPageAlertCollapse) {
+            settingsPageAlertCollapse.hide();
+        }
+    }
+
     const clearSettingsPageAlert = () => {
-        setSettingsPageAlert({type: 'info', message: null});
+        setSettingsPageAlertMessage({type: 'info', message: null});
     };
 
     const getConnectionTypeDict = () => {
@@ -314,15 +379,54 @@ export const SettingsPage = ({ setLoginDetails, setStatusMessage, setTitle }) =>
         let logoutConfirm = bootstrap.Modal.getInstance(document.getElementById('logoutConfirm'));
         logoutConfirm.hide();
 
-        setSettingsPageAlert({type: 'info', message: 'You have successfully logged out of all other sessions.'});
+        setSettingsPageAlertMessage({type: 'info', message: 'You have successfully logged out of all other sessions.'});
+        showSettingsPageAlert();
+    };
 
-        let settingsPageAlertCollapse = bootstrap.Collapse.getInstance(settingsPageAlertEl.current);
-        if (!settingsPageAlertCollapse) {
-            settingsPageAlertCollapse = new bootstrap.Collapse(settingsPageAlertEl.current);
-            settingsPageAlertEl.current.addEventListener('hidden.bs.collapse', clearSettingsPageAlert);
+    const handleDeleteAccountClick = (e) => {
+        setMessageBoxOptions({
+            isOpen: true,
+            messageBoxProps: {
+                actions: MESSAGE_BOX_TYPES.NO_YES,
+                caption: 'Delete Account Confirmation',
+                message: 'Are you sure you want to delete your account?',
+                onConfirm: () => { confirmDeleteAccountAgain() },
+                onDeny: () => {},
+                onCancel: undefined,
+                subtext: 'You will not be able to undo this action.'
+            }
+        });
+    };
+
+    const confirmDeleteAccountAgain = () => {
+        setMessageBoxOptions({
+            isOpen: true,
+            messageBoxProps: {
+                actions: MESSAGE_BOX_TYPES.YES_NO,
+                caption: 'Delete Account Confirmation',
+                message: <>Are you <em><strong>absolutely sure</strong></em> you want to delete your account?</>,
+                onConfirm: () => { actuallyDeleteAccount(); },
+                onDeny: () => {},
+                onCancel: undefined,
+                subtext: <>Everything will be deleted and you <em><strong>will not</strong></em> be able to get it back.</>
+            }
+        });
+    };
+
+    const actuallyDeleteAccount = async () => {
+        let success = await UserService.deleteAccount();
+
+        if (success) {
+            AuthService.logout(true, true);
+            setLoginDetails(null);
+            dispatch(reduxLogout());
+            setStatusMessage({type: 'info', message: 'Thanks for using the website!'});
+            history.push('/login');
         }
-
-        settingsPageAlertCollapse.show();
+        else {
+            setSettingsPageAlertMessage({type: 'danger', message: `So, this is embarrassing, but there was an error deleting your account. Please contact support.`});
+            showSettingsPageAlert();
+        }
     };
 
     const handleStateChange = (e) => {
@@ -349,15 +453,8 @@ export const SettingsPage = ({ setLoginDetails, setStatusMessage, setTitle }) =>
             if (results.data.message) {
                 let alertType = (results.data.success === true ? 'info' : 'danger');
 
-                setSettingsPageAlert({type: alertType, message: results.data.message});
-
-                let settingsPageAlertCollapse = bootstrap.Collapse.getInstance(settingsPageAlertEl.current);
-                if (!settingsPageAlertCollapse) {
-                    settingsPageAlertCollapse = new bootstrap.Collapse(settingsPageAlertEl.current);
-                    settingsPageAlertEl.current.addEventListener('hidden.bs.collapse', clearSettingsPageAlert);
-                }
-
-                settingsPageAlertCollapse.show();
+                setSettingsPageAlertMessage({type: alertType, message: results.data.message});
+                showSettingsPageAlert();
             }
 
             if (results.data.success) {
@@ -447,166 +544,199 @@ export const SettingsPage = ({ setLoginDetails, setStatusMessage, setTitle }) =>
 
     return (
         <>
-            <div id="settingsPageAlertEl" ref={settingsPageAlertEl} className={`alert alert-${settingsPageAlert.type.toLocaleLowerCase()} alert-dismissible collapse w-100`} role="alert">
-                <strong>{settingsPageAlert.message}</strong>
-                <button type="button" className="btn-close" aria-label="Close" data-bs-target="#settingsPageAlertEl" data-bs-toggle="collapse" aria-expanded="false" aria-controls="settingsPageAlert"></button>
+            <div id="settingsPageAlert" ref={settingsPageAlert} className={`alert alert-${settingsPageAlertMessage.type.toLocaleLowerCase()} alert-dismissible collapse w-100`} role="alert">
+                <strong>{settingsPageAlertMessage.message}</strong>
+                <button type="button" className="btn-close" aria-label="Close" data-bs-target="#settingsPageAlert" data-bs-toggle="collapse" aria-expanded="false" aria-controls="settingsPageAlert"></button>
             </div>
             <div className="col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 mt-2 align-middle text-center">
-                <Paper className="mb-2">
-                    <Typography variant="h5" className={classes.preferenceHeader}>General</Typography>
-                    <button type="button" className="btn btn-link" data-bs-toggle="modal" data-bs-target="#displayNameForm">Change Display Name</button>
-                </Paper>
-                <Paper className="mb-2">
-                    <Typography variant="h5" className={classes.preferenceHeader}>Security</Typography>
-                    <button type="button" className="btn btn-link" data-bs-toggle="modal" data-bs-target="#logoutConfirm">Log out other sessions</button>
-                </Paper>
-                <Paper className="mb-2">
-                    <Typography variant="h5" className={classes.preferenceHeader}>Preferences</Typography>
+                <Card className="mb-2">
+                    <CardHeader title="General" />
                     <Divider variant="middle" />
-                    <MuiList component="div">
-                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
-                            <MuiListItemText primary="Start Page"
-                                secondary="The page you will see when you first log in or need to be redirected to a new page for some reason."
-                                style={{width: '100%'}}
-                            />
-                            <div className="dropdown">
-                                <button className="btn btn-outline-primary dropdown-toggle" type="button" id="startPageDropdown" data-bs-toggle="dropdown" aria-expanded="false" style={{textTransform: 'capitalize'}}>
-                                    {currentUserPreferences?.startPage || 'feed'}
-                                </button>
-                                <ul className="dropdown-menu" aria-labelledby="startPageDropdown">
-                                    <li><button className="dropdown-item" data-name="startPage" data-value="profile" type="button" onClick={handleStringPreferenceSelectChange}>Profile</button></li>
-                                    <li><button className="dropdown-item" data-name="startPage" data-value="feed" type="button" onClick={handleStringPreferenceSelectChange}>Feed</button></li>
-                                </ul>
-                            </div>
-                        </MuiListItem>
-                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
-                            <MuiListItemText 
-                                id="preferences-show-my-posts-in-feed"
-                                primary="Show My Posts in My Feed"
-                                secondary="When turned on, your own posts will show up in your feed. This is off by default so you only see posts from people you are following. You can see all of your posts on your profile."
-                                style={{width: '100%'}}
-                            />
-                            <PrimarySwitch
-                                edge="start"
-                                name="showMyPostsInFeed"
-                                className={classes.preferenceInput}
-                                onChange={(e) => {
-                                    dispatch(currentUserPreferencesUpdated([{
-                                        name: e.target.name, 
-                                        value: e.target.checked 
-                                    }]))
-                                }}
-                                checked={currentUserPreferences?.showMyPostsInFeed === undefined ? false : currentUserPreferences?.showMyPostsInFeed}
-                                inputProps={{ 'aria-labelledby': 'preferences-show-my-posts-in-feed' }}
-                            />
-                        </MuiListItem>
-                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
-                            <MuiListItemText primary="Default Post Type"
-                                secondary="The default type (Text, Image, etc.) for new posts."
-                                style={{width: '100%'}}
-                            />
-                            <div className="dropdown">
-                                <button className="btn btn-outline-primary dropdown-toggle" type="button" id="postTypeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                    {currentUserPreferences?.postType === undefined ? Constants.POST_TYPES_NAMES[0] : Constants.POST_TYPES_NAMES[currentUserPreferences.postType]}
-                                </button>
-                                <ul className="dropdown-menu" aria-labelledby="postTypeDropdown">
-                                    <li><button className="dropdown-item" data-name="postType" data-value="3" type="button" onClick={handleNumberPreferenceSelectChange}>Audio</button></li>
-                                    <li><button className="dropdown-item" data-name="postType" data-value="1" type="button" onClick={handleNumberPreferenceSelectChange}>Image</button></li>
-                                    <li><button className="dropdown-item" data-name="postType" data-value="0" type="button" onClick={handleNumberPreferenceSelectChange}>Text</button></li>
-                                    <li><button className="dropdown-item" data-name="postType" data-value="2" type="button" onClick={handleNumberPreferenceSelectChange}>Video</button></li>
-                                </ul>
-                            </div>
-                        </MuiListItem>
-                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
-                            <MuiListItemText primary="Default Post Audience"
-                                secondary="The default audience (Connections, Everyone, etc.) for new posts."
-                                style={{width: '100%'}}
-                            />
-                            <div ref={dropdownMenuContainer} className="dropdown">
-                                <button ref={setReferenceElement} 
-                                    className={classNames("btn btn-outline-primary dropdown-toggle", {'show': state.isAudienceOpen})}
-                                    type="button" 
-                                    onClick={handleAudienceClick}
-                                >
-                                    {Constants.POST_AUDIENCES_NAMES[state.postAudience]}
-                                </button>
-                                <ul ref={setPopperElement} 
-                                    className={classNames('dropdown-menu', 'px-2', {'show': state.isAudienceOpen})}
-                                    style={popperStyles.popper}
-                                    {...popperStyles.popper}
-                                >
-                                    <li className="dropdown-header">Generic</li>
-                                    <li><button className="dropdown-item" type="button" onClick={handleSelectEveryoneAudience}>Everyone</button></li>
-                                    <li><button className="dropdown-item" type="button" onClick={handleSelectConnectionsAudience}>Outgoing Connections</button></li>
-                                    <li><hr className="dropdown-divider" /></li>
-                                    <li className="dropdown-header">Custom</li>
-                                    {
-                                        state.connectionTypes && 
-                                        Object.entries(state.connectionTypes).map(([connectionType, details]) => (
-                                            <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleCustomChange} useListItem />
-                                        ))
-                                    }
-                                </ul>
-                            </div>
-                        </MuiListItem>
-                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
-                            <MuiListItemText primary="Default Feed Filter"
-                                secondary="When you visit your feed, the page will come up with this filter applied."
-                                style={{width: '100%'}}
-                            />
-                            <div className="dropdown">
-                                <button className="btn btn-outline-primary dropdown-toggle" type="button" id="feedFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                    {currentUserPreferences?.feedFilter === undefined ? `${Constants.POST_TYPES_NAMES[0]} Posts` : `${Constants.POST_TYPES_NAMES[currentUserPreferences.feedFilter]} Posts`}
-                                </button>
-                                <ul className="dropdown-menu" aria-labelledby="feedFilterDropdown">
-                                    <li><button className="dropdown-item" data-name="feedFilter" data-value="1000" type="button" onClick={handleNumberPreferenceSelectChange}>All Posts</button></li>
-                                    <li><hr className="dropdown-divider" /></li>
-                                    <li><button className="dropdown-item" data-name="feedFilter" data-value="3" type="button" onClick={handleNumberPreferenceSelectChange}>Audio Posts</button></li>
-                                    <li><button className="dropdown-item" data-name="feedFilter" data-value="1" type="button" onClick={handleNumberPreferenceSelectChange}>Image Posts</button></li>
-                                    <li><button className="dropdown-item" data-name="feedFilter" data-value="0" type="button" onClick={handleNumberPreferenceSelectChange}>Text Posts</button></li>
-                                    <li><button className="dropdown-item" data-name="feedFilter" data-value="2" type="button" onClick={handleNumberPreferenceSelectChange}>Video Posts</button></li>
-                                </ul>
-                            </div>
-                        </MuiListItem>
-                        <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
-                            <MuiListItemText 
-                                id="preferences-media-volume"
-                                primary="Default Media Volume"
-                                secondary={<span>When viewing an audio/video post, this is what the volume will default to before the media is played. <em>May not work on mobile.</em></span>}
-                                style={{width: '100%'}}
-                            />
-                            <MuiGrid container spacing={2} style={{width: '75%'}}>
-                                <MuiGrid item>
-                                    <VolumeDownRoundedIcon style={{cursor: 'pointer' }} onClick={handleZeroVolumeClick} />
+                    <CardContent>
+                        <Typography className="card-text" style={{ whitespace: 'pre' }}>
+                            Email Address: {
+                                state.emailShown
+                                ? currentUserEmail
+                                : <span style={{ color: 'rgb(11,94,215)', textDecoration: 'underline', cursor: 'pointer' }} onClick={() => { if (!state.emailShown) { setState(prevState => ({...prevState, emailShown: true})); } }}>{ isMobile ? 'Tap' : 'Click' } to show</span>
+                            }
+                        </Typography>
+                        <Typography className="card-text">
+                            Profile Name: /{currentUserProfileName}
+                        </Typography>
+                        <Typography className="card-text">
+                            Display Name: {currentUserDisplayName}{
+                                currentUserDisplayNameIndex === 0 ? '' : <small className="text-muted">#{currentUserDisplayNameIndex}</small>
+                            }
+                        </Typography>
+                    </CardContent>
+                    <Divider variant="middle" />
+                    <CardContent>
+                        <Typography>
+                            <button type="button" className="btn btn-link" data-bs-toggle="modal" data-bs-target="#displayNameForm">Change Display Name</button>
+                        </Typography>
+                    </CardContent>
+                </Card>
+                <Card className="mb-2">
+                    <CardHeader title="Preferences" />
+                    <Divider variant="middle" />
+                    <CardContent>
+                        <MuiList component="div">
+                            <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                                <MuiListItemText primary="Start Page"
+                                    secondary="The page you will see when you first log in or need to be redirected to a new page for some reason."
+                                    style={{width: '100%'}}
+                                />
+                                <div className="dropdown">
+                                    <button className="btn btn-outline-primary dropdown-toggle" type="button" id="startPageDropdown" data-bs-toggle="dropdown" aria-expanded="false" style={{textTransform: 'capitalize'}}>
+                                        {currentUserPreferences?.startPage || 'feed'}
+                                    </button>
+                                    <ul className="dropdown-menu" aria-labelledby="startPageDropdown">
+                                        <li><button className="dropdown-item" data-name="startPage" data-value="profile" type="button" onClick={handleStringPreferenceSelectChange}>Profile</button></li>
+                                        <li><button className="dropdown-item" data-name="startPage" data-value="feed" type="button" onClick={handleStringPreferenceSelectChange}>Feed</button></li>
+                                    </ul>
+                                </div>
+                            </MuiListItem>
+                            <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                                <MuiListItemText 
+                                    id="preferences-show-my-posts-in-feed"
+                                    primary="Show My Posts in My Feed"
+                                    secondary="When turned on, your own posts will show up in your feed. This is off by default so you only see posts from people you are following. You can see all of your posts on your profile."
+                                    style={{width: '100%'}}
+                                />
+                                <PrimarySwitch
+                                    edge="start"
+                                    name="showMyPostsInFeed"
+                                    className={classes.preferenceInput}
+                                    onChange={(e) => {
+                                        dispatch(currentUserPreferencesUpdated([{
+                                            name: e.target.name, 
+                                            value: e.target.checked 
+                                        }]))
+                                    }}
+                                    checked={currentUserPreferences?.showMyPostsInFeed === undefined ? false : currentUserPreferences?.showMyPostsInFeed}
+                                    inputProps={{ 'aria-labelledby': 'preferences-show-my-posts-in-feed' }}
+                                />
+                            </MuiListItem>
+                            <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                                <MuiListItemText primary="Default Post Type"
+                                    secondary="The default type (Text, Image, etc.) for new posts."
+                                    style={{width: '100%'}}
+                                />
+                                <div className="dropdown">
+                                    <button className="btn btn-outline-primary dropdown-toggle" type="button" id="postTypeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        {currentUserPreferences?.postType === undefined ? Constants.POST_TYPES_NAMES[0] : Constants.POST_TYPES_NAMES[currentUserPreferences.postType]}
+                                    </button>
+                                    <ul className="dropdown-menu" aria-labelledby="postTypeDropdown">
+                                        <li><button className="dropdown-item" data-name="postType" data-value="3" type="button" onClick={handleNumberPreferenceSelectChange}>Audio</button></li>
+                                        <li><button className="dropdown-item" data-name="postType" data-value="1" type="button" onClick={handleNumberPreferenceSelectChange}>Image</button></li>
+                                        <li><button className="dropdown-item" data-name="postType" data-value="0" type="button" onClick={handleNumberPreferenceSelectChange}>Text</button></li>
+                                        <li><button className="dropdown-item" data-name="postType" data-value="2" type="button" onClick={handleNumberPreferenceSelectChange}>Video</button></li>
+                                    </ul>
+                                </div>
+                            </MuiListItem>
+                            <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                                <MuiListItemText primary="Default Post Audience"
+                                    secondary="The default audience (Connections, Everyone, etc.) for new posts."
+                                    style={{width: '100%'}}
+                                />
+                                <div ref={dropdownMenuContainer} className="dropdown">
+                                    <button ref={setReferenceElement} 
+                                        className={classNames("btn btn-outline-primary dropdown-toggle", {'show': state.isAudienceOpen})}
+                                        type="button" 
+                                        onClick={handleAudienceClick}
+                                    >
+                                        {Constants.POST_AUDIENCES_NAMES[state.postAudience]}
+                                    </button>
+                                    <ul ref={setPopperElement} 
+                                        className={classNames('dropdown-menu', 'px-2', {'show': state.isAudienceOpen})}
+                                        style={popperStyles.popper}
+                                        {...popperStyles.popper}
+                                    >
+                                        <li className="dropdown-header">Generic</li>
+                                        <li><button className="dropdown-item" type="button" onClick={handleSelectEveryoneAudience}>Everyone</button></li>
+                                        <li><button className="dropdown-item" type="button" onClick={handleSelectConnectionsAudience}>Outgoing Connections</button></li>
+                                        <li><hr className="dropdown-divider" /></li>
+                                        <li className="dropdown-header">Custom</li>
+                                        {
+                                            state.connectionTypes && 
+                                            Object.entries(state.connectionTypes).map(([connectionType, details]) => (
+                                                <SwitchCheckbox key={connectionType} label={connectionType} isChecked={details} onSwitchChanged={handleCustomChange} useListItem />
+                                            ))
+                                        }
+                                    </ul>
+                                </div>
+                            </MuiListItem>
+                            <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                                <MuiListItemText primary="Default Feed Filter"
+                                    secondary="When you visit your feed, the page will come up with this filter applied."
+                                    style={{width: '100%'}}
+                                />
+                                <div className="dropdown">
+                                    <button className="btn btn-outline-primary dropdown-toggle" type="button" id="feedFilterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        {currentUserPreferences?.feedFilter === undefined ? `${Constants.POST_TYPES_NAMES[0]} Posts` : `${Constants.POST_TYPES_NAMES[currentUserPreferences.feedFilter]} Posts`}
+                                    </button>
+                                    <ul className="dropdown-menu" aria-labelledby="feedFilterDropdown">
+                                        <li><button className="dropdown-item" data-name="feedFilter" data-value="1000" type="button" onClick={handleNumberPreferenceSelectChange}>All Posts</button></li>
+                                        <li><hr className="dropdown-divider" /></li>
+                                        <li><button className="dropdown-item" data-name="feedFilter" data-value="3" type="button" onClick={handleNumberPreferenceSelectChange}>Audio Posts</button></li>
+                                        <li><button className="dropdown-item" data-name="feedFilter" data-value="1" type="button" onClick={handleNumberPreferenceSelectChange}>Image Posts</button></li>
+                                        <li><button className="dropdown-item" data-name="feedFilter" data-value="0" type="button" onClick={handleNumberPreferenceSelectChange}>Text Posts</button></li>
+                                        <li><button className="dropdown-item" data-name="feedFilter" data-value="2" type="button" onClick={handleNumberPreferenceSelectChange}>Video Posts</button></li>
+                                    </ul>
+                                </div>
+                            </MuiListItem>
+                            <MuiListItem component="div" divider style={{flexWrap: 'wrap'}}>
+                                <MuiListItemText 
+                                    id="preferences-media-volume"
+                                    primary="Default Media Volume"
+                                    secondary={<span>When viewing an audio/video post, this is what the volume will default to before the media is played. <em>May not work on mobile.</em></span>}
+                                    style={{width: '100%'}}
+                                />
+                                <MuiGrid container spacing={2} style={{width: '75%'}}>
+                                    <MuiGrid item>
+                                        <VolumeDownRoundedIcon style={{cursor: 'pointer' }} onClick={handleZeroVolumeClick} />
+                                    </MuiGrid>
+                                    <MuiGrid item xs>
+                                        <PrimarySlider value={state.mediaVolume} onChange={handleMediaVolumeChange} aria-labelledby="preferences-media-volume" />
+                                    </MuiGrid>
+                                    <MuiGrid item>
+                                        <VolumeUpRoundedIcon style={{cursor: 'pointer' }} onClick={handleMaxVolumeClick} />
+                                    </MuiGrid>
                                 </MuiGrid>
-                                <MuiGrid item xs>
-                                    <PrimarySlider value={state.mediaVolume} onChange={handleMediaVolumeChange} aria-labelledby="preferences-media-volume" />
-                                </MuiGrid>
-                                <MuiGrid item>
-                                    <VolumeUpRoundedIcon style={{cursor: 'pointer' }} onClick={handleMaxVolumeClick} />
-                                </MuiGrid>
-                            </MuiGrid>
-                        </MuiListItem>
-                        <MuiListItem component="div" style={{flexWrap: 'wrap'}}>
-                            <MuiListItemText 
-                                id="preferences-allow-public-access"
-                                primary="Allow Public Access"
-                                secondary={<span>When turned on, your profile and all posts with an audience of 'Everyone' will be visible to anybody, <em>even if they are not logged in</em>.</span>}
-                                style={{width: '100%'}}
-                            />
-                            <DangerSwitch
-                                edge="start"
-                                name="showMyPostsInFeed"
-                                className={classes.preferenceInput}
-                                onChange={(e) => {
-                                    dispatch(currentUserAllowPublicAccessUpdated(e.target.checked))
-                                }}
-                                checked={currentUserAllowPublicAccess === undefined ? false : currentUserAllowPublicAccess}
-                                inputProps={{ 'aria-labelledby': 'preferences-allow-public-access' }}
-                            />
-                        </MuiListItem>
-                    </MuiList>
-                </Paper>
+                            </MuiListItem>
+                            <MuiListItem component="div" style={{flexWrap: 'wrap'}}>
+                                <MuiListItemText 
+                                    id="preferences-allow-public-access"
+                                    primary="Allow Public Access"
+                                    secondary={<span>When turned on, your profile and all posts with an audience of 'Everyone' will be visible to anybody, <em>even if they are not logged in</em>.</span>}
+                                    style={{width: '100%'}}
+                                />
+                                <DangerSwitch
+                                    edge="start"
+                                    name="showMyPostsInFeed"
+                                    className={classes.preferenceInput}
+                                    onChange={(e) => {
+                                        dispatch(currentUserAllowPublicAccessUpdated(e.target.checked))
+                                    }}
+                                    checked={currentUserAllowPublicAccess === undefined ? false : currentUserAllowPublicAccess}
+                                    inputProps={{ 'aria-labelledby': 'preferences-allow-public-access' }}
+                                />
+                            </MuiListItem>
+                        </MuiList>
+                    </CardContent>
+                </Card>
+                <Card className="mb-2">
+                    <CardHeader title="Security" />
+                    <Divider variant="middle" />
+                    <CardContent>
+                        <Typography>
+                            <button type="button" className="btn btn-link" data-bs-toggle="modal" data-bs-target="#logoutConfirm">Log out other sessions</button>
+                        </Typography>
+                        <Typography>
+                            <button type="button" className="btn btn-link text-danger" onClick={handleDeleteAccountClick}>Delete Account</button>
+                        </Typography>
+                    </CardContent>
+                </Card>
             </div>
             <div id="logoutConfirm" className="modal fade" tabIndex="-1" data-backdrop="static" data-bs-keyboard="false" aria-labelledby="logoutConfirmLabel" aria-hidden="true">
                 <div className="modal-dialog">

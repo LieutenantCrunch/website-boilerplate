@@ -54,6 +54,61 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
             return res.status(200).json({success: false});
         }
         break;
+    case 'getConnectionTypeDict':
+        try {
+            let connectionTypeDict: WebsiteBoilerplate.UserConnectionTypeDictionary = await dbMethods.Users.Connections.getConnectionTypeDict();
+
+            return res.status(200).json({success: true, connectionTypeDict});
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return res.status(200).json({success: false, connectionTypeDict: {}});
+    case 'getIncomingConnections':
+        try {
+            if ((req.query && req.query.uniqueId !== undefined) || req.userId !== undefined) {
+                let uniqueId: string = '';
+                
+                if (req.query && req.query.uniqueId !== undefined) {
+                    uniqueId = req.query.uniqueId.toString();
+                }
+                else {
+                    uniqueId = req.userId!;
+                }
+
+                let connections: WebsiteBoilerplate.UserDetails[] = await dbMethods.Users.Connections.getIncomingConnections(uniqueId);
+
+                return res.status(200).json({success: true, connections});
+            }
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return res.status(200).json({success: false, connections: {}});
+    case 'getOutgoingConnections':
+        try {
+            if ((req.query && req.query.uniqueId !== undefined) || req.userId !== undefined) {
+                let uniqueId: string = '';
+                
+                if (req.query && req.query.uniqueId !== undefined) {
+                    uniqueId = req.query.uniqueId.toString();
+                }
+                else {
+                    uniqueId = req.userId!;
+                }
+
+                let connections: WebsiteBoilerplate.UserDetails[] = await dbMethods.Users.Connections.getOutgoingConnections(uniqueId);
+
+                return res.status(200).json({success: true, connections});
+            }
+        }
+        catch (err) {
+            console.error(err.message);
+        }
+
+        return res.status(200).json({success: false, connections: {}});
     case 'getUserDetails':
         try {
             let hasEmailRole: Boolean = false;
@@ -99,61 +154,6 @@ apiUserRouter.get('/:methodName', [AuthHelper.verifyToken], async (req: Request,
         }
 
         return res.status(200).json({success: false, results: []});
-    case 'getOutgoingConnections':
-        try {
-            if ((req.query && req.query.uniqueId !== undefined) || req.userId !== undefined) {
-                let uniqueId: string = '';
-                
-                if (req.query && req.query.uniqueId !== undefined) {
-                    uniqueId = req.query.uniqueId.toString();
-                }
-                else {
-                    uniqueId = req.userId!;
-                }
-
-                let connections: WebsiteBoilerplate.UserDetails[] = await dbMethods.Users.Connections.getOutgoingConnections(uniqueId);
-
-                return res.status(200).json({success: true, connections});
-            }
-        }
-        catch (err) {
-            console.error(err.message);
-        }
-
-        return res.status(200).json({success: false, connections: {}});
-    case 'getIncomingConnections':
-        try {
-            if ((req.query && req.query.uniqueId !== undefined) || req.userId !== undefined) {
-                let uniqueId: string = '';
-                
-                if (req.query && req.query.uniqueId !== undefined) {
-                    uniqueId = req.query.uniqueId.toString();
-                }
-                else {
-                    uniqueId = req.userId!;
-                }
-
-                let connections: WebsiteBoilerplate.UserDetails[] = await dbMethods.Users.Connections.getIncomingConnections(uniqueId);
-
-                return res.status(200).json({success: true, connections});
-            }
-        }
-        catch (err) {
-            console.error(err.message);
-        }
-
-        return res.status(200).json({success: false, connections: {}});
-    case 'getConnectionTypeDict':
-        try {
-            let connectionTypeDict: WebsiteBoilerplate.UserConnectionTypeDictionary = await dbMethods.Users.Connections.getConnectionTypeDict();
-
-            return res.status(200).json({success: true, connectionTypeDict});
-        }
-        catch (err) {
-            console.error(err.message);
-        }
-
-        return res.status(200).json({success: false, connectionTypeDict: {}});
     default:
         res.status(404).send(req.params.methodName + ' is not a valid users method')
         break;
@@ -176,6 +176,21 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
         }
         catch (err) {
             console.error(`Error blocking user:\n${err.message}`);
+        }
+
+        return res.status(200).json({ success: false });
+    case 'deleteAccount':
+        try {
+            let uniqueId: string | undefined = req.userId;
+
+            if (uniqueId) {
+                let success: Boolean = await dbMethods.Users.removeUser(uniqueId);
+
+                return res.status(200).json({ success });
+            }
+        }
+        catch (err) {
+            console.error(`Error closing account for user:\n${err.message}`);
         }
 
         return res.status(200).json({ success: false });

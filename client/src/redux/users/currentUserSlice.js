@@ -8,6 +8,7 @@ const initialState = {
     email: '', 
     pfp: Constants.STATIC_IMAGES.PFP_DEFAULT,
     pfpSmall: Constants.STATIC_IMAGES.PFP_DEFAULT, 
+    profileName: '',
     roles: [], 
     uniqueId: '',
     hasUnseenPostNotifications: false
@@ -37,6 +38,7 @@ const currentUserSlice = createSlice({
                 pfp,
                 pfpSmall, 
                 preferences,
+                profileName,
                 roles, 
                 uniqueId,
                 hasUnseenPostNotifications
@@ -51,6 +53,7 @@ const currentUserSlice = createSlice({
                 pfp,
                 pfpSmall, 
                 preferences,
+                profileName, 
                 roles, 
                 uniqueId,
                 hasUnseenPostNotifications
@@ -113,6 +116,7 @@ export const selectCurrentUserEmail = state => state.currentUser.email;
 export const selectCurrentUserPfp = state => state.currentUser.pfp;
 export const selectCurrentUserPfpSmall = state => state.currentUser.pfpSmall;
 export const selectCurrentUserPreferences = state => state.currentUser.preferences;
+export const selectCurrentUserProfileName = state => state.currentUser.profileName;
 export const selectCurrentUserRoles = state => state.currentUser.roles;
 export const selectCurrentUserUniqueId = state => state.currentUser.uniqueId;
 export const selectHasUnseenPostNotifications = state => state.currentUser.hasUnseenPostNotifications;
