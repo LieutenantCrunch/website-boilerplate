@@ -1,7 +1,11 @@
 import React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { usePopper } from 'react-popper';
+import { MESSAGE_BOX_TYPES } from './Dialogs/MessageBox';
+
+// Contexts
+import { MessageBoxUpdaterContext } from './../contexts/withMessageBox';
 
 // Utilities
 import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
@@ -215,6 +219,8 @@ export const NewPostForm = ({ onNewPostCreated }) => {
     }
 
     // State
+    const classes = useStyles(state);
+    const setMessageBoxOptions = useContext(MessageBoxUpdaterContext);
     const [currentDate, setCurrentDate] = useState((new Date()).toLocaleString());
 
     const [state, setState] = useState({
@@ -336,8 +342,6 @@ export const NewPostForm = ({ onNewPostCreated }) => {
         }
     }, [currentUserPreferences]);
 
-    const classes = useStyles(state);
-
     // Popper
     const [referenceElement, setReferenceElement] = useState(null);
     const [popperElement, setPopperElement] = useState(null);
@@ -348,6 +352,7 @@ export const NewPostForm = ({ onNewPostCreated }) => {
     });
     const dropdownMenuContainer = useRef();
 
+    // state.isAudienceOpen
     useEffect(() => {
         if (state.isAudienceOpen) {
             document.addEventListener('click', hideAudienceDropdown);

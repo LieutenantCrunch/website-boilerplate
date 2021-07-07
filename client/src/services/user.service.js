@@ -18,6 +18,22 @@ export default class UserService {
         }
     }
 
+    static async deleteAccount() {
+        try
+        {
+            let response = await axiosApi.post(Constants.API_PATH_USERS + 'deleteAccount');
+
+            if (response.data && response.data.success !== undefined) {
+                return response.data.success;
+            }
+        }
+        catch (err) {
+            console.error(`An error occurred while trying to delete your account`);
+        }
+
+        return false;
+    }
+
     static async getConnectionTypeDict() {
         try {
             if (this.getConnectionTypeDictCancel !== undefined) {

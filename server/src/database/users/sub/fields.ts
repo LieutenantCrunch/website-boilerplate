@@ -79,6 +79,27 @@ export const addProfilePictureToUser = async function(fileName: string, smallFil
     return {success: false};
 }
 
+export const createNewDisplayNameForUser = async function(registeredUserId: number, displayName: string, currentDate: Date = new Date(Date.now())): Promise<DisplayNameInstance> {
+    // Create a new display name
+    const currentMax: number = await models.DisplayName.max('displayNameIndex', {
+        where: {
+            displayName
+        }
+    });
+
+    const nextIndex: number = (isNaN(currentMax) ? 0 : currentMax) + 1;
+
+    let newDisplayName: DisplayNameInstance = await models.DisplayName.create({
+        registeredUserId,
+        displayName,
+        displayNameIndex: nextIndex,
+        activationDate: currentDate,
+        isActive: true
+    });
+
+    return newDisplayName;
+}
+
 export const getPFPFileNameForUserId = async function(uniqueId: string, originalSize?: Boolean): Promise<string | null> {
     try
     {
@@ -329,24 +350,10 @@ export const setUserDisplayName = async function(uniqueId: string, displayName: 
         }
 
         // Create a new display name
-        const currentMax: number = await models.DisplayName.max('displayNameIndex', {
-            where: {
-                displayName
-            }
-        });
-
-        const nextIndex: number = (isNaN(currentMax) ? 0 : currentMax) + 1;
-
-        let newDisplayName: DisplayNameInstance = await models.DisplayName.create({
-            registeredUserId: registeredUser.id!,
-            displayName,
-            displayNameIndex: nextIndex,
-            activationDate: currentDate,
-            isActive: true
-        });
+        let newDisplayName: DisplayNameInstance = await createNewDisplayNameForUser(registeredUser.id!, displayName, currentDate);
 
         // Success
-        return {success: true, displayNameIndex: nextIndex, message: 'Your display name has been changed successfully.'};
+        return {success: true, displayNameIndex: newDisplayName.displayNameIndex, message: 'Your display name has been changed successfully.'};
     }
     catch (err) {
         console.error(err.message);

@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { Transaction } from 'sequelize';
 import { v4 as uuidv4 } from 'uuid';
 
 import * as ClientConstants from '../../constants/constants.client';
@@ -6,7 +7,7 @@ import * as ClientConstants from '../../constants/constants.client';
 import { models } from '../../models/_index';
 import { UserInstance } from '../../models/User';
 
-import { setUserDisplayName } from './sub/fields';
+import { createNewDisplayNameForUser } from './sub/fields';
 
 import * as _authorization from './sub/authorization';
 import * as _blocking from './sub/blocking';
@@ -44,13 +45,13 @@ export const registerNewUser = async function(email: string, displayName: string
         });
 
         if (registeredUser) {
-            models.UserPreferences.create({
+            await models.UserPreferences.create({
                 registeredUserId: registeredUser.id!
             });
 
-            let results: {success: Boolean, displayNameIndex?: number, message?: string} = await setUserDisplayName(uniqueId, displayName);
+            await createNewDisplayNameForUser(registeredUser.id!, displayName);
 
-            return {id: uniqueId, success: results.success};
+            return {id: uniqueId, success: true};
         }
     }
     catch (err)
@@ -59,4 +60,29 @@ export const registerNewUser = async function(email: string, displayName: string
     }
 
     return {id: null, success: false};
+};
+
+export const removeUser = async function (uniqueId: string): Promise<Boolean> {
+    try {
+        let user: UserInstance | null = await _searches.getUserWithUniqueId(uniqueId);
+
+        if (user) {
+            const transaction: Transaction = await models.sequelize.transaction();
+
+            try {
+                await user.destroy({ transaction });
+                await transaction.commit();
+            }
+            catch (err) {
+                await transaction.rollback();
+                throw err;
+            }
+
+            return true;
+        }
+    }
+    catch (err) {
+        console.error(`Error removing user with uniqueId ${uniqueId}:\n${err.message}`);
+    }
+    return false;
 };

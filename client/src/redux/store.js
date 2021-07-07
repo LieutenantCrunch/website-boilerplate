@@ -90,6 +90,9 @@ import { usersMiddleware } from './users/usersSlice';
             startPage: string | undefined
         },
 
+        // The user's profile name - the sub url at which they can be found
+        profileName: string,
+
         // The list of roles the current user has
         roles: Array<string>, 
 

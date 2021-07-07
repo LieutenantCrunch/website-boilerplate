@@ -81,7 +81,8 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
             email: sessionState.email,
             firstName: state.firstName,
             lastName: state.lastName,
-            password: state.password
+            password: state.password,
+            profileName: sessionState.profileName
         };
 
         let results = await AuthService.register(payload);

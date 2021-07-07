@@ -14,21 +14,52 @@ export default function AdminPage() {
         confirmTitle: '',
         confirmMessage: '',
         confirmCb: null,
-        adminPageAlert: {
-            type: 'danger',
-            message: null
-        }
+        adminPageAlertCollapse: null
     });
+    const [adminPageAlertMessage, setAdminPageAlertMessage] = useState({ type: 'danger', message: null });
 
-    const adminPageAlertEl = useRef();
+    const adminPageAlert = useRef();
+
+    // adminPageAlert.current
+    useEffect(() => {
+        let adminPageAlertEl = adminPageAlert.current;
+
+        if (adminPageAlertEl) {
+            let adminPageAlertCollapse = new bootstrap.Collapse(adminPageAlertEl, {
+                toggle: false
+            });
+
+            adminPageAlertEl.addEventListener('hidden.bs.collapse', clearAdminPageAlert);
+
+            setState(prevState => ({
+                ...prevState,
+                adminPageAlertCollapse
+            }));
+            
+            return () => {
+                adminPageAlertEl.removeEventListener('hidden.bs.collapse', clearAdminPageAlert);
+            };
+        }
+    }, [adminPageAlert.current]);
+
+    const showAdminPageAlert = () => {
+        let { adminPageAlertCollapse } = state;
+
+        if (adminPageAlertCollapse) {
+            adminPageAlertCollapse.show();
+        }
+    };
+
+    const hideAdminPageAlert = () => {
+        let { adminPageAlertCollapse } = state;
+
+        if (adminPageAlertCollapse) {
+            adminpageAlertCollapse.hide();
+        }
+    };
 
     const clearAdminPageAlert = () => {
-        setState(prevState => {
-            return {...prevState, adminPageAlert: {
-                type: 'danger',
-                message: null
-            }};
-        })
+        setAdminPageAlertMessage({ type: 'danger', message: null });
     };
 
     const onUserSelect = async (selectedUserId) => {
@@ -57,20 +88,8 @@ export default function AdminPage() {
             });
         }
         else if (results.message) {
-            setState(prevState => {
-                return {...prevState, adminPageAlert: {
-                    type: 'danger',
-                    message: results.message
-                }};
-            });
-
-            let adminPageAlertCollapse = bootstrap.Collapse.getInstance(adminPageAlertEl.current);
-            if (!adminPageAlertCollapse) {
-                adminPageAlertCollapse = new bootstrap.Collapse(adminPageAlertEl.current);
-                adminPageAlertEl.current.addEventListener('hidden.bs.collapse', clearAdminPageAlert);
-            }
-
-            adminPageAlertCollapse.show();
+            setAdminPageAlertMessage({ type: 'danger', message: results.message });
+            showAdminPageAlert();
         }
     };
 
@@ -110,16 +129,16 @@ export default function AdminPage() {
         <div>
             <Router>
                 <AdminHeader  title={title} />
-                <div id="adminPageAlertEl" 
-                    ref={adminPageAlertEl} 
-                    className={`alert alert-${state.adminPageAlert.type.toLocaleLowerCase()} alert-dismissible collapse w-100 fixed-top`} 
+                <div id="adminPageAlert" 
+                    ref={adminPageAlert} 
+                    className={`alert alert-${state.adminPageAlertMessage.type.toLocaleLowerCase()} alert-dismissible collapse w-100 fixed-top`} 
                     role="alert"
                     style={{
                         marginTop: '56px' /* Push it below the top nav bar. Not ideal, but it works for now */
                     }}
                 >
-                    <strong>{state.adminPageAlert.message}</strong>
-                    <button type="button" className="btn-close" aria-label="Close" data-bs-target="#adminPageAlertEl" data-bs-toggle="collapse" aria-expanded="false" aria-controls="adminPageAlert"></button>
+                    <strong>{adminPageAlertMessage.message}</strong>
+                    <button type="button" className="btn-close" aria-label="Close" data-bs-target="#adminPageAlert" data-bs-toggle="collapse" aria-expanded="false" aria-controls="adminPageAlert"></button>
                 </div>
                 <div className="container-fluid d-flex align-items-center flex-column mt-2">
                     <div className="card col-12 col-sm-10 col-md-8 col-lg-6 col-xxl-4 align-middle text-center">

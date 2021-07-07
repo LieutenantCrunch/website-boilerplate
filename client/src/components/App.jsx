@@ -59,6 +59,7 @@ export default function App() {
         return true;
     };
 
+    // loginDetails
     useEffect(() => {
         // Check if the loginDetails is hanging around and if it's expired, if so, delete it
         // Else make sure the userDetails are populated

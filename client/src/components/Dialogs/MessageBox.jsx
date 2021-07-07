@@ -20,7 +20,8 @@ import CloseRoundedIcon from '@material-ui/icons/CloseRounded';
 export const MESSAGE_BOX_TYPES = Object.freeze({
     OK: 0,
     YES_NO: 1,
-    YES_NO_CANCEL: 2
+    YES_NO_CANCEL: 2,
+    NO_YES: 3
 });
 
 /* MUI is refusing to put the custom class last, so !important is necessary */
@@ -38,11 +39,6 @@ const useStyles = makeStyles(() => ({
 const MessageBox = () => {
     const classes = useStyles();
 
-    const initialState = {
-        isOpen: false,
-        messageBoxProps: {}
-    };
-
     const {
         isOpen,
         messageBoxProps: {
@@ -57,28 +53,38 @@ const MessageBox = () => {
     } = useContext(MessageBoxStateContext);
 
     const setMessageBoxOptions = useContext(MessageBoxUpdaterContext);
+    const hideMessageBox = () => {
+        setMessageBoxOptions({ isOpen: false });
+    };
 
     const getActions = () => {
         switch (actions) {
             case MESSAGE_BOX_TYPES.YES_NO:
                 return (
                     <>
-                        <button type="button" className="btn btn-primary" autoFocus onClick={e => {onConfirm(); setMessageBoxOptions(initialState);}}>Yes</button>
-                        <button type="button" className="btn btn-secondary" onClick={e => {onDeny(); setMessageBoxOptions(initialState);}}>No</button>
+                        <button type="button" className="btn btn-primary" autoFocus onClick={e => { hideMessageBox(); onConfirm(); }}>Yes</button>
+                        <button type="button" className="btn btn-secondary" onClick={e => { hideMessageBox(); onDeny(); }}>No</button>
+                    </>
+                );
+            case MESSAGE_BOX_TYPES.NO_YES:
+                return (
+                    <>
+                        <button type="button" className="btn btn-secondary" autoFocus onClick={e => { hideMessageBox(); onDeny(); }}>No</button>
+                        <button type="button" className="btn btn-primary" onClick={e => { hideMessageBox(); onConfirm(); }}>Yes</button>
                     </>
                 );
             case MESSAGE_BOX_TYPES.YES_NO_CANCEL:
                 return (
                     <>
-                        <button type="button" className="btn btn-primary" autoFocus onClick={e => {onConfirm(); setMessageBoxOptions(initialState);}}>Yes</button>
-                        <button type="button" className="btn btn-secondary" onClick={e => {onDeny(); setMessageBoxOptions(initialState);}}>No</button>
-                        <button type="button" className="btn btn-secondary" onClick={e => {onCancel(); setMessageBoxOptions(initialState);}}>Cancel</button>
+                        <button type="button" className="btn btn-primary" autoFocus onClick={e => { hideMessageBox(); onConfirm(); }}>Yes</button>
+                        <button type="button" className="btn btn-secondary" onClick={e => { hideMessageBox(); onDeny(); }}>No</button>
+                        <button type="button" className="btn btn-secondary" onClick={e => { hideMessageBox(); onCancel(); }}>Cancel</button>
                     </>
                 );
             case MESSAGE_BOX_TYPES.OK:
             default:
                 return (
-                    <button type="button" className="btn btn-primary" autoFocus onClick={e => {onConfirm(); setMessageBoxOptions(initialState);}}>OK</button>
+                    <button type="button" className="btn btn-primary" autoFocus onClick={e => { hideMessageBox(); onConfirm(); }}>OK</button>
                 );
         }
     };

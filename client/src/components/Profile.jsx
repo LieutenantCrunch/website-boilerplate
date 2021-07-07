@@ -16,7 +16,6 @@ import { selectCurrentUserDisplayName, selectCurrentUserDisplayNameIndex, select
 export const Profile = ({ setTitle }) => {
     const currentUserDisplayName = useSelector(selectCurrentUserDisplayName);
     const currentUserDisplayNameIndex = useSelector(selectCurrentUserDisplayNameIndex);
-    const currentUserEmail = useSelector(selectCurrentUserEmail);
 
     const [state, setState] = useState({
         fetchDate: null,
@@ -107,7 +106,6 @@ export const Profile = ({ setTitle }) => {
                             : <></>
                         }
                     </h5>
-                    <p className="card-text">Email Address: {currentUserEmail}</p>
                 </div>
             </div>
             <NewPostForm onNewPostCreated={addNewPost} />
