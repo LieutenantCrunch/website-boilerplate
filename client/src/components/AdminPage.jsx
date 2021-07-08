@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { AdminHeader } from './AdminHeader';
 import {BrowserRouter as Router} from 'react-router-dom';
 import UserService from '../services/user.service';
@@ -131,7 +131,7 @@ export default function AdminPage() {
                 <AdminHeader  title={title} />
                 <div id="adminPageAlert" 
                     ref={adminPageAlert} 
-                    className={`alert alert-${state.adminPageAlertMessage.type.toLocaleLowerCase()} alert-dismissible collapse w-100 fixed-top`} 
+                    className={`alert alert-${adminPageAlertMessage.type.toLocaleLowerCase()} alert-dismissible collapse w-100 fixed-top`} 
                     role="alert"
                     style={{
                         marginTop: '56px' /* Push it below the top nav bar. Not ideal, but it works for now */
