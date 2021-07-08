@@ -24,7 +24,7 @@ import EqualizerIcon from '@material-ui/icons/Equalizer';
 import CancelTwoToneIcon from '@material-ui/icons/CancelTwoTone';
 
 // Material UI Styles
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@material-ui/styles';
 
 // Assorted Functionality
 import * as Constants from '../constants/constants';
@@ -1204,7 +1204,18 @@ export const NewPostForm = ({ onNewPostCreated }) => {
                     <div className={classes.headerDetails}>
                         <Avatar className={classes.avatar} src={currentUserPfpSmall} />
                         <div className={classes.headerContent}>
-                            <MaterialTextfield name="postTitle" label={`Post Title${state.postType === Constants.POST_TYPES.AUDIO || state.postType === Constants.POST_TYPES.VIDEO ? '' :  ' (optional)'}`} size="small" variant="filled" className={classes.title} inputProps={{'maxLength': MAX_TITLE_LENGTH}} value={state.postTitle} onChange={handleTextChange} error={state.titleError} helperText={state.postTitleHelper} />
+                            <MaterialTextfield 
+                                name="postTitle" 
+                                label={`Post Title${state.postType === Constants.POST_TYPES.AUDIO || state.postType === Constants.POST_TYPES.VIDEO ? '' :  ' (optional)'}`} 
+                                size="small" 
+                                variant="filled" 
+                                className={classes.title} 
+                                inputProps={{'maxLength': MAX_TITLE_LENGTH}} 
+                                value={state.postTitle} 
+                                onChange={handleTextChange} 
+                                error={state.titleError} 
+                                helperText={state.postTitleHelper} 
+                            />
                             <LinearProgress className={classes.titleProgress} variant="determinate" value={state.titleLimit} color={getTitleProgressColor()} aria-valuetext={`${state.titleLimit} Percent of Title Characters Used`} />
                             <div>
                                 <small style={{color: 'rgba(0,0,0,0.6)'}}>{currentDate}</small>
@@ -1253,7 +1264,18 @@ export const NewPostForm = ({ onNewPostCreated }) => {
                 }
                 <Divider light={true} variant='middle' />
                 <div className={classes.body}>
-                    <MaterialTextfield name="postText" className={classes.bodyContent} multiline variant="filled" label={`Post Text${state.postType === Constants.POST_TYPES.TEXT ? '' :  ' (optional)'}`} inputProps={{'maxLength': MAX_TEXT_LENGTH}} value={state.postText} onChange={handleTextChange} error={state.textError} helperText={state.postTextHelper} />
+                    <MaterialTextfield 
+                        name="postText" 
+                        className={classes.bodyContent} 
+                        multiline 
+                        variant="filled" 
+                        label={`Post Text${state.postType === Constants.POST_TYPES.TEXT ? '' :  ' (optional)'}`} 
+                        inputProps={{'maxLength': MAX_TEXT_LENGTH}} 
+                        value={state.postText} 
+                        onChange={handleTextChange} 
+                        error={state.textError} 
+                        helperText={state.postTextHelper} 
+                    />
                     <LinearProgress className={classes.textProgress} variant="determinate" value={state.textLimit} color={getTextProgressColor()} aria-valuetext={`${state.textLimit} Percent of Text Characters Used`} />
                 </div>
                 <div className={classes.footer}>

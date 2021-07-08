@@ -17,7 +17,7 @@ import { selectCurrentUserRoles, seenPostNotifications, selectHasUnseenPostNotif
 // Material UI
 import Badge from '@material-ui/core/Badge';
 import NotificationsOutlinedIcon from '@material-ui/icons/NotificationsOutlined';
-import { makeStyles, withStyles } from '@material-ui/core/styles';
+import { makeStyles, withStyles } from '@material-ui/styles';
 
 const PrimaryBadge = withStyles((theme) => ({
     badge: {

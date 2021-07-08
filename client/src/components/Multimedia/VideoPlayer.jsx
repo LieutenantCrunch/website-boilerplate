@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { currentUserPreferencesUpdated, selectCurrentUserPreferences } from '../../redux/users/currentUserSlice';
 
 // Material UI
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@material-ui/styles';
 
 // Material UI Icons
 import PauseRoundedIcon from '@material-ui/icons/PauseRounded';

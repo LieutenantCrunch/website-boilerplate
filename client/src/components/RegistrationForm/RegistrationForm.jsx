@@ -10,10 +10,25 @@ import AuthService from '../../services/auth.service';
 
 import { HtmlTooltip } from '../HtmlTooltip';
 
+// Material UI
+import FormControl from '@material-ui/core/FormControl';
+import IconButton from '@material-ui/core/IconButton';
+import InputLabel from '@material-ui/core/InputLabel';
+import InputAdornment from '@material-ui/core/InputAdornment';
+import FilledInput from '@material-ui/core/FilledInput';
+import MaterialTextField from '@material-ui/core/TextField';
+import Visibility from '@material-ui/icons/Visibility';
+import VisibilityOff from '@material-ui/icons/VisibilityOff';
+
 export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) => {
     const history = useHistory();
 
-    const [state, setState] = useState({password: '', confirmPassword: ''});
+    const [state, setState] = useState({
+        password: '', 
+        confirmPassword: '',
+        showPassword: false,
+        showConfirmPassword: false
+    });
     const [sessionState, setSessionState] = Hooks.useStateWithSessionStorage('state', {
         displayName: '',
         email: '', 
@@ -72,6 +87,28 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
         else {
             setStatusMessage({type: 'danger', message: 'Passwords do not match'});
         }
+    };
+
+    const handleShowPassword = (e) => {
+        setState(prevState => ({
+            ...prevState,
+            showPassword: !prevState.showPassword 
+         }));
+    };
+
+    const handleShowPasswordMouseDown = (e) => {
+        e.preventDefault();
+    };
+
+    const handleShowConfirmPassword = (e) => {
+        setState(prevState => ({
+            ...prevState,
+            showConfirmPassword: !prevState.showConfirmPassword 
+         }));
+    };
+
+    const handleShowConfirmPasswordMouseDown = (e) => {
+        e.preventDefault();
     };
 
     const sendRegistrationToServer = async () => {
@@ -165,20 +202,20 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
             <div className="card-body">
                 <form>
                     <div className="mb-3 text-start">
-                        <label htmlFor="email">Email Address</label>
-                        <input id="email"
+                        <MaterialTextField id="email"
                             type="email"
-                            required
-                            className="form-control"
-                            placeholder="Enter email"
                             aria-describedby="emailHelp"
-                            value={sessionState.email || ''}
+                            label="Email Address"
                             onChange={handleSessionStateChange}
+                            required
+                            size="small"
+                            style={{ width: '100%' }}
+                            value={sessionState.email || ''}
+                            variant="filled"
                         />
                         <small id="emailHelp" className="form-text text-muted">Your email will not be shared with anyone else.</small>
                     </div>
                     <div className="mb-3 text-start">
-                        <label htmlFor="displayName">Display Name</label>
                         <HtmlTooltip title={
                                 <>
                                     <b>Requirements</b>
@@ -194,20 +231,21 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
                             disableHoverListener
                             fontWeight='normal'
                         >
-                            <input id="displayName"
+                            <MaterialTextField id="displayName"
                                 type="text"
-                                required
-                                className="form-control"
-                                placeholder="Enter display name"
                                 aria-describedby="displayNameHelp"
-                                value={sessionState.displayName || ''}
+                                label="Display Name"
                                 onChange={handleSessionStateChange}
+                                required
+                                size="small"
+                                style={{ width: '100%' }}
+                                value={sessionState.displayName || ''}
+                                variant="filled"
                             />
                         </HtmlTooltip>
                         <small id="displayNameHelp" className="form-text text-muted">This is the name other users will see.  It will be followed by a unique id number unless your account is verified.</small>
                     </div>
                     <div className="mb-3 text-start">
-                        <label htmlFor="profileName">Profile Name</label>
                         <HtmlTooltip title={
                                 <>
                                     <b>Requirements</b>
@@ -233,14 +271,16 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
                             disableHoverListener
                             fontWeight='normal'
                         >
-                            <input id="profileName"
+                            <MaterialTextField id="profileName"
                                 type="text"
-                                required
-                                className="form-control"
-                                placeholder="Enter profile name"
                                 aria-describedby="profileNameHelp"
-                                value={sessionState.profileName || ''}
+                                label="Profile Name"
                                 onChange={handleSessionStateChange}
+                                required
+                                size="small"
+                                style={{ width: '100%' }}
+                                value={sessionState.profileName || ''}
+                                variant="filled"
                             />
                         </HtmlTooltip>
                         <small id="profileNameHelp" className="form-text text-muted">
@@ -259,15 +299,32 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
                         </small>
                     </div>
                     <div className="mb-3 text-start">
-                        <label htmlFor="password">Password</label>
-                        <input id="password"
-                            type="password"
-                            required
-                            className="form-control mb-1"
-                            placeholder="Password"
-                            value={state.password || ''}
-                            onChange={handleStateChange}
-                        />
+                        <FormControl required variant="filled" size="small" style={{ width: '100%' }}>
+                            <InputLabel htmlFor="password">Password</InputLabel>
+                            <FilledInput
+                                id="password"
+                                type={state.showPassword ? 'text' : 'password'}
+                                required
+                                value={state.password || ''}
+                                onChange={handleStateChange}
+                                endAdornment={
+                                    <InputAdornment position="end">
+                                        <IconButton
+                                            aria-label="toggle password visibility"
+                                            onClick={handleShowPassword}
+                                            onMouseDown={handleShowPasswordMouseDown}
+                                            edge="end"
+                                        >
+                                            {
+                                                state.showPassword 
+                                                ? <Visibility /> 
+                                                : <VisibilityOff />
+                                            }
+                                        </IconButton>
+                                    </InputAdornment>
+                                }
+                            />
+                        </FormControl>
                         <div style={{display: state.password ? '' : 'none'}}>
                             <div className="progress">
                                 <div className={classNames('progress-bar bg-gradient', getPasswordStrengthClass())} role="progressbar" style={{width: getPasswordStrengthWidth()}} aria-valuenow={getPasswordStrength()} aria-valuemin="0" aria-valuemax="4"></div>
@@ -278,18 +335,40 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
                         </div>
                     </div>
                     <div className="mb-3 text-start">
-                        <label htmlFor="confirmPassword">Confirm Password</label>
-                        <input id="confirmPassword"
-                            type="password"
-                            required
-                            className="form-control"
-                            placeholder="Confirm Password"
-                            value={state.confirmPassword || ''}
-                            onChange={handleStateChange}
-                            style={{
-                                backgroundColor: state.password === state.confirmPassword ? 'rgb(255,255,255)' : 'rgba(220,53,69,0.5)'
-                            }}
-                        />
+                        <FormControl required variant="filled" size="small" style={{ width: '100%' }} color={ state.password === state.confirmPassword ? 'primary' : 'error' }>
+                            <InputLabel htmlFor="confirmPassword">Confirm Password</InputLabel>
+                            <FilledInput
+                                id="confirmPassword"
+                                type={state.showConfirmPassword ? 'text' : 'password'}
+                                color={ state.password === state.confirmPassword ? 'primary' : 'error' }
+                                required
+                                value={state.confirmPassword || ''}
+                                onChange={handleStateChange}
+                                endAdornment={
+                                    <InputAdornment position="end">
+                                        <IconButton
+                                            aria-label="toggle confirm password visibility"
+                                            onClick={handleShowConfirmPassword}
+                                            onMouseDown={handleShowConfirmPasswordMouseDown}
+                                            edge="end"
+                                        >
+                                            {
+                                                state.showConfirmPassword 
+                                                ? <Visibility /> 
+                                                : <VisibilityOff />
+                                            }
+                                        </IconButton>
+                                    </InputAdornment>
+                                }
+                                sx={{
+                                    backgroundColor: state.password === state.confirmPassword ? '' : 'rgba(220,53,69,0.5)',
+                                    '&:hover': {
+                                        backgroundColor: state.password === state.confirmPassword ? '' : 'rgba(220,53,69,0.6)',
+                                    }
+                                }}
+                                
+                            />
+                        </FormControl>
                     </div>
                     <label id="lBelaavnek1" htmlFor="firstName" className="special-control">Skipthis</label>
                     <input id="firstName"

@@ -22,7 +22,7 @@ import UserService from '../services/user.service';
 import { newArrayWithItemRemoved } from '../utilities/ArrayUtilities';
 
 // Material UI
-import { makeStyles, withStyles } from '@material-ui/core/styles';
+import { makeStyles, withStyles } from '@material-ui/styles';
 import Card from '@material-ui/core/Card';
 import CardContent from '@material-ui/core/CardContent';
 import CardHeader from '@material-ui/core/CardHeader';
@@ -33,7 +33,7 @@ import MuiListItem from '@material-ui/core/ListItem';
 import MuiListItemText from '@material-ui/core/ListItemText';
 import MuiSlider from '@material-ui/core/Slider';
 import MuiSwitch from '@material-ui/core/Switch';
-import Paper from '@material-ui/core/Paper';
+import MaterialTextField from '@material-ui/core/TextField';
 import Typography from '@material-ui/core/Typography';
 import VolumeOffRoundedIcon from '@material-ui/icons/VolumeOffRounded';
 import VolumeUpRoundedIcon from '@material-ui/icons/VolumeUpRounded';
@@ -42,10 +42,10 @@ import VolumeDownRoundedIcon from '@material-ui/icons/VolumeDownRounded';
 const PrimarySwitch = withStyles({
     switchBase: {
         '&$checked': {
-            color: 'rgb(11,94,215) !important'
+            color: 'rgb(11,94,215)'
         },
         '&$checked + $track': {
-            backgroundColor: 'rgb(11,94,215) !important'
+            backgroundColor: 'rgb(11,94,215)'
         }
     },
     checked: {},
@@ -55,10 +55,10 @@ const PrimarySwitch = withStyles({
 const DangerSwitch = withStyles({
     switchBase: {
         '&$checked': {
-            color: 'rgb(220,53,69) !important'
+            color: 'rgb(220,53,69)'
         },
         '&$checked + $track': {
-            backgroundColor: 'rgb(220,53,69) !important'
+            backgroundColor: 'rgb(220,53,69)'
         }
     },
     checked: {},
@@ -67,10 +67,10 @@ const DangerSwitch = withStyles({
 
 const PrimarySlider = withStyles({
     root: {
-        color: 'rgb(11,94,215) !important'
+        color: 'rgb(11,94,215)'
     },
     thumb: {
-        backgroundColor: 'currentColor !important'
+        backgroundColor: 'currentColor'
     }
 })(MuiSlider);
 
@@ -782,7 +782,16 @@ export const SettingsPage = ({ setLoginDetails, setStatusMessage, setTitle }) =>
                                     disableHoverListener
                                     fontWeight='normal'
                                 >
-                                    <input type="text" id="displayName" className="form-control" placeholder="Display Name" aria-label="Display name input" value={state.displayName} onChange={handleStateChange} />
+                                    <MaterialTextField id="displayName"
+                                        type="text"
+                                        label="Display Name"
+                                        onChange={handleStateChange}
+                                        required
+                                        size="small"
+                                        style={{ width: '100%' }}
+                                        value={state.displayName || ''}
+                                        variant="filled" 
+                                    />
                                 </HtmlTooltip>
                             </div>
                             <div className="modal-footer">

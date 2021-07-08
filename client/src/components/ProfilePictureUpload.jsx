@@ -8,7 +8,7 @@ import UploadService from '../services/upload.service';
 import AddCircleTwoToneIcon from '@material-ui/icons/AddCircleTwoTone';
 
 // Material UI Styles
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@material-ui/styles';
 
 // Redux
 import { useDispatch, useSelector } from 'react-redux';
