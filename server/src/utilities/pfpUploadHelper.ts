@@ -1,10 +1,13 @@
 import express from 'express';
 import multer from 'multer';
+import FileHandler from './fileHandler';
 
 export default class PFPUploadHelper {
     private static storage: multer.StorageEngine = multer.diskStorage({
         destination: (req: express.Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-            cb(null, `${process.cwd()}/dist/u/${req.userId!}`);
+            FileHandler.createDirectoryIfNotExists(`${process.cwd()}/dist/u/${req.userId!}`).then(() => {
+                cb(null, `${process.cwd()}/dist/u/${req.userId!}`);
+            });
         },
         filename: (req: express.Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
             cb(null, `${Date.now()}.${file.originalname}`);
