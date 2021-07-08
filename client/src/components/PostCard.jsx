@@ -19,7 +19,7 @@ import IconButton from '@material-ui/core/IconButton';
 import LinearProgress from '@material-ui/core/LinearProgress';
 import MaterialTextfield from '@material-ui/core/TextField';
 import Typography from '@material-ui/core/Typography';
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@material-ui/styles';
 
 // Material UI Icons
 import CancelTwoToneIcon from '@material-ui/icons/CancelTwoTone';
@@ -475,7 +475,17 @@ export const PostCard = ({ post, fetchDate, focusCommentId, deletePostCB } ) => 
                                         </div>
                                     </div>
                                 }
-                                <MaterialTextfield inputRef={commentTextfield} style={{width: '100%'}} label={`Add a ${state.replyToComment ? 'reply' : 'comment'}`} multiline variant="filled" size="small" inputProps={{'maxLength': MAX_COMMENT_LENGTH}} onChange={handleCommentChange} value={state.commentText}></MaterialTextfield>
+                                <MaterialTextfield 
+                                    inputRef={commentTextfield} 
+                                    style={{width: '100%'}} 
+                                    label={`Add a ${state.replyToComment ? 'reply' : 'comment'}`} 
+                                    multiline 
+                                    variant="filled" 
+                                    size="small" 
+                                    inputProps={{'maxLength': MAX_COMMENT_LENGTH}} 
+                                    onChange={handleCommentChange} 
+                                    value={state.commentText}
+                                />
                                 <LinearProgress className={classes.commentProgress} variant="determinate" value={state.commentLimit} color={getCommentProgressColor()} aria-valuetext={`${state.commentLimit} Percent of Comment Characters Used`} />
                             </div>
                             <button className="btn btn-primary ms-2" type="button" onClick={handlePostClick}>Post</button>

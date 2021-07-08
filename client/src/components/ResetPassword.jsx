@@ -3,11 +3,27 @@ import { useHistory, useLocation } from 'react-router-dom';
 import AuthService from '../services/auth.service';
 import classNames from 'classnames';
 
+// Material UI
+import FormControl from '@material-ui/core/FormControl';
+import IconButton from '@material-ui/core/IconButton';
+import InputLabel from '@material-ui/core/InputLabel';
+import InputAdornment from '@material-ui/core/InputAdornment';
+import FilledInput from '@material-ui/core/FilledInput';
+import MaterialTextField from '@material-ui/core/TextField';
+import Visibility from '@material-ui/icons/Visibility';
+import VisibilityOff from '@material-ui/icons/VisibilityOff';
+
 export const ResetPassword = ({ setLoginDetails, setStatusMessage, setTitle, statusMessage }) => {
     const history = useHistory();
     const location = useLocation();
 
-    const [state, setState] = useState({email: '', password: '', confirmPassword: ''});
+    const [state, setState] = useState({
+        email: '', 
+        password: '', 
+        confirmPassword: '',
+        showPassword: false,
+        showConfirmPassword: false
+    });
 
     useEffect(() => {
         setTitle('Reset Password');
@@ -43,6 +59,28 @@ export const ResetPassword = ({ setLoginDetails, setStatusMessage, setTitle, sta
         }
     };
 
+    const handleShowPassword = (e) => {
+        setState(prevState => ({
+            ...prevState,
+            showPassword: !prevState.showPassword 
+         }));
+    };
+
+    const handleShowPasswordMouseDown = (e) => {
+        e.preventDefault();
+    };
+
+    const handleShowConfirmPassword = (e) => {
+        setState(prevState => ({
+            ...prevState,
+            showConfirmPassword: !prevState.showConfirmPassword 
+         }));
+    };
+
+    const handleShowConfirmPasswordMouseDown = (e) => {
+        e.preventDefault();
+    };
+
     const resetPassword = async () => {
         let searchParams = new URLSearchParams(location.search);
         let token = searchParams.get('token');
@@ -76,39 +114,82 @@ export const ResetPassword = ({ setLoginDetails, setStatusMessage, setTitle, sta
                 <div className="card-body">
                     <form>
                         <div className="mb-3 text-start">
-                            <label htmlFor="email">Email Address</label>
-                            <input id="email"
+                            <MaterialTextField id="email"
                                 type="email"
-                                required
-                                className="form-control"
-                                placeholder="Enter email"
-                                value={state.email}
-                                onChange={handleStateChange}
                                 aria-describedby="emailHelp"
+                                label="Email Address"
+                                onChange={handleStateChange}
+                                required
+                                size="small"
+                                style={{ width: '100%' }}
+                                value={sessionState.email || ''}
+                                variant="filled"
                             />
                             <small id="emailHelp" className="form-text text-muted">Please confirm your email</small>
                         </div>
                         <div className="mb-3 text-start">
-                            <label htmlFor="password">New Password</label>
-                            <input id="password"
-                                type="password"
-                                required
-                                className="form-control"
-                                placeholder="New Password"
-                                value={state.password}
-                                onChange={handleStateChange}
-                            />
+                            <FormControl required variant="filled" size="small" style={{ width: '100%' }}>
+                                <InputLabel htmlFor="password">New Password</InputLabel>
+                                <FilledInput
+                                    id="password"
+                                    type={state.showPassword ? 'text' : 'password'}
+                                    required
+                                    value={state.password || ''}
+                                    onChange={handleStateChange}
+                                    endAdornment={
+                                        <InputAdornment position="end">
+                                            <IconButton
+                                                aria-label="toggle password visibility"
+                                                onClick={handleShowPassword}
+                                                onMouseDown={handleShowPasswordMouseDown}
+                                                edge="end"
+                                            >
+                                                {
+                                                    state.showPassword 
+                                                    ? <Visibility /> 
+                                                    : <VisibilityOff />
+                                                }
+                                            </IconButton>
+                                        </InputAdornment>
+                                    }
+                                />
+                            </FormControl>
                         </div>
                         <div className="mb-3 text-start">
-                            <label htmlFor="confirmPassword">Confirm New Password</label>
-                            <input id="confirmPassword"
-                                type="password"
-                                required
-                                className="form-control"
-                                placeholder="Confirm New Password"
-                                value={state.confirmPassword}
-                                onChange={handleStateChange}
-                            />
+                            <FormControl required variant="filled" size="small" style={{ width: '100%' }} color={ state.password === state.confirmPassword ? 'primary' : 'error' }>
+                                <InputLabel htmlFor="confirmPassword">Confirm New Password</InputLabel>
+                                <FilledInput
+                                    id="confirmPassword"
+                                    type={state.showConfirmPassword ? 'text' : 'password'}
+                                    color={ state.password === state.confirmPassword ? 'primary' : 'error' }
+                                    required
+                                    value={state.confirmPassword || ''}
+                                    onChange={handleStateChange}
+                                    endAdornment={
+                                        <InputAdornment position="end">
+                                            <IconButton
+                                                aria-label="toggle confirm password visibility"
+                                                onClick={handleShowConfirmPassword}
+                                                onMouseDown={handleShowConfirmPasswordMouseDown}
+                                                edge="end"
+                                            >
+                                                {
+                                                    state.showConfirmPassword 
+                                                    ? <Visibility /> 
+                                                    : <VisibilityOff />
+                                                }
+                                            </IconButton>
+                                        </InputAdornment>
+                                    }
+                                    
+                                sx={{
+                                    backgroundColor: state.password === state.confirmPassword ? '' : 'rgba(220,53,69,0.5)',
+                                    '&:hover': {
+                                        backgroundColor: state.password === state.confirmPassword ? '' : 'rgba(220,53,69,0.6)',
+                                    }
+                                }}
+                                />
+                            </FormControl>
                         </div>
                         <button type="submit"
                             className="btn btn-primary"

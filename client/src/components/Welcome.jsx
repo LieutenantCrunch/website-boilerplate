@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 // Material UI
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@material-ui/styles';
 import Card from '@material-ui/core/Card';
 import CardHeader from '@material-ui/core/CardHeader';
 import CardContent from '@material-ui/core/CardContent';
@@ -26,7 +26,7 @@ const useStyles = makeStyles((theme) => ({
         backgroundColor: 'rgb(255,255,255)'
     },
     nested: {
-        paddingLeft: '3em !important'
+        paddingLeft: '3em'
     },
 }));
 

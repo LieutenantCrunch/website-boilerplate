@@ -9,7 +9,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { removePostNotifications, selectPostNotificationById } from '../redux/notifications/postsSlice';
 
 // Material UI
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@material-ui/styles';
 import ClearRoundedIcon from '@material-ui/icons/ClearRounded';
 
 // Material UI Styles

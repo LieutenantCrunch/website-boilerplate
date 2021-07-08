@@ -3,10 +3,9 @@ import React, { useContext } from 'react';
 import { MessageBoxStateContext, MessageBoxUpdaterContext } from '../../contexts/withMessageBox';
 
 // Material UI
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@material-ui/styles';
 
 // Material UI Components
-import MuiButton from '@material-ui/core/Button';
 import MuiDialog from '@material-ui/core/Dialog';
 import MuiDialogTitle from '@material-ui/core/DialogTitle';
 import MuiDialogContent from '@material-ui/core/DialogContent';
@@ -24,13 +23,12 @@ export const MESSAGE_BOX_TYPES = Object.freeze({
     NO_YES: 3
 });
 
-/* MUI is refusing to put the custom class last, so !important is necessary */
 const useStyles = makeStyles(() => ({
     title: {
-        padding: '.5em !important'
+        padding: '.5em'
     },
     closeButton: {
-        position: 'absolute !important',
+        position: 'absolute',
         right: 0,
         top: 0
     }
