@@ -89,8 +89,8 @@ const MessageBox = () => {
 
     return (
         <MuiDialog onClose={onCancel} open={isOpen} aria-labelledby='message-box-title'>
-            <MuiDialogTitle id="message-box-title" className={classes.title} disableTypography>
-                <Typography variant="h6">{caption}</Typography>
+            <MuiDialogTitle id="message-box-title" className={classes.title}>
+                <Typography variant="h6" component="span">{caption}</Typography>
                 {
                     onCancel && 
                     <IconButton aria-label="close" className={classes.closeButton} onClick={onCancel}>
