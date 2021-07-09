@@ -1,5 +1,6 @@
+const siteConfig = require('../../private/siteConfig.json');
 const isProd: Boolean = process.env.NODE_ENV === 'production';
-const __BASE_URL__: string = isProd ? 'https://10.0.0.10/' : 'http://localhost:3000/';
+const __BASE_URL__: string = isProd ? siteConfig['prod']['base-url'] : siteConfig['dev']['base-url'];
 
 // ##################################################################
 // Code above this is server-specific due to webpack not being used

@@ -1,10 +1,11 @@
+client/node_modules/
+client/private/
 server/build/
 server/dist/
 server/node_modules/
 server/nsfwjs/
 server/private/
 server/runtime/
-client/node_modules/
 server/Ethereal
 server/IMAP
 server/Pending
