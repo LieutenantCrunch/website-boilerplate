@@ -287,7 +287,7 @@ export const RegistrationForm = ({ setStatusMessage, setTitle, statusMessage }) 
                             This will be the URL to your profile, e.g., {`${Constants.BASE_USERS_URL}yourProfileName`}. You will not be able to change it once it is set, so choose it carefully.&nbsp;
                             <HtmlTooltip title={
                                     <>
-                                        We reserve the right to change your profile name at a future date if we determine you are trying to impersonate an individual or business.
+                                        I reserve the right to change your profile name at a future date if I determine you are trying to impersonate an individual or business or if you try to make it something stupid. Note that I may change it to something that is not so kind.
                                     </>
                                 }
                                 enterDelay={500}

@@ -1,4 +1,5 @@
 import * as ClientConstants from '../constants/constants.client';
+import badWordDictionary from './badWordDictionary.json';
 
 // Source: https://www.w3schools.com/JS/js_random.asp
 export const randomInt = (min: number, max: number): number => {
@@ -29,6 +30,51 @@ export const adjustGUIDDashes = (guid: string | undefined, add: Boolean = false)
     }
 
     return undefined;
+};
+
+const _checkBadWord = (word: string): Boolean => {
+    let key: { [key: string]: any } = badWordDictionary;
+
+    for (let letter of word) {
+        let test = key[letter];
+        
+        if (test === undefined) {
+            return false;
+        }
+        
+        key = key[letter];
+    }
+    
+    if (key['end'] === true) {
+        return true;
+    }
+    
+    return false;
+};
+
+export const checkBadWord = (word: string): Boolean => {
+    let testWord: string = word.toLocaleLowerCase();
+
+    if (_checkBadWord(testWord)) {
+        return true;
+    }
+    else {
+        // Try it again but with non-alphanumeric characters removed
+        let testWord2: string = testWord.replace(/[^a-z0-9]+/g,'')
+
+        if (_checkBadWord(testWord2)) {
+            return true;
+        }
+        else {
+            // Try it one more time but with everything that's not a letter removed from the start and end
+            testWord2 = testWord.replace(/^[^a-z]+/,'').replace(/[^a-z]+$/,'');
+            if (_checkBadWord(testWord2)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 };
 
 export const dateFromInput = (input: string | number | Date | null | undefined): Date | undefined => {

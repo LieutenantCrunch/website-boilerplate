@@ -10,6 +10,7 @@ import * as ServerConstants from '../../constants/constants.server';
 
 import '../../extensions/date.extensions';
 import EmailHelper from '../../utilities/emailHelper';
+import { checkBadWord } from '../../utilities/utilityFunctions';
 
 const emailHelper: EmailHelper = new EmailHelper();
 
@@ -18,65 +19,9 @@ const apiAuthRouter: Router = express.Router();
 apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request, res: Response) => {
     switch (req.params.methodName)
     {
-    case 'register':
-        if (!req.body) {
-            res.status(200).json({success: false, message: 'You must provide registration info.'});
-        }
-        else {
-            let canContinue: Boolean = true;
-
-            if (req.body.firstName || req.body.lastName) {
-                return res.status(200).json({success: true, message: `Registration success! Welcome to the site ${req.body.firstName} ${req.body.lastName}! You can now log in.`});
-            }
-
-            if (req.body.email) {
-                let email: string = req.body.email;
-                let userExists: Boolean = await dbMethods.Users.Searches.userExistsForEmail(email);
-
-                if (userExists) {
-                    canContinue = false;
-                    res.status(200).json({success: false, message: 'That email address is already in use.'});
-                }
-            }
-            else {
-                canContinue = false;
-                res.status(200).json({success: false, message: 'You must provide an email address.'});
-            }
-
-            if (canContinue && !req.body.displayName) {
-                res.status(200).json({success: false, message: 'You must provide a display name.'});
-                canContinue = false;
-            }
-            else if (canContinue && !req.body.profileName) {
-                res.status(200).json({success: false, message: 'You must provide a profile name.'});
-                canContinue = false;
-            }
-
-            if (canContinue) {
-                if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
-                    if (zxcvbn(req.body.password).score < 3) {
-                        res.status(200).json({success: false, message: 'Your password isn\'t strong enough.'});
-                    }
-                    else {
-                        let registerResults: {id: string | null, success: Boolean} = await dbMethods.Users.registerNewUser(req.body.email, req.body.displayName, req.body.profileName, req.body.password);
-                        
-                        if (registerResults.success) {
-                            res.status(200).json({success: true, message: 'Registration success! You can now log in.'});
-                        }
-                        else {
-                            res.status(200).json({success: false, message: 'An error occurred during registration.'});
-                        }
-                    }
-                }
-                else {
-                    res.status(200).json({success: false, message: 'Your passwords did not match.'});
-                }
-            }
-        }
-        break;
     case 'login':
         if (!req.body) {
-            res.status(200).json({success: false, message: 'You must provide valid credentials.'});
+            res.status(200).clearCookie('authToken').json({success: false, message: 'You must provide valid credentials.'});
         }
         else {
             if (req.body.email && req.body.password) {
@@ -121,15 +66,15 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
                             });
                     }
                     else {
-                        res.status(200).json({success: false, message: 'Failed to secure a session with the server, please try again or contact support.'});
+                        res.status(200).clearCookie('authToken').json({success: false, message: 'Failed to secure a session with the server, please try again or contact support.'});
                     }
                 }
                 else {
-                    res.status(200).json({success: false, message: 'The credentials provided are not valid.'});
+                    res.status(200).clearCookie('authToken').json({success: false, message: 'The credentials provided are not valid.'});
                 }
             }
             else {
-                res.status(200).json({success: false, message: 'You must provide a valid email address and password.'});
+                res.status(200).clearCookie('authToken').json({success: false, message: 'You must provide a valid email address and password.'});
             }
         }
         break;
@@ -149,6 +94,74 @@ apiAuthRouter.post('/:methodName', [AuthHelper.decodeToken], async (req: Request
         res.status(200)
             .clearCookie('authToken')
             .json({success: true, message: 'You have been logged out.'});
+        break;
+    case 'register':
+        if (!req.body) {
+            res.status(200).json({success: false, message: 'You must provide registration info.'});
+        }
+        else {
+            let canContinue: Boolean = true;
+
+            if (req.body.firstName || req.body.lastName) {
+                return res.status(200).json({success: true, message: `Registration success! Welcome to the site ${req.body.firstName} ${req.body.lastName}! You can now log in.`});
+            }
+
+            if (req.body.email) {
+                let email: string = req.body.email;
+                let userExists: Boolean = await dbMethods.Users.Searches.userExistsForEmail(email);
+
+                if (userExists) {
+                    canContinue = false;
+                    res.status(200).json({success: false, message: 'That email address is already in use.'});
+                }
+            }
+            else {
+                canContinue = false;
+                res.status(200).json({success: false, message: 'You must provide an email address.'});
+            }
+
+            let { displayName, profileName }: { displayName: string | undefined, profileName: string | undefined } = req.body;
+
+            if (canContinue) {
+                if (!displayName) {
+                    res.status(200).json({success: false, message: 'You must provide a display name.'});
+                    canContinue = false;
+                }
+                else if (checkBadWord(displayName)) {
+                    res.status(200).json({success: false, message: 'Invalid display name.'});
+                    canContinue = false;
+                }
+                else if (!profileName) {
+                    res.status(200).json({success: false, message: 'You must provide a profile name.'});
+                    canContinue = false;
+                }
+                else if (checkBadWord(profileName)) {
+                    res.status(200).json({success: false, message: 'Invalid profile name.'});
+                    canContinue = false;
+                }
+            }
+
+            if (canContinue) {
+                if (req.body.password && req.body.confirmPassword && req.body.password === req.body.confirmPassword) {
+                    if (zxcvbn(req.body.password).score < 3) {
+                        res.status(200).json({success: false, message: 'Your password isn\'t strong enough.'});
+                    }
+                    else {
+                        let registerResults: {id: string | null, success: Boolean} = await dbMethods.Users.registerNewUser(req.body.email, displayName!, profileName!, req.body.password);
+                        
+                        if (registerResults.success) {
+                            res.status(200).json({success: true, message: 'Registration success! You can now log in.'});
+                        }
+                        else {
+                            res.status(200).json({success: false, message: 'An error occurred during registration.'});
+                        }
+                    }
+                }
+                else {
+                    res.status(200).json({success: false, message: 'Your passwords did not match.'});
+                }
+            }
+        }
         break;
     case 'reset-password-request':
         if (req.body.email) {

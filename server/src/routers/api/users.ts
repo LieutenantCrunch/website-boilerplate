@@ -2,6 +2,7 @@ import express, {Request, Response, Router, NextFunction} from 'express';
 
 import { dbMethods } from '../../database/dbMethods';
 import AuthHelper from '../../utilities/authHelper';
+import { checkBadWord } from '../../utilities/utilityFunctions';
 import {apiUserPFPRouter} from './users/pfp';
 import {apiUserPublicRouter} from './users/public';
 
@@ -213,13 +214,25 @@ apiUserRouter.post('/:methodName', [AuthHelper.verifyToken], async (req: Request
     
             break;
     case 'setDisplayName':
-        if (req.userId && req.body.displayName) {
-            const results: {success: Boolean, displayNameIndex?: number, message?: string} = await dbMethods.Users.Fields.setUserDisplayName(req.userId, req.body.displayName);
+        if (req.userId) {
+            let displayName: string | undefined = req.body.displayName;
 
-            res.status(200).json(results);
+            if (displayName) {
+                if (!checkBadWord(displayName)) {
+                    const results: {success: Boolean, displayNameIndex?: number, message?: string} = await dbMethods.Users.Fields.setUserDisplayName(req.userId, req.body.displayName);
+
+                    res.status(200).json(results);
+                }
+                else {
+                    res.status(200).json({success: false, message: 'Invalid display name.'});
+                }
+            }
+            else {
+                res.status(200).json({success: false, message: 'No display name found.'});
+            }
         }
         else {
-            res.status(200).json({success: false, message: 'No user or display name found'});
+            res.status(200).json({success: false, message: 'No user found.'});
         }
         break;
     case 'unblockUser':
